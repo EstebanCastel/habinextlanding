@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-habi: #802ef6;
+  --color-habi-soft: #ba9dfa;
+  --color-habi-deep: #4b1a8b;
+  --font-sans: var(--font-urbanist);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--font-urbanist), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: #802ef6;
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(128, 46, 246, 0.55);
+  border-radius: 999px;
+}
+
+/* Cinta de bloques blancos sobre morado: el patrón del cierre del sistema
+ * Habi Next. Se dibuja con un degradado repetido para que se adapte a
+ * cualquier ancho sin depender de un número fijo de divs. */
+.habi-tape {
+  background-image: repeating-linear-gradient(
+    to right,
+    #ffffff 0,
+    #ffffff 5rem,
+    transparent 5rem,
+    transparent 15rem
+  );
+}
+
+@media (max-width: 640px) {
+  .habi-tape {
+    background-image: repeating-linear-gradient(
+      to right,
+      #ffffff 0,
+      #ffffff 2rem,
+      transparent 2rem,
+      transparent 6rem
+    );
+  }
+}
+
+/* Marquesina de la barra de datos rápidos bajo el hero. */
+@keyframes habi-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.habi-marquee {
+  animation: habi-marquee 38s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .habi-marquee {
+    animation: none;
+  }
 }

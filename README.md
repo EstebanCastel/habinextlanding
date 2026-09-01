@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Habi Next Bogotá — landing
 
-## Getting Started
+Landing de venta de entradas para **Habi Next Bogotá**, martes 20 de octubre de 2026.
 
-First, run the development server:
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · Motion · pnpm.
+
+## Identidad
+
+Es el sistema visual de Habi Next, no una landing genérica de Habi: fondo negro,
+morado `#802ef6` con el secundario `#ba9dfa`, tipografía Urbanist, el asterisco
+de ocho puntas y las pastillas de borde morado atravesadas por una regla que se
+sale de la pantalla. La cinta de bloques blancos sobre morado (`.habi-tape` en
+`globals.css`) cierra los bloques de énfasis.
+
+## Qué se edita y dónde
+
+Todo lo que cambia con el tiempo vive en **`src/config/event.ts`**:
+
+| Dato | Constante |
+| --- | --- |
+| Fecha, ciudad, duración | `EVENT` |
+| Sede (pendiente de confirmar) | `EVENT.venue` |
+| Links de compra y patrocinio | `LINKS` |
+| Precios, etapas y beneficios | `TICKETS` |
+
+La etapa de boletería vigente se calcula sola a partir de `stages[].until`, así
+que al pasar el 17 y el 30 de septiembre el precio destacado cambia sin
+intervención. La página se regenera cada hora (`revalidate = 3600`).
+
+## Variables de entorno
+
+Ver `.env.example`. Las de Luma y patrocinio definen a dónde apuntan los
+botones; las de píxeles activan las audiencias de pauta digital. Ninguna es
+obligatoria para que la página compile.
+
+### Audiencias de pauta
+
+`src/components/Pixels.tsx` dispara `PageView` en la carga para Meta, Google,
+TikTok y GTM, de modo que cualquier visita entra a la audiencia de remarketing
+antes de interactuar. Cada red se activa sola si existe su variable.
+
+## Desarrollo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev      # http://localhost:3000
+pnpm build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Contenido
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+La venta se procesa en Luma, que pide nombre, apellidos, correo, teléfono, tipo
+de broker (inmobiliario / financiero / ambos), aceptación de términos y
+tratamiento de datos Habi, y tipo de boleta.
