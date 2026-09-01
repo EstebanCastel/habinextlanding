@@ -12,11 +12,11 @@ const units = [
 
 type Left = Record<(typeof units)[number]["key"], number>;
 
-const zero: Left = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+const TARGET = new Date(EVENT.startsAt).getTime();
 
-function diff(target: number): Left {
-  const d = target - Date.now();
-  if (d <= 0) return zero;
+function diff(): Left {
+  const d = TARGET - Date.now();
+  if (d <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   return {
     days: Math.floor(d / 86_400_000),
     hours: Math.floor((d % 86_400_000) / 3_600_000),
@@ -26,18 +26,15 @@ function diff(target: number): Left {
 }
 
 /**
- * Cuenta regresiva al evento. Arranca en 00 en el servidor y toma el valor
- * real tras montar, para no romper la hidratación con la hora del cliente.
+ * Cuenta regresiva al evento. El primer valor se calcula en el render, así que
+ * no hay parpadeo en 00; los segundos del HTML servido difieren de los del
+ * cliente por definición, de ahí el suppressHydrationWarning en las cifras.
  */
 export default function Countdown() {
-  const [left, setLeft] = useState<Left>(zero);
-  const [mounted, setMounted] = useState(false);
+  const [left, setLeft] = useState<Left>(diff);
 
   useEffect(() => {
-    const target = new Date(EVENT.startsAt).getTime();
-    setMounted(true);
-    setLeft(diff(target));
-    const id = setInterval(() => setLeft(diff(target)), 1000);
+    const id = setInterval(() => setLeft(diff()), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -53,10 +50,11 @@ export default function Countdown() {
             <div key={unit.key} className="flex items-start">
               <div className="flex min-w-[62px] flex-col items-center sm:min-w-[84px] md:min-w-[110px]">
                 <span
+                  suppressHydrationWarning
                   className="font-bold italic leading-none text-white"
                   style={{ fontSize: "clamp(2.75rem, 9vw, 6.5rem)" }}
                 >
-                  {mounted ? pad(left[unit.key]) : "00"}
+                  {pad(left[unit.key])}
                 </span>
                 <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/75 sm:text-xs">
                   {unit.label}
