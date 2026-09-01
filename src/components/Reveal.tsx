@@ -1,32 +1,49 @@
 "use client";
 
-import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useRef, type ElementType, type ReactNode } from "react";
+import { gsap, useGSAP } from "@/lib/gsap";
 
 interface RevealProps {
   children: ReactNode;
-  /** Retraso en segundos, para escalonar elementos hermanos. */
   delay?: number;
   className?: string;
-  as?: "div" | "li" | "section";
+  as?: ElementType;
+  /** Desplazamiento inicial en píxeles. 0 = solo desvanecido. */
+  y?: number;
 }
 
 /**
- * Aparición al entrar en viewport. Un solo gesto en todo el sitio —subir 24px
- * y revelar— para que el scroll se sienta continuo y no como una suma de
- * efectos distintos.
+ * Aparición al entrar en viewport. El estado inicial lo pone GSAP en el layout
+ * effect, así que sin JavaScript el contenido simplemente se ve.
  */
-export default function Reveal({ children, delay = 0, className = "", as = "div" }: RevealProps) {
-  const Tag = motion[as];
+export default function Reveal({
+  children,
+  delay = 0,
+  className = "",
+  as: Tag = "div",
+  y = 28,
+}: RevealProps) {
+  const ref = useRef<HTMLElement>(null);
+
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.from(ref.current, {
+          opacity: 0,
+          y,
+          duration: 0.85,
+          delay,
+          ease: "power3.out",
+          scrollTrigger: { trigger: ref.current, start: "top 88%", once: true },
+        });
+      });
+    },
+    { scope: ref },
+  );
 
   return (
-    <Tag
-      className={className}
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
-    >
+    <Tag ref={ref} className={`reveal ${className}`}>
       {children}
     </Tag>
   );

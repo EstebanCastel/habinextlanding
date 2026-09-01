@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useRef } from "react";
 import { EVENT, LINKS } from "@/config/event";
+import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 
 const sections = [
   { href: "#aprendizajes", label: "Qué aprenderás" },
@@ -12,29 +13,67 @@ const sections = [
 ];
 
 /**
- * La barra arranca transparente sobre el hero y se vuelve sólida al bajar,
- * para que el CTA de compra esté siempre a un clic sin tapar el titular.
+ * Barra transparente sobre el hero que se vuelve sólida al bajar, se esconde
+ * al seguir bajando y vuelve al subir. La línea inferior es el mismo hilo de
+ * la página, midiendo el avance de la lectura.
  */
 export default function Nav() {
-  const [scrolled, setScrolled] = useState(false);
+  const root = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  useGSAP(
+    () => {
+      const el = root.current;
+      if (!el) return;
+
+      const solid = gsap.to(el, {
+        backgroundColor: "rgba(5,2,8,0.82)",
+        backdropFilter: "blur(18px)",
+        borderBottomColor: "rgba(255,255,255,0.1)",
+        duration: 0.35,
+        paused: true,
+      });
+
+      const hide = gsap.to(el, { yPercent: -100, duration: 0.4, ease: "power2.out", paused: true });
+
+      const trigger = ScrollTrigger.create({
+        start: 40,
+        end: "max",
+        onUpdate: (self) => {
+          if (self.scroll() > 40) solid.play();
+          else solid.reverse();
+          // Se esconde solo al bajar y bien pasado el hero.
+          if (self.direction === 1 && self.scroll() > 640) hide.play();
+          else hide.reverse();
+        },
+      });
+
+      const progress = gsap.to(".nav-progress", {
+        scaleX: 1,
+        ease: "none",
+        scrollTrigger: { start: 0, end: "max", scrub: 0.3 },
+      });
+
+      return () => {
+        trigger.kill();
+        progress.kill();
+        solid.kill();
+        hide.kill();
+      };
+    },
+    { scope: root },
+  );
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "border-b border-white/10 bg-black/80 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent"
-      }`}
+      ref={root}
+      className="fixed inset-x-0 top-0 z-50 border-b border-transparent bg-transparent"
     >
       <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-6 px-5 py-3 md:px-10 md:py-4">
-        <a href="#top" className="flex shrink-0 items-center gap-3" aria-label={`${EVENT.name} ${EVENT.city}`}>
+        <a
+          href="#top"
+          className="flex shrink-0 items-center gap-3"
+          aria-label={`${EVENT.name} ${EVENT.city}`}
+        >
           <Image
             src="/img/logo.png"
             alt="Habi"
@@ -64,11 +103,13 @@ export default function Nav() {
           href={LINKS.general}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 rounded-full bg-[#802ef6] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#6d25d1] md:px-7 md:py-3 md:text-base"
+          className="shrink-0 rounded-full bg-[#802ef6] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#6d25d1] md:px-7 md:py-3 md:text-base"
         >
           Quiero mi entrada
         </a>
       </div>
+
+      <div className="nav-progress h-[2px] w-full origin-left scale-x-0 bg-[#802ef6]" />
     </header>
   );
 }

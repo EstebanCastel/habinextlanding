@@ -3,7 +3,7 @@ import { EVENT, LINKS } from "@/config/event";
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t border-white/12 bg-black px-5 py-12 sm:px-8 md:px-14 lg:px-20">
+    <footer className="s-night w-full border-t border-white/12 px-5 py-12 sm:px-8 md:px-14 lg:px-20">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-8 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Image src="/img/logo.png" alt="Habi" width={684} height={642} className="h-10 w-auto" />

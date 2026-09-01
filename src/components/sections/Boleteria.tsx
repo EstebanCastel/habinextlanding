@@ -1,6 +1,8 @@
 import Asterisk from "@/components/Asterisk";
 import CTAButton from "@/components/CTAButton";
 import Reveal from "@/components/Reveal";
+import Seam from "@/components/Seam";
+import Thread from "@/components/Thread";
 import { TICKETS, activeStageIndex, type Ticket } from "@/config/event";
 
 const datosLuma = [
@@ -20,7 +22,7 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
     <article
       className={`flex h-full flex-col rounded-[28px] p-8 md:p-10 ${
         featured
-          ? "border-[3px] border-[#802ef6] bg-gradient-to-b from-[#150a26] to-black"
+          ? "border-[3px] border-[#802ef6] bg-gradient-to-b from-[#1a0b30] to-[#050208]"
           : "border border-white/15 bg-white/[0.03]"
       }`}
     >
@@ -104,8 +106,11 @@ export default function Boleteria() {
   const now = new Date();
 
   return (
-    <section id="boleteria" className="w-full bg-black px-5 py-24 sm:px-8 md:px-14 md:py-32 lg:px-20">
-      <div className="mx-auto max-w-[1400px]">
+    <section id="boleteria" className="s-night relative w-full overflow-hidden">
+      <Seam variant="arch" color="var(--paper)" />
+      <Thread from={[30, 70]} to={50} opacity={0.5} />
+
+      <div className="relative z-20 mx-auto max-w-[1400px] px-5 pt-28 pb-24 sm:px-8 md:px-14 md:pt-40 md:pb-32 lg:px-20">
         <Reveal>
           <p className="mb-7 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-[#ba9dfa] md:text-xs">
             <Asterisk className="h-4 w-4" />

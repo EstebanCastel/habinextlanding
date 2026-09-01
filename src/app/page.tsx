@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Nav from "@/components/Nav";
 import Aprendizajes from "@/components/sections/Aprendizajes";
 import Boleteria from "@/components/sections/Boleteria";
@@ -13,9 +14,6 @@ import Negocios from "@/components/sections/Negocios";
 import ParaQuien from "@/components/sections/ParaQuien";
 import Ticker from "@/components/sections/Ticker";
 import { EVENT, TICKETS } from "@/config/event";
-
-/** Regenera cada hora para que la etapa de boletería vigente esté al día. */
-export const revalidate = 3600;
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -42,7 +40,11 @@ const jsonLd = {
   })),
 };
 
-export default function Page() {
+export default async function Page() {
+  // El nonce de la CSP se aplica durante el render en servidor, así que la
+  // página tiene que esperar a la petición en lugar de generarse en el build.
+  await connection();
+
   return (
     <>
       <script

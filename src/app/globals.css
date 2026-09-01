@@ -1,20 +1,36 @@
 @import "tailwindcss";
 
+/* Cinco superficies, no tres: la página baja de la noche al morado y de ahí
+ * al papel y a la lavanda, en vez de alternar negro y blanco. */
+:root {
+  --night: #050208;
+  --ink: #0d0618;
+  --violet: #802ef6;
+  --violet-soft: #ba9dfa;
+  --violet-deep: #3d1080;
+  --lavender: #ece2fa;
+  --paper: #ffffff;
+}
+
 @theme inline {
-  --color-habi: #802ef6;
-  --color-habi-soft: #ba9dfa;
-  --color-habi-deep: #4b1a8b;
+  --color-night: var(--night);
+  --color-ink: var(--ink);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-violet-deep: var(--violet-deep);
+  --color-lavender: var(--lavender);
   --font-sans: var(--font-urbanist);
 }
 
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  background: var(--night);
 }
 
 body {
   margin: 0;
-  background: #000000;
+  background: var(--night);
   color: #ffffff;
   font-family: var(--font-urbanist), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -23,7 +39,7 @@ body {
 }
 
 ::selection {
-  background: #802ef6;
+  background: var(--violet);
   color: #ffffff;
 }
 
@@ -33,9 +49,40 @@ body {
   border-radius: 999px;
 }
 
-/* Cinta de bloques blancos sobre morado: el patrón del cierre del sistema
- * Habi Next. Se dibuja con un degradado repetido para que se adapte a
- * cualquier ancho sin depender de un número fijo de divs. */
+/* Cada sección declara su superficie; el color del hilo y de los nodos se
+ * deriva de ella, así que una sección nueva solo tiene que elegir la clase. */
+.s-night {
+  background: var(--night);
+  color: #ffffff;
+  --thread: var(--violet);
+  --hair: rgba(255, 255, 255, 0.14);
+}
+.s-ink {
+  background: var(--ink);
+  color: #ffffff;
+  --thread: var(--violet);
+  --hair: rgba(255, 255, 255, 0.14);
+}
+.s-violet {
+  background: var(--violet);
+  color: #ffffff;
+  --thread: #ffffff;
+  --hair: rgba(255, 255, 255, 0.32);
+}
+.s-lavender {
+  background: var(--lavender);
+  color: #14061f;
+  --thread: var(--violet);
+  --hair: rgba(20, 6, 31, 0.14);
+}
+.s-paper {
+  background: var(--paper);
+  color: #0a0410;
+  --thread: var(--violet);
+  --hair: rgba(10, 4, 16, 0.12);
+}
+
+/* Cinta de bloques blancos sobre morado. */
 .habi-tape {
   background-image: repeating-linear-gradient(
     to right,
@@ -58,25 +105,15 @@ body {
   }
 }
 
-/* Marquesina de la barra de datos rápidos bajo el hero. */
-@keyframes habi-marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.habi-marquee {
-  animation: habi-marquee 38s linear infinite;
+/* El estado inicial de las apariciones lo pone GSAP en un layout effect, no
+ * el CSS: así, si el JavaScript falla o está bloqueado, el contenido se ve
+ * igual en vez de quedarse en opacity 0. */
+.reveal {
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
-  }
-  .habi-marquee {
-    animation: none;
   }
 }

@@ -1,0 +1,5 @@
+# Política de divulgación responsable — Habi Next Bogotá
+Contact: mailto:security@habi.co
+Preferred-Languages: es, en
+Canonical: https://habinextlanding.vercel.app/.well-known/security.txt
+Expires: 2027-01-01T00:00:00.000Z

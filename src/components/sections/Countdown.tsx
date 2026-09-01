@@ -41,7 +41,7 @@ export default function Countdown() {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#802ef6]">
+    <section className="s-violet relative w-full overflow-hidden">
       <div className="habi-tape h-4 w-full md:h-6" />
 
       <div className="flex flex-col items-center px-5 py-16 md:py-24">
@@ -62,8 +62,8 @@ export default function Countdown() {
               </div>
               {i < units.length - 1 ? (
                 <span
-                  className="font-bold italic leading-none text-white/60"
-                  style={{ fontSize: "clamp(1.75rem, 5vw, 4rem)" }}
+                  className="font-bold italic leading-none text-white/45"
+                  style={{ fontSize: "clamp(1.75rem, 5vw, 4rem)", marginTop: "0.3em" }}
                 >
                   :
                 </span>

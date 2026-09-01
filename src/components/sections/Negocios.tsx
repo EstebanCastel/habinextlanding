@@ -1,23 +1,38 @@
 import Image from "next/image";
 import Asterisk from "@/components/Asterisk";
 import Reveal from "@/components/Reveal";
+import Seam from "@/components/Seam";
+import Thread from "@/components/Thread";
 
+const cifras = [
+  { valor: "Cientos", label: "de agentes y brokers en un mismo día" },
+  { valor: "4", label: "espacios distintos para encontrarse" },
+  { valor: "1", label: "red que sigue funcionando después del evento" },
+];
+
+/**
+ * Las tres ramas de los perfiles vuelven a juntarse en una sola: aprendieron
+ * por separado, hacen negocios en el mismo sitio.
+ */
 export default function Negocios() {
   return (
-    <section className="relative w-full overflow-hidden bg-black">
+    <section className="s-night relative w-full overflow-hidden">
+      <Seam variant="wave" color="var(--lavender)" />
+      <Thread from={[18, 50, 82]} to={50} opacity={0.5} />
+
       <div className="absolute inset-0">
         <Image
           src="/img/Fondo_4.png"
           alt=""
           fill
           sizes="100vw"
-          className="object-cover opacity-70"
-          style={{ objectPosition: "15% center" }}
+          className="object-cover opacity-80"
+          style={{ objectPosition: "12% center" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/60 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050208]/45 via-[#050208]/72 to-[#050208]" />
       </div>
 
-      <div className="relative z-10 px-5 py-24 sm:px-8 md:px-14 md:py-36 lg:px-20">
+      <div className="relative z-20 px-5 pt-28 pb-24 sm:px-8 md:px-14 md:pt-44 md:pb-36 lg:px-20">
         <div className="mx-auto flex max-w-[1400px] justify-end">
           <div className="w-full lg:w-[58%]">
             <Reveal>
@@ -28,7 +43,7 @@ export default function Negocios() {
             </Reveal>
 
             <Reveal delay={0.05}>
-              <h2 className="text-4xl font-light leading-[0.92] tracking-tighter text-white sm:text-5xl md:text-6xl lg:text-7xl">
+              <h2 className="text-4xl font-light leading-[0.92] tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
                 También vienes a
                 <br />
                 <span className="font-bold">hacer negocios.</span>
@@ -43,12 +58,27 @@ export default function Negocios() {
               </p>
             </Reveal>
 
-            <Reveal delay={0.16}>
-              <p className="mt-10 max-w-xl border-l-[3px] border-[#802ef6] pl-6 text-xl font-semibold leading-snug tracking-tight text-white md:text-2xl">
+            <Reveal delay={0.15}>
+              <p className="mt-10 max-w-xl border-l-[3px] border-[#802ef6] pl-6 text-xl font-semibold leading-snug tracking-tight md:text-2xl">
                 La tecnología puede acelerar los negocios. Pero los negocios siguen ocurriendo
                 entre personas.
               </p>
             </Reveal>
+
+            <dl className="mt-12 grid gap-8 sm:grid-cols-3">
+              {cifras.map((c, i) => (
+                <Reveal key={c.valor} delay={0.18 + i * 0.07}>
+                  <div className="border-t border-white/15 pt-5">
+                    <dt className="text-3xl font-bold tracking-tighter text-[#ba9dfa] md:text-4xl">
+                      {c.valor}
+                    </dt>
+                    <dd className="mt-2 text-sm font-light leading-snug text-white/55 md:text-base">
+                      {c.label}
+                    </dd>
+                  </div>
+                </Reveal>
+              ))}
+            </dl>
           </div>
         </div>
       </div>
