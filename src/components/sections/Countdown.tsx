@@ -42,30 +42,40 @@ export default function Countdown() {
 
   return (
     <section className="s-violet relative w-full overflow-hidden">
-      <div className="habi-tape h-4 w-full md:h-6" />
-
       <div className="flex flex-col items-center px-5 py-16 md:py-24">
         <div className="flex items-start justify-center gap-3 sm:gap-6 md:gap-10">
           {units.map((unit, i) => (
-            <div key={unit.key} className="flex items-start">
-              <div className="flex min-w-[62px] flex-col items-center sm:min-w-[84px] md:min-w-[110px]">
+            <div
+              key={unit.key}
+              className="flex items-start"
+              style={{ fontSize: "clamp(3.5rem, 13vw, 10rem)" }}
+            >
+              <div className="flex min-w-[76px] flex-col items-center sm:min-w-[112px] md:min-w-[170px]">
+                {/* Solo cifras a la vista. La unidad se queda para lectores de
+                    pantalla, que si no leerían cuatro números sin contexto. */}
+                <span className="sr-only" suppressHydrationWarning>
+                  {left[unit.key]} {unit.label}
+                </span>
                 <span
+                  aria-hidden="true"
                   suppressHydrationWarning
-                  className="font-bold italic leading-none text-white"
-                  style={{ fontSize: "clamp(2.75rem, 9vw, 6.5rem)" }}
+                  className="font-bold leading-none text-white"
+                  style={{ fontSize: "clamp(3.5rem, 13vw, 10rem)" }}
                 >
                   {pad(left[unit.key])}
-                </span>
-                <span className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/75 sm:text-xs">
-                  {unit.label}
                 </span>
               </div>
               {i < units.length - 1 ? (
                 <span
-                  className="font-bold italic leading-none text-white/45"
-                  style={{ fontSize: "clamp(1.75rem, 5vw, 4rem)", marginTop: "0.3em" }}
+                  aria-hidden="true"
+                  className="flex shrink-0 flex-col gap-[0.19em] pt-[0.24em]"
                 >
-                  :
+                  {/* Dos puntos dibujados, no el glifo ":": el glifo se apoya
+                      en la línea base de la cifra y quedaba descolgado. Las
+                      medidas van en em, así que escalan con el marcador, y el
+                      pt los centra contra la altura visual del número. */}
+                  <span className="block h-[0.11em] w-[0.11em] rounded-full bg-white/45" />
+                  <span className="block h-[0.11em] w-[0.11em] rounded-full bg-white/45" />
                 </span>
               ) : null}
             </div>
@@ -73,11 +83,9 @@ export default function Countdown() {
         </div>
 
         <p className="mt-10 border-t border-white/30 pt-6 text-center text-sm font-bold uppercase tracking-[0.2em] text-white sm:text-base md:text-lg">
-          Para Habi Next {EVENT.city} · {EVENT.dateLong}
+          Para {EVENT.fullName} · {EVENT.dateLong}
         </p>
       </div>
-
-      <div className="habi-tape h-4 w-full md:h-6" />
     </section>
   );
 }

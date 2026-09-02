@@ -1,8 +1,6 @@
-import Asterisk from "@/components/Asterisk";
+import Dot from "@/components/Dot";
 import CTAButton from "@/components/CTAButton";
 import Reveal from "@/components/Reveal";
-import Seam from "@/components/Seam";
-import Thread from "@/components/Thread";
 import { TICKETS, activeStageIndex, type Ticket } from "@/config/event";
 
 const datosLuma = [
@@ -22,7 +20,7 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
     <article
       className={`flex h-full flex-col rounded-[28px] p-8 md:p-10 ${
         featured
-          ? "border-[3px] border-[#802ef6] bg-gradient-to-b from-[#1a0b30] to-[#050208]"
+          ? "border-[3px] border-violet bg-gradient-to-b from-violet-shade to-night"
           : "border border-white/15 bg-white/[0.03]"
       }`}
     >
@@ -31,7 +29,7 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
           {ticket.name}
         </h3>
         {featured ? (
-          <span className="rounded-full bg-[#802ef6] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white">
+          <span className="rounded-full bg-violet px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white">
             250 cupos
           </span>
         ) : null}
@@ -40,7 +38,7 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
       <p className="mt-3 text-base font-light text-white/60 md:text-lg">{ticket.claim}</p>
 
       <div className="mt-8 border-t border-white/15 pt-8">
-        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#ba9dfa]">
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">
           {active.label} · {active.note}
         </p>
         <p className="mt-2 flex items-baseline gap-2">
@@ -50,42 +48,45 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
           <span className="text-base font-medium text-white/50">COP</span>
         </p>
 
-        <ul className="mt-6 flex flex-col gap-2">
-          {ticket.stages.map((stage, i) => (
-            <li
-              key={stage.id}
-              className={`flex items-center justify-between gap-4 text-sm md:text-base ${
-                i === activeIdx ? "text-white" : "text-white/35"
-              }`}
-            >
-              <span className={i < activeIdx ? "line-through" : ""}>
-                {stage.label} · {stage.note}
-              </span>
-              <span className={`font-semibold ${i < activeIdx ? "line-through" : ""}`}>
-                {stage.price}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {/* La escalera solo muestra lo que viene: la etapa vigente ya está
+            arriba en grande y repetirla tres renglones más abajo no aporta. */}
+        {activeIdx < ticket.stages.length - 1 ? (
+          <>
+            <p className="mt-7 text-[11px] font-bold uppercase tracking-[0.28em] text-white/60">
+              Después
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
+              {ticket.stages.slice(activeIdx + 1).map((stage) => (
+                <li
+                  key={stage.id}
+                  className="flex items-center justify-between gap-4 text-sm text-white/70 md:text-base"
+                >
+                  <span>{stage.note}</span>
+                  <span className="font-semibold">{stage.price}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </div>
 
       <div className="mt-8 flex-1 border-t border-white/15 pt-8">
-        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/45">
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/60">
           {ticket.includesTitle}
         </p>
         <ul className="mt-5 flex flex-col gap-3">
           {ticket.includes.map((item) => (
             <li key={item} className="flex items-start gap-3 text-base text-white/80 md:text-lg">
-              <Asterisk
-                color={featured ? "#802ef6" : "#ba9dfa"}
-                className="mt-1 h-4 w-4 shrink-0"
+              <Dot
+                color={featured ? "var(--violet)" : "var(--violet-soft)"}
+                className="mt-2.5 h-1.5 w-1.5"
               />
               <span className="font-light">{item}</span>
             </li>
           ))}
         </ul>
         {ticket.footnote ? (
-          <p className="mt-6 text-sm font-light italic leading-relaxed text-white/45">
+          <p className="mt-6 text-sm font-light italic leading-relaxed text-white/60">
             {ticket.footnote}
           </p>
         ) : null}
@@ -107,19 +108,17 @@ export default function Boleteria() {
 
   return (
     <section id="boleteria" className="s-night relative w-full overflow-hidden">
-      <Seam variant="arch" color="var(--paper)" />
-      <Thread from={[30, 70]} to={50} opacity={0.5} />
 
-      <div className="relative z-20 mx-auto max-w-[1400px] px-5 pt-28 pb-24 sm:px-8 md:px-14 md:pt-40 md:pb-32 lg:px-20">
+      <div className="relative z-20 mx-auto max-w-[1400px] px-5 py-24 sm:px-8 md:px-14 md:py-32 lg:px-20">
         <Reveal>
-          <p className="mb-7 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-[#ba9dfa] md:text-xs">
-            <Asterisk className="h-4 w-4" />
+          <p className="mb-7 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft md:text-xs">
+            <Dot className="h-1.5 w-1.5" />
             Boletería
           </p>
         </Reveal>
 
         <Reveal delay={0.05}>
-          <h2 className="max-w-4xl text-4xl font-light leading-[0.95] tracking-tighter text-white sm:text-5xl md:text-6xl lg:text-7xl">
+          <h2 className="max-w-4xl text-3xl font-light leading-[0.98] tracking-tighter text-white sm:text-4xl md:text-5xl lg:text-[3.75rem]">
             Elige cómo vivir <span className="font-bold">Habi Next</span>
           </h2>
         </Reveal>
@@ -136,7 +135,9 @@ export default function Boleteria() {
           <div className="mt-12 grid gap-8 rounded-[28px] border border-white/12 p-8 md:mt-16 md:grid-cols-[1.2fr_1fr] md:gap-14 md:p-12">
             <div>
               <p className="text-2xl font-semibold leading-snug tracking-tight text-white md:text-3xl">
-                Compra anticipadamente y asegura el mejor precio.
+                Compra anticipadamente
+                <br />
+                y asegura el mejor precio.
               </p>
               <p className="mt-4 text-base font-light leading-relaxed text-white/55 md:text-lg">
                 Los precios aumentan a medida que se agotan las etapas de boletería. La compra se
@@ -144,13 +145,13 @@ export default function Boleteria() {
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/45">
+              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/60">
                 Ten a la mano
               </p>
               <ul className="mt-5 flex flex-col gap-2.5">
                 {datosLuma.map((dato) => (
                   <li key={dato} className="flex items-start gap-3 text-sm text-white/70 md:text-base">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#802ef6]" />
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet" />
                     <span className="font-light">{dato}</span>
                   </li>
                 ))}

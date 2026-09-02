@@ -16,21 +16,26 @@ bloques:
 
 **1. El hilo.** Un trazo morado (`src/components/Thread.tsx`) entra en cada
 sección por donde salió el de la anterior y sale por donde entrará el de la
-siguiente. Se dibuja con el scroll. En `ParaQuien` se abre en tres —una rama por
-perfil—, en `Negocios` vuelve a juntarse, en `Futuro` se parte en dos caminos y
-en `Boletería` esos dos caminos son las dos boletas. Termina convertido en el
-asterisco del cierre.
+siguiente. Se dibuja con el scroll.
+
+Recorre **de `Industria` a `ParaQuien`**, y ahí termina: en `ParaQuien` se abre
+en tres —una rama por perfil— y `endAt` cierra el recorrido debajo de las
+tarjetas, dentro de la sección. De `Negocios` en adelante no hay hilo. Va en
+`z-15`: encima de la costura (`z-10`), que si no le tapa sus primeros 96px, y
+debajo del contenido (`z-20`), para no pasar nunca por delante de un texto.
 
 **2. Cinco superficies, no dos.** `night`, `ink`, `violet`, `lavender` y `paper`
 (clases `.s-*` en `globals.css`). Cada una define también el color del hilo y de
 las líneas finas, así que una sección nueva solo elige su clase.
 
-**3. Costuras distintas.** Ningún borde entre secciones es un corte recto:
-`src/components/Seam.tsx` tiene arco, diagonal, ola, muesca y dientes, y cada
-frontera usa una.
+**3. Costuras.** `src/components/Seam.tsx` tiene arco, diagonal, ola, muesca y
+dientes, pero en uso quedan **solo las dos diagonales** (`Aprendizajes` y
+`Futuro`). El resto de las fronteras son cortes rectos: el cambio de color y
+nada más, sin borde. Las formas curvas y dentadas se descartaron.
 
-Y un bloque que rompe el eje: **Escenarios** se fija y se recorre en horizontal
-mientras la página baja (en táctil, se desliza con el dedo).
+Y un bloque que rompe el eje: **Escenarios** es un carrusel horizontal que
+maneja quien lee —flechas, puntos de posición, teclado y scroll nativo con
+snap—. No va atado al scroll de la página ni la fija.
 
 ## Qué se edita y dónde
 

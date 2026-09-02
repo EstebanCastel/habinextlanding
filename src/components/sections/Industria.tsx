@@ -1,7 +1,6 @@
 import Image from "next/image";
-import Asterisk from "@/components/Asterisk";
+import Dot from "@/components/Dot";
 import Reveal from "@/components/Reveal";
-import Seam from "@/components/Seam";
 import Thread from "@/components/Thread";
 
 const notes = [
@@ -22,65 +21,113 @@ const notes = [
 export default function Industria() {
   return (
     <section className="s-paper relative w-full overflow-hidden">
-      <Seam variant="arch" color="var(--night)" />
-      <Thread from={50} to={78} bias={0.78} opacity={0.4} />
+      {/* El hilo baja por el centro, que aquí es zona de texto. Pasa más
+          tenue que en el resto de la página: sigue conectando las secciones
+          sin leerse como una raya encima de lo que hay que leer. */}
+      <Thread from={50} to={78} bias={0.62} opacity={0.2} />
 
-      <div className="relative z-20 px-5 pt-28 pb-24 sm:px-8 md:px-14 md:pt-40 md:pb-32 lg:px-20">
+      {/* Curva gamma que oscurece la foto. Medida, la imagen promedia 74 de
+          luminancia y las tarjetas de Escenarios 55-79, así que en número ya
+          estaban igualadas: se veía más clara porque aquí el fondo es papel
+          blanco y allá es negro, y el peso de una foto se lee contra lo que la
+          rodea. A gamma 1.75 baja a ~36 y pesa como las otras. Al ser gamma
+          —y no un velo encima— el cielo y el aviso conservan detalle. */}
+      <svg aria-hidden="true" className="absolute h-0 w-0">
+        <filter id="ind-dim" colorInterpolationFilters="sRGB">
+          <feComponentTransfer>
+            <feFuncR type="gamma" exponent="1.75" />
+            <feFuncG type="gamma" exponent="1.75" />
+            <feFuncB type="gamma" exponent="1.75" />
+          </feComponentTransfer>
+        </filter>
+      </svg>
+
+      <div className="relative z-20 px-5 py-20 sm:px-8 md:px-14 md:py-24 lg:px-20">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
-            <p className="mb-8 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-[#802ef6] md:text-xs">
-              <Asterisk className="h-4 w-4" />
+            <p className="mb-7 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet md:text-xs">
+              <Dot className="h-1.5 w-1.5" />
               La industria está cambiando
             </p>
           </Reveal>
 
-          <div className="grid items-start gap-12 lg:grid-cols-[1.25fr_0.75fr] lg:gap-20">
+          {/* Con seis renglones cortos el titular cabe en media columna, así
+              que la foto vuelve a su costado en vez de dejar medio ancho
+              vacío debajo. */}
+          <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
             <Reveal>
-              <h2 className="text-4xl font-bold leading-[0.94] tracking-tighter sm:text-5xl md:text-6xl lg:text-[4.5rem]">
-                La Inteligencia Artificial ya está transformando cómo{" "}
-                <span className="text-[#802ef6]">buscamos clientes</span>, creamos contenido,
-                hacemos seguimiento y{" "}
-                <span className="underline decoration-[#802ef6] decoration-[6px] underline-offset-[10px]">
-                  cerramos negocios
-                </span>
-                .
-              </h2>
-            </Reveal>
+              {/* Dos pesos y nada más: el texto en regular y en negrita solo
+                  lo que nombra el tema y lo que el evento va a cambiar. Sin
+                  subrayado, que era un cuarto énfasis. "buscamos clientes,"
+                  lleva además el morado de la marca, con la coma dentro del
+                  color para que no quede un signo negro suelto al final del
+                  renglón.
 
-            {/* La foto se sale del contenedor por la derecha: el hilo llega
-                hasta ella y la sección deja de ser una caja centrada. */}
-            <Reveal delay={0.12} className="relative">
-              <div className="relative ml-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden rounded-[28px] lg:mr-[-6vw] lg:max-w-none">
-                <Image
-                  src="/img/edificio-picado.webp"
-                  alt="Edificio residencial con un aviso de Se Vende"
-                  fill
-                  sizes="(max-width: 1024px) 90vw, 34vw"
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#802ef6]/45 via-transparent to-transparent" />
-              </div>
-              <p className="mt-5 max-w-xs text-sm font-light leading-relaxed text-black/55">
-                El inventario no cambió. Cambió quién llega primero al cliente y con qué
+                  Los seis renglones son partidos a mano, no los que caigan
+                  solos. El más largo —"cómo buscamos clientes,"— es el que
+                  fija el tamaño: el titular escala con el ancho de la ventana
+                  para que ninguno se parta dentro de su columna. Por debajo de
+                  lg pasa a una sola columna y se reparten solos. */}
+              <h2
+                className="font-normal leading-[1.06] tracking-tight"
+                style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.4rem)" }}
+              >
+                La <span className="font-bold">Inteligencia Artificial</span>
+                <br />
+                ya está transformando
+                <br />
+                cómo <span className="font-bold text-violet">buscamos clientes,</span>
+                <br />
+                creamos contenido,
+                <br />
+                hacemos seguimiento
+                <br />
+                y cerramos negocios.
+              </h2>
+
+              {/* Destacado: el morado de la marca en bloque, con el texto en
+                  blanco. Mismos dos pesos que el titular —regular de base y
+                  negrita en la frase que carga el argumento—, así el bloque
+                  resalta por el color y no por el tamaño. */}
+              <p className="mt-9 max-w-sm rounded-2xl bg-violet px-5 py-4 text-sm leading-relaxed text-white md:text-base">
+                El inventario no cambió.{" "}
+                <span className="font-bold">Cambió quién llega primero al cliente</span> y con qué
                 herramientas.
               </p>
             </Reveal>
+
+            <Reveal delay={0.12}>
+              <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[28px]">
+                <Image
+                  src="/img/industria-cambiando.webp"
+                  alt="Edificio residencial con un aviso de Se Vende"
+                  fill
+                  /* Igual que en las tarjetas de Escenarios: con object-cover
+                     la foto se recorta de lado, así que el ancho pintado es
+                     1,18 veces el del contenedor. */
+                  sizes="(max-width: 1024px) 106vw, 50vw"
+                  style={{ filter: "url(#ind-dim)" }}
+                  className="object-cover"
+                />
+                {/* Duotono morado en la base: la foto es blanco y negro y esto
+                    es lo que la ata a la paleta sin tocar el resto. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-violet/35 via-transparent to-transparent" />
+              </div>
+            </Reveal>
           </div>
 
-          <ul className="mt-20 grid gap-10 md:mt-24 md:grid-cols-3 md:gap-8">
+          <ul className="mt-16 grid gap-8 md:mt-20 md:grid-cols-3">
             {notes.map((note, i) => (
               <Reveal as="li" key={note.title} delay={i * 0.08}>
-                <div className="flex h-full flex-col gap-4 border-t-2 border-[var(--hair)] pt-6">
-                  <Asterisk
-                    color={i === 1 ? "#ba9dfa" : "#802ef6"}
-                    className="h-7 w-7 md:h-9 md:w-9"
+                <div className="flex h-full flex-col gap-3 border-t-2 border-[var(--hair)] pt-5">
+                  <Dot
+                    color={i === 1 ? "var(--violet-soft)" : "var(--violet)"}
+                    className="h-2.5 w-2.5 md:h-3 md:w-3"
                   />
-                  <p className="text-xl font-semibold leading-tight tracking-tight md:text-2xl">
+                  <p className="text-lg font-semibold leading-tight tracking-tight md:text-xl">
                     {note.title}
                   </p>
-                  <p className="text-base font-light leading-relaxed text-black/55 md:text-lg">
-                    {note.body}
-                  </p>
+                  <p className="text-base font-light leading-relaxed text-black/55">{note.body}</p>
                 </div>
               </Reveal>
             ))}

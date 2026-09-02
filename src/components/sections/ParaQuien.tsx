@@ -1,6 +1,5 @@
 import Asterisk from "@/components/Asterisk";
 import Reveal from "@/components/Reveal";
-import Seam from "@/components/Seam";
 import Thread from "@/components/Thread";
 
 const perfiles = [
@@ -25,22 +24,26 @@ const perfiles = [
 export default function ParaQuien() {
   return (
     <section className="s-lavender relative w-full overflow-hidden">
-      <Seam variant="notch" color="var(--violet)" />
-      <Thread from={50} to={[18, 50, 82]} opacity={0.45} />
+      {/* Última aparición del hilo en la página: entra en uno y se reparte
+          en los tres perfiles. `endAt` lo cierra debajo de las tarjetas para
+          que el recorrido termine dentro de la sección y no en el borde. */}
+      <Thread from={50} to={[18, 50, 82]} endAt={0.86} opacity={0.22} />
 
-      <div className="relative z-20 px-5 pt-28 pb-24 sm:px-8 md:px-14 md:pt-40 md:pb-32 lg:px-20">
+      <div className="relative z-20 px-5 py-24 sm:px-8 md:px-14 md:py-32 lg:px-20">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
-            <p className="mb-8 text-center text-[11px] font-bold uppercase tracking-[0.3em] text-[#802ef6] md:text-xs">
+            <p className="mb-8 text-center text-[11px] font-bold uppercase tracking-[0.3em] text-violet md:text-xs">
               ¿Para quién es Habi Next?
             </p>
           </Reveal>
 
           <Reveal delay={0.05}>
-            <h2 className="mx-auto max-w-5xl text-center text-3xl font-bold leading-[1.02] tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-              Para quienes quieren{" "}
-              <span className="text-[#802ef6]">multiplicar sus capacidades</span> y obtener mejores
-              ventas y utilidades.
+            <h2 className="mx-auto max-w-6xl text-center text-3xl font-bold leading-[1.02] tracking-tighter sm:text-4xl md:text-5xl lg:text-[3.75rem]">
+              Para quienes quieren <span className="text-violet">multiplicar
+              <br />
+              sus capacidades</span> y obtener mejores ventas
+              <br />
+              y utilidades.
             </h2>
           </Reveal>
 
@@ -49,7 +52,7 @@ export default function ParaQuien() {
               <Reveal as="li" key={p.title} delay={i * 0.09}>
                 <div className="flex h-full flex-col items-center gap-4 rounded-[24px] border-2 border-black/10 bg-white/60 px-7 py-9 text-center backdrop-blur-sm">
                   <Asterisk
-                    color={i === 1 ? "#3d1080" : "#802ef6"}
+                    color={i === 1 ? "var(--violet-deep)" : "var(--violet)"}
                     className="h-8 w-8 md:h-10 md:w-10"
                   />
                   <p className="text-xl font-semibold tracking-tight md:text-2xl">{p.title}</p>

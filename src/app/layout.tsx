@@ -12,7 +12,7 @@ const urbanist = Urbanist({
   display: "swap",
 });
 
-const title = `${EVENT.name} ${EVENT.city} — El agente inmobiliario con IA`;
+const title = `${EVENT.fullName} — El agente inmobiliario con IA`;
 const description =
   "Un evento de un día para agentes inmobiliarios y financieros que quieren usar Inteligencia Artificial para atraer más clientes, crear contenido, organizar sus oportunidades y construir un asistente que trabaje 24/7.";
 
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     description,
     type: "website",
     locale: "es_CO",
-    siteName: `${EVENT.name} ${EVENT.city}`,
+    siteName: EVENT.fullName,
   },
   twitter: { card: "summary_large_image", title, description },
   robots: { index: true, follow: true },

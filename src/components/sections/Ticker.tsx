@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Asterisk from "@/components/Asterisk";
+import Dot from "@/components/Dot";
 import { EVENT } from "@/config/event";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 
@@ -20,6 +21,9 @@ const items = [
  * Cinta entre el hero y el primer bloque de contenido. Avanza sola, pero el
  * scroll la empuja: al bajar acelera, al subir se devuelve. Es el primer sitio
  * donde el movimiento de la página y el de la marca se sincronizan.
+ *
+ * Va sin filetes: el hero termina directo contra el morado y el morado contra
+ * la sección siguiente, sin ninguna línea negra de separación.
  */
 export default function Ticker() {
   const root = useRef<HTMLDivElement>(null);
@@ -67,17 +71,23 @@ export default function Ticker() {
   return (
     <div
       ref={root}
-      className="s-violet relative w-full overflow-hidden border-y-[3px] border-[#050208] py-4 md:py-5"
+      className="s-violet relative w-full overflow-hidden py-4 md:py-5"
     >
       <div className="ticker-track flex w-max items-center">
         {[0, 1].map((copy) => (
           <div key={copy} className="flex items-center" aria-hidden={copy === 1}>
-            {items.map((item) => (
+            {items.map((item, i) => (
               <span key={item} className="flex items-center">
                 <span className="whitespace-nowrap px-6 text-sm font-semibold uppercase tracking-[0.22em] text-white md:px-9 md:text-base">
                   {item}
                 </span>
-                <Asterisk color="#ffffff" className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
+                {/* Alterna asterisco y punto: el asterisco cada dos palabras
+                    marca el ritmo de la cinta; ocho seguidos la saturaban. */}
+                {i % 2 === 0 ? (
+                  <Asterisk color="#ffffff" className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
+                ) : (
+                  <Dot color="#ffffff" className="h-1.5 w-1.5 md:h-2 md:w-2" />
+                )}
               </span>
             ))}
           </div>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef } from "react";
-import Asterisk from "@/components/Asterisk";
+import Dot from "@/components/Dot";
 import Reveal from "@/components/Reveal";
 import Seam from "@/components/Seam";
 import Thread from "@/components/Thread";
@@ -16,8 +16,8 @@ const pillars = [
     body: "Aprende a utilizar IA para construir tu marca personal y producir contenido que atraiga clientes. Crearás ideas, textos, guiones, imágenes y piezas para redes sociales en una fracción del tiempo que te toma hoy.",
     from: "De pensar qué publicar",
     to: "a tener una máquina de contenido",
-    img: "/img/brokera-portatil.webp",
-    alt: "Agente inmobiliaria trabajando en su computador",
+    img: "/img/aprende-crea.webp",
+    alt: "Agente inmobiliario produciendo contenido en su computador",
   },
   {
     n: "02",
@@ -26,8 +26,8 @@ const pillars = [
     body: "Deja de depender únicamente de referidos. Aprende a crear campañas digitales para encontrar personas interesadas en comprar o vender vivienda, y cómo utilizar IA para mejorar tus anuncios.",
     from: "De esperar clientes",
     to: "a generar tus propias oportunidades",
-    img: "/img/brokers-bogota.webp",
-    alt: "Dos agentes inmobiliarios conversando frente a la ciudad",
+    img: "/img/aprende-atrae.webp",
+    alt: "Agentes conociéndose en el lobby de Habi Next Colombia",
   },
   {
     n: "03",
@@ -36,8 +36,8 @@ const pillars = [
     body: "Un buen agente no puede depender de su memoria, un Excel y cientos de conversaciones perdidas en WhatsApp. Aprende a construir un sistema para organizar tus clientes, oportunidades, propiedades y seguimientos.",
     from: "De tener contactos",
     to: "a tener un sistema comercial",
-    img: "/img/formacion-sala.webp",
-    alt: "Equipo comercial en una sesión de formación",
+    img: "/img/aprende-organiza.webp",
+    alt: "Sesión de trabajo con varios agentes frente a sus computadores",
   },
   {
     n: "04",
@@ -46,8 +46,8 @@ const pillars = [
     body: "Imagina un asistente que responda preguntas, organice información y prepare seguimientos mientras tú estás mostrando propiedades o cerrando negocios. En Habi Next aprenderás cómo empezar a construirlo.",
     from: "De hacerlo todo tú",
     to: "a trabajar acompañado por IA",
-    img: "/img/brokera-retrato.webp",
-    alt: "Agente inmobiliaria de brazos cruzados en la oficina",
+    img: "/img/aprende-automatiza.webp",
+    alt: "Agente inmobiliario revisando su asistente en el celular",
   },
 ];
 
@@ -126,21 +126,22 @@ export default function Aprendizajes() {
       className="s-ink relative w-full overflow-x-clip"
     >
       <Seam variant="diagonal" color="var(--paper)" />
-      <Thread from={78} to={22} bias={0.9} opacity={0.4} />
+      <Thread from={78} to={22} bias={0.6} opacity={0.32} />
 
-      <div className="relative z-20 px-5 pt-28 pb-24 sm:px-8 md:px-14 md:pt-40 md:pb-32 lg:px-20">
+      <div className="relative z-20 px-5 py-24 sm:px-8 md:px-14 md:py-32 lg:px-20">
         <div className="mx-auto max-w-[1400px]">
           <Reveal>
-            <p className="mb-7 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-[#ba9dfa] md:text-xs">
-              <Asterisk className="h-4 w-4" />
+            <p className="mb-7 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft md:text-xs">
+              <Dot className="h-1.5 w-1.5" />
               En un solo día
             </p>
           </Reveal>
 
           <Reveal delay={0.05}>
-            <h2 className="max-w-4xl text-4xl font-bold leading-[0.94] tracking-tighter sm:text-5xl md:text-6xl lg:text-[4.5rem]">
-              Construye tu propio{" "}
-              <span className="text-[#802ef6]">sistema de ventas con IA</span>
+            <h2 className="max-w-4xl text-3xl font-bold leading-[1.0] tracking-tighter sm:text-4xl md:text-5xl lg:text-[3.75rem]">
+              Construye tu propio
+              <br />
+              <span className="text-violet">sistema de ventas con IA</span>
             </h2>
           </Reveal>
 
@@ -148,7 +149,7 @@ export default function Aprendizajes() {
             {/* Etapas */}
             <ol className="pillar-list relative flex flex-col">
               <div className="absolute left-0 top-0 hidden h-full w-[3px] bg-white/10 md:block">
-                <div className="pillar-rail-fill h-full w-full origin-top scale-y-0 bg-[#802ef6]" />
+                <div className="pillar-rail-fill h-full w-full origin-top scale-y-0 bg-violet" />
               </div>
 
               {pillars.map((p) => (
@@ -156,7 +157,9 @@ export default function Aprendizajes() {
                   <Reveal>
                     <article className="border-t border-white/12 py-10 md:py-14">
                       <div className="flex items-baseline gap-4">
-                        <span className="text-4xl font-bold leading-none tracking-tighter text-[#802ef6] md:text-5xl">
+                        {/* Mismo caso que las tarjetas de Escenarios: #802ef6
+                            sobre la tinta da 3,14:1 y #ba9dfa da 7,8:1. */}
+                        <span className="text-4xl font-bold leading-none tracking-tighter text-violet-soft md:text-5xl">
                           {p.n}
                         </span>
                         <span className="text-lg font-semibold uppercase tracking-[0.24em] md:text-xl">
@@ -166,7 +169,10 @@ export default function Aprendizajes() {
 
                       {/* En móvil la foto acompaña a cada etapa; en escritorio
                           vive en el panel fijo de la derecha. */}
-                      <div className="relative mt-6 aspect-[16/10] w-full overflow-hidden rounded-2xl lg:hidden">
+                      {/* Vertical: las fotos son 3:4 y en un 16/10 se perdía
+                          la figura. El ancho sigue siendo el eje que manda con
+                          object-cover, así que `sizes` no cambia. */}
+                      <div className="relative mt-6 aspect-[4/5] w-full overflow-hidden rounded-2xl lg:hidden">
                         <Image
                           src={p.img}
                           alt={p.alt}
@@ -183,10 +189,10 @@ export default function Aprendizajes() {
                         {p.body}
                       </p>
 
-                      <p className="mt-7 inline-flex flex-wrap items-center gap-3 rounded-full border-2 border-[#802ef6]/60 px-5 py-3 text-sm font-medium text-white/70 md:text-base">
+                      <p className="mt-7 inline-flex flex-wrap items-center gap-3 rounded-full border-2 border-violet/60 px-5 py-3 text-sm font-medium text-white/70 md:text-base">
                         <span>{p.from}</span>
                         <svg
-                          className="h-4 w-4 shrink-0 text-[#802ef6] md:h-5 md:w-5"
+                          className="h-4 w-4 shrink-0 text-violet md:h-5 md:w-5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -209,7 +215,12 @@ export default function Aprendizajes() {
 
             {/* Panel fijo */}
             <div className="hidden lg:block">
-              <div className="sticky top-28 aspect-[4/5] w-full overflow-hidden rounded-[32px] border border-white/12">
+              {/* El alto se mide contra la ventana, no contra el ancho. Con
+                  `aspect-[4/5]` el panel daba 689px y, pegado a 112px del
+                  borde, se salía 74px por debajo del pliegue en un portátil:
+                  en las etapas 1 a 3 la foto quedaba recortada y la etiqueta
+                  del número no se veía nunca. Ahora siempre entra completo. */}
+              <div className="sticky top-28 h-[calc(100svh-9.5rem)] max-h-[680px] min-h-[360px] w-full overflow-hidden rounded-[32px] border border-white/12">
                 {pillars.map((p) => (
                   <Image
                     key={p.n}
@@ -220,7 +231,7 @@ export default function Aprendizajes() {
                     className="panel-img object-cover"
                   />
                 ))}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0d0618] via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent" />
 
                 <div className="absolute inset-x-0 bottom-0 overflow-hidden p-8">
                   {pillars.map((p) => (
@@ -228,7 +239,7 @@ export default function Aprendizajes() {
                       <span className="text-6xl font-bold leading-none tracking-tighter text-white">
                         {p.n}
                       </span>
-                      <span className="ml-4 text-xl font-semibold uppercase tracking-[0.24em] text-[#ba9dfa]">
+                      <span className="ml-4 text-xl font-semibold uppercase tracking-[0.24em] text-violet-soft">
                         {p.kicker}
                       </span>
                     </div>

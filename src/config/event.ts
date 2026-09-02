@@ -5,7 +5,15 @@
 
 export const EVENT = {
   name: "Habi Next",
+  /**
+   * Nombre completo del evento. La edición es de país, aunque se realice en
+   * Bogotá: donde se *nombra* el evento va este valor, y `city` queda solo
+   * para lo que es ubicación (la sede, el domicilio del schema, el dato del
+   * pie del hero).
+   */
+  fullName: "Habi Next Colombia",
   city: "Bogotá",
+  country: "Colombia",
   /** Fecha oficial confirmada: martes 20 de octubre de 2026, hora Colombia. */
   startsAt: "2026-10-20T08:00:00-05:00",
   dateLong: "Martes 20 de octubre de 2026",
@@ -68,8 +76,8 @@ export const TICKETS: Ticket[] = [
         id: "etapa-1",
         label: "Etapa 1",
         price: "$220.000",
-        until: "2026-09-30T23:59:59-05:00",
-        note: "Hasta el 30 de septiembre",
+        until: "2026-10-05T23:59:59-05:00",
+        note: "Hasta el 5 de octubre",
       },
       {
         id: "etapa-2",
@@ -106,8 +114,8 @@ export const TICKETS: Ticket[] = [
         id: "etapa-1",
         label: "Etapa 1",
         price: "$350.000",
-        until: "2026-09-30T23:59:59-05:00",
-        note: "Hasta el 30 de septiembre",
+        until: "2026-10-05T23:59:59-05:00",
+        note: "Hasta el 5 de octubre",
       },
       {
         id: "etapa-2",

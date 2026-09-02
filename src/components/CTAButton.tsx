@@ -14,10 +14,10 @@ const base =
   "relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-full px-8 py-4 text-base font-semibold tracking-tight transition-colors duration-300 sm:px-10 sm:py-5 sm:text-lg md:text-xl";
 
 const variants: Record<NonNullable<CTAButtonProps["variant"]>, string> = {
-  solid: "bg-[#802ef6] text-white shadow-[0_18px_44px_-14px_rgba(128,46,246,0.9)] hover:bg-[#6d25d1]",
+  solid: "bg-violet text-white shadow-[0_18px_44px_-14px_rgba(128,46,246,0.9)] hover:bg-violet-press",
   outline: "border-[3px] border-current text-current hover:bg-current/10",
-  light: "bg-white text-[#0a0410] shadow-[0_18px_44px_-16px_rgba(0,0,0,0.6)] hover:bg-[#f1e9ff]",
-  ink: "bg-[#0a0410] text-white hover:bg-[#1d0a33]",
+  light: "bg-white text-night shadow-[0_18px_44px_-16px_rgba(0,0,0,0.6)] hover:bg-lavender",
+  ink: "bg-night text-white hover:bg-violet-shade",
 };
 
 /**

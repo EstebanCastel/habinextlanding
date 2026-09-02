@@ -8,6 +8,10 @@
   --violet: #802ef6;
   --violet-soft: #ba9dfa;
   --violet-deep: #3d1080;
+  /* Estado presionado del CTA y arranque del degradado de la boleta VIP.
+     Estaban sueltos como literales en los componentes. */
+  --violet-press: #6d25d1;
+  --violet-shade: #1a0b30;
   --lavender: #ece2fa;
   --paper: #ffffff;
 }
@@ -18,6 +22,8 @@
   --color-violet: var(--violet);
   --color-violet-soft: var(--violet-soft);
   --color-violet-deep: var(--violet-deep);
+  --color-violet-press: var(--violet-press);
+  --color-violet-shade: var(--violet-shade);
   --color-lavender: var(--lavender);
   --font-sans: var(--font-urbanist);
 }
@@ -80,29 +86,6 @@ body {
   color: #0a0410;
   --thread: var(--violet);
   --hair: rgba(10, 4, 16, 0.12);
-}
-
-/* Cinta de bloques blancos sobre morado. */
-.habi-tape {
-  background-image: repeating-linear-gradient(
-    to right,
-    #ffffff 0,
-    #ffffff 5rem,
-    transparent 5rem,
-    transparent 15rem
-  );
-}
-
-@media (max-width: 640px) {
-  .habi-tape {
-    background-image: repeating-linear-gradient(
-      to right,
-      #ffffff 0,
-      #ffffff 2rem,
-      transparent 2rem,
-      transparent 6rem
-    );
-  }
 }
 
 /* El estado inicial de las apariciones lo pone GSAP en un layout effect, no

@@ -18,7 +18,7 @@ import { EVENT, TICKETS } from "@/config/event";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Event",
-  name: `${EVENT.name} ${EVENT.city}`,
+  name: EVENT.fullName,
   startDate: EVENT.startsAt,
   eventStatus: "https://schema.org/EventScheduled",
   eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",

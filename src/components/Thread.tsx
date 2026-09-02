@@ -9,17 +9,42 @@ interface ThreadProps {
   from: number | number[];
   /** Salida: un número, o varios si el hilo se bifurca. */
   to: number | number[];
-  /** Marca el punto de entrada y el de salida con un nodo. */
+  /** Marca con un nodo el punto por donde el hilo sale de la sección. */
   nodes?: boolean;
+  /**
+   * Fracción del alto de la sección hasta la que se dibuja (1 = hasta el
+   * borde). Sirve para terminar el recorrido dentro de una sección en vez de
+   * dejarlo colgando en el borde de abajo.
+   */
+  endAt?: number;
   /**
    * Altura (0-1) a la que el hilo hace el cruce horizontal. Sirve para que
    * pase por zonas vacías en vez de por encima de un párrafo.
    */
   bias?: number;
-  /** Opacidad del trazo; el color lo hereda de la superficie (--thread). */
+  /**
+   * Opacidad del trazo; el color lo hereda de la superficie (--thread).
+   *
+   * Va deliberadamente baja: el hilo cruza zonas de texto en las secciones
+   * más densas y, aunque va por detrás (z-15 contra z-20 del contenido), un
+   * trazo fuerte se cuela entre las letras y estorba la lectura. La escala es
+   * ~0.2 sobre papel y lavanda, ~0.32 sobre negro y tinta, ~0.35 sobre morado.
+   */
   opacity?: number;
   className?: string;
 }
+
+/**
+ * Radio de los nodos.
+ *
+ * Solo se dibuja el nodo de salida, y desplazado hacia dentro exactamente
+ * este radio. Dos razones: sobre `y=h` el círculo cae encima del borde de la
+ * sección y el `overflow-hidden` lo parte por la mitad; y si además se
+ * dibujara el de entrada de la sección siguiente quedarían dos puntos pegados
+ * en cada empalme —el de entrada, encima, tampoco se vería, porque la costura
+ * de la sección ocupa sus primeros 96px—. Un nodo por unión, completo.
+ */
+const NODE_R = 5;
 
 /**
  * El hilo conductor: un trazo morado que entra por donde salió el de la
@@ -36,7 +61,8 @@ export default function Thread({
   to,
   nodes = true,
   bias = 0.5,
-  opacity = 0.75,
+  endAt = 1,
+  opacity = 0.25,
   className = "",
 }: ThreadProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -63,25 +89,39 @@ export default function Thread({
   const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
   const px = (pct: number) => (pct / 100) * w;
 
+  // Alto realmente dibujado: `endAt` permite cerrar el recorrido dentro de la
+  // sección. Toda la geometría se calcula contra este valor, no contra `h`.
+  const hDraw = h * endAt;
+
   // Con una entrada y una salida el hilo es una sola curva. En cuanto hay
-  // varias de un lado, todas pasan por un nudo a media sección: ahí es donde
-  // el hilo se abre en las tres audiencias o se cierra en una sola decisión.
+  // varias de un lado, todas pasan por un nudo: ahí es donde el hilo se abre
+  // en las tres audiencias o se cierra en una sola decisión.
   const simple = entries.length === 1 && exits.length === 1;
   const hubX = px((mean(entries) + mean(exits)) / 2);
-  const hubY = h * bias;
+  const hubY = hDraw * bias;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
   const paths = simple
     ? [
-        `M ${px(entries[0])} 0 C ${px(entries[0])} ${h * bias * 0.82}, ${px(exits[0])} ${h * (bias + (1 - bias) * 0.45)}, ${px(exits[0])} ${h}`,
+        // Los dos tiradores van simétricos a los lados de `bias`, con una
+        // separación fija del alto. Antes se calculaban como fracciones de
+        // `bias`, así que con valores altos se juntaban al final y la curva
+        // hacía un gancho seco en vez de un giro parejo.
+        `M ${px(entries[0])} 0 C ${px(entries[0])} ${hDraw * clamp(bias - 0.26, 0.1, 0.9)}, ${px(exits[0])} ${hDraw * clamp(bias + 0.26, 0.1, 0.9)}, ${px(exits[0])} ${hDraw}`,
       ]
     : [
         ...entries.map(
-          (e) => `M ${px(e)} 0 C ${px(e)} ${hubY * 0.55}, ${hubX} ${hubY * 0.75}, ${hubX} ${hubY}`,
-        ),
-        ...exits.map(
           (e) =>
-            `M ${hubX} ${hubY} C ${hubX} ${hubY + (h - hubY) * 0.25}, ${px(e)} ${hubY + (h - hubY) * 0.45}, ${px(e)} ${h}`,
+            `M ${px(e)} 0 C ${px(e)} ${hubY * 0.5}, ${px(e) + (hubX - px(e)) * 0.82} ${hubY * 0.86}, ${hubX} ${hubY}`,
         ),
+        // El primer tirador de cada rama se abre ya hacia su destino: si sale
+        // recto hacia abajo, las tres ramas se superponen sobre el nudo y el
+        // reparto se ve como un pico y no como una bifurcación.
+        ...exits.map((e) => {
+          const dx = px(e) - hubX;
+          const tramo = hDraw - hubY;
+          return `M ${hubX} ${hubY} C ${hubX + dx * 0.18} ${hubY + tramo * 0.3}, ${px(e)} ${hubY + tramo * 0.62}, ${px(e)} ${hDraw}`;
+        }),
       ];
 
   useGSAP(
@@ -123,14 +163,17 @@ export default function Thread({
         });
       });
     },
-    { scope: host, dependencies: [w, h, opacity, bias], revertOnUpdate: true },
+    { scope: host, dependencies: [w, h, opacity, bias, endAt], revertOnUpdate: true },
   );
 
   return (
     <div
       ref={host}
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      /* z-15: por encima de la costura (z-10), que si no le tapaba los
+         primeros 96px y el hilo se veía cortado en cada sección, y por debajo
+         del contenido (z-20), para que nunca pase por delante de un texto. */
+      className={`pointer-events-none absolute inset-0 z-[15] overflow-hidden ${className}`}
     >
       {w > 0 && h > 0 ? (
         <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none">
@@ -139,38 +182,24 @@ export default function Thread({
               key={i}
               d={d}
               stroke="var(--thread)"
-              strokeWidth={simple ? 2.5 : 1.9}
+              strokeWidth={simple ? 2 : 1.6}
               strokeLinecap="round"
             />
           ))}
-          {nodes ? (
-            <>
-              {entries.map((e) => (
-                <circle
-                  key={`in-${e}`}
-                  className="thread-node"
-                  cx={px(e)}
-                  cy={0}
-                  r={5}
-                  fill="var(--thread)"
-                  opacity={opacity}
-                  style={{ transformOrigin: `${px(e)}px 0px` }}
-                />
-              ))}
-              {exits.map((e) => (
+          {nodes
+            ? exits.map((e) => (
                 <circle
                   key={`out-${e}`}
                   className="thread-node"
                   cx={px(e)}
-                  cy={h}
-                  r={5}
+                  cy={hDraw - NODE_R}
+                  r={NODE_R}
                   fill="var(--thread)"
                   opacity={opacity}
-                  style={{ transformOrigin: `${px(e)}px ${h}px` }}
+                  style={{ transformOrigin: `${px(e)}px ${hDraw - NODE_R}px` }}
                 />
-              ))}
-            </>
-          ) : null}
+              ))
+            : null}
         </svg>
       ) : null}
     </div>

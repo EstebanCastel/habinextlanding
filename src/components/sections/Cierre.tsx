@@ -52,19 +52,20 @@ export default function Cierre() {
     <section ref={root} className="s-night relative w-full overflow-hidden">
       <div
         className="cierre-glow pointer-events-none absolute left-1/2 top-1/3 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-[150px]"
-        style={{ background: "#802ef6" }}
+        style={{ background: "var(--violet)" }}
       />
 
       <div className="relative z-10 flex flex-col items-center px-5 pt-24 pb-28 text-center sm:px-8 md:px-14 md:pt-32 md:pb-36 lg:px-20">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center">
           {/* Final del hilo: el trazo entra y se convierte en el asterisco. */}
-          <span className="h-20 w-[2.5px] bg-gradient-to-b from-transparent to-[#802ef6] md:h-28" />
+          <span className="h-20 w-[2.5px] bg-gradient-to-b from-transparent to-violet md:h-28" />
           <Asterisk className="cierre-star mt-4 h-16 w-16 md:h-24 md:w-24" />
 
           <Reveal>
-            <h2 className="mt-12 max-w-5xl text-4xl font-bold leading-[0.95] tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
-              Tu próximo gran negocio puede{" "}
-              <span className="text-[#802ef6]">empezar aquí.</span>
+            <h2 className="mt-12 max-w-5xl text-3xl font-bold leading-[1.0] tracking-tighter sm:text-4xl md:text-5xl lg:text-[3.75rem]">
+              Tu próximo gran negocio
+              <br />
+              puede <span className="text-violet">empezar aquí.</span>
             </h2>
           </Reveal>
 
@@ -79,7 +80,7 @@ export default function Cierre() {
             <p className="mt-12 text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
               Habi Next
             </p>
-            <p className="mt-3 text-sm font-semibold uppercase tracking-[0.3em] text-[#ba9dfa] md:text-base">
+            <p className="mt-3 text-sm font-semibold uppercase tracking-[0.3em] text-violet-soft md:text-base">
               {EVENT.city} · {EVENT.dateShort} de 2026
             </p>
           </Reveal>
