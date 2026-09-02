@@ -231,7 +231,10 @@ export default function Aprendizajes() {
                     className="panel-img object-cover"
                   />
                 ))}
-                <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent" />
+                {/* Solo existe para que la etiqueta del número se lea sobre la foto,
+                    así que se queda en el tercio de abajo: antes llegaba hasta
+                    la mitad y apagaba la figura. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent via-34% to-transparent" />
 
                 <div className="absolute inset-x-0 bottom-0 overflow-hidden p-8">
                   {pillars.map((p) => (
