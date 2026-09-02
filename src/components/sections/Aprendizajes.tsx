@@ -17,7 +17,7 @@ const pillars = [
     from: "De pensar qué publicar",
     to: "a tener una máquina de contenido",
     img: "/img/aprende-crea.webp",
-    alt: "Agente inmobiliario produciendo contenido en su computador",
+    alt: "Broker frente a su portátil en las oficinas de Habi",
   },
   {
     n: "02",
@@ -27,7 +27,7 @@ const pillars = [
     from: "De esperar clientes",
     to: "a generar tus propias oportunidades",
     img: "/img/aprende-atrae.webp",
-    alt: "Agentes conociéndose en el lobby de Habi Next Colombia",
+    alt: "Charla en tarima ante los brokers en un evento de Habi",
   },
   {
     n: "03",
@@ -37,7 +37,7 @@ const pillars = [
     from: "De tener contactos",
     to: "a tener un sistema comercial",
     img: "/img/aprende-organiza.webp",
-    alt: "Sesión de trabajo con varios agentes frente a sus computadores",
+    alt: "Broker en el salón del evento antes de que llegue el público",
   },
   {
     n: "04",
@@ -47,7 +47,7 @@ const pillars = [
     from: "De hacerlo todo tú",
     to: "a trabajar acompañado por IA",
     img: "/img/aprende-automatiza.webp",
-    alt: "Agente inmobiliario revisando su asistente en el celular",
+    alt: "Presentación con micrófono en la tarima del evento de brokers",
   },
 ];
 
@@ -147,7 +147,13 @@ export default function Aprendizajes() {
 
           <div className="mt-16 grid gap-14 md:mt-24 lg:grid-cols-[1fr_0.85fr] lg:gap-20">
             {/* Etapas */}
-            <ol className="pillar-list relative flex flex-col">
+            {/* El `pb` de escritorio no es decorativo: sin él, la última etapa
+                termina antes que el panel fijado de al lado, la columna deja de
+                sostenerlo y el panel se sube hasta meterse debajo del menú
+                flotante, que es opaco y le tapa la cara al retrato. Medido, el
+                panel necesita 129px más de columna para seguir anclado hasta que
+                la etapa 04 sale de cuadro; 144 (pb-36) deja margen. */}
+            <ol className="pillar-list relative flex flex-col lg:pb-36">
               <div className="absolute left-0 top-0 hidden h-full w-[3px] bg-white/10 md:block">
                 <div className="pillar-rail-fill h-full w-full origin-top scale-y-0 bg-violet" />
               </div>
@@ -178,7 +184,7 @@ export default function Aprendizajes() {
                           alt={p.alt}
                           fill
                           sizes="92vw"
-                          className="object-cover"
+                          className="object-cover object-[50%_10%]"
                         />
                       </div>
 
@@ -228,13 +234,23 @@ export default function Aprendizajes() {
                     alt={p.alt}
                     fill
                     sizes="40vw"
-                    className="panel-img object-cover"
+                    /* Los recortes son 0,66 de proporción y el panel da 0,88,
+                       así que object-cover se come una cuarta parte del alto.
+                       Centrado cortaba las cabezas por arriba: con el foco al
+                       10% el recorte se lo lleva casi todo de los pies. */
+                    className="panel-img object-cover object-[50%_10%]"
                   />
                 ))}
-                {/* Solo existe para que la etiqueta del número se lea sobre la foto,
-                    así que se queda en el tercio de abajo: antes llegaba hasta
-                    la mitad y apagaba la figura. */}
-                <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent via-34% to-transparent" />
+                {/* Solo existe para que la etiqueta del número se lea sobre la
+                    foto, así que se queda en el tercio de abajo: antes llegaba
+                    hasta la mitad y apagaba la figura.
+
+                    Va a `ink/0` y no a `transparent`: Tailwind 4 interpola los
+                    degradados en oklab y `transparent` es negro transparente,
+                    así que el camino desde este negro violáceo pasaba por
+                    morado y teñía media foto de lila. Con el mismo color a
+                    alfa 0 solo se desvanece la opacidad. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-ink to-ink/0 to-[38%]" />
 
                 <div className="absolute inset-x-0 bottom-0 overflow-hidden p-8">
                   {pillars.map((p) => (

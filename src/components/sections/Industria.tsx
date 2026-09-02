@@ -26,18 +26,18 @@ export default function Industria() {
           sin leerse como una raya encima de lo que hay que leer. */}
       <Thread from={50} to={78} bias={0.62} opacity={0.2} />
 
-      {/* Curva gamma que oscurece la foto. Medida, la imagen promedia 74 de
-          luminancia y las tarjetas de Escenarios 55-79, así que en número ya
-          estaban igualadas: se veía más clara porque aquí el fondo es papel
-          blanco y allá es negro, y el peso de una foto se lee contra lo que la
-          rodea. A gamma 1.75 baja a ~36 y pesa como las otras. Al ser gamma
-          —y no un velo encima— el cielo y el aviso conservan detalle. */}
+      {/* Curva gamma que oscurece la foto. Con la anterior —blanco y negro y
+          clara— hacía falta 1.75 para que no flotara sobre el papel blanco.
+          La foto del evento ya entra en 100 de luminancia y es cálida, así
+          que a 1.75 se volvía barro: queda en 1.15, lo justo para asentarla.
+          Al ser gamma —y no un velo encima— la madera y las lámparas
+          conservan detalle. */}
       <svg aria-hidden="true" className="absolute h-0 w-0">
         <filter id="ind-dim" colorInterpolationFilters="sRGB">
           <feComponentTransfer>
-            <feFuncR type="gamma" exponent="1.75" />
-            <feFuncG type="gamma" exponent="1.75" />
-            <feFuncB type="gamma" exponent="1.75" />
+            <feFuncR type="gamma" exponent="1.15" />
+            <feFuncG type="gamma" exponent="1.15" />
+            <feFuncB type="gamma" exponent="1.15" />
           </feComponentTransfer>
         </filter>
       </svg>
@@ -100,7 +100,7 @@ export default function Industria() {
               <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[28px]">
                 <Image
                   src="/img/industria-cambiando.webp"
-                  alt="Edificio residencial con un aviso de Se Vende"
+                  alt="Brokers conversando alrededor de la mesa en un encuentro de Habi"
                   fill
                   /* Igual que en las tarjetas de Escenarios: con object-cover
                      la foto se recorta de lado, así que el ancho pintado es
@@ -109,9 +109,10 @@ export default function Industria() {
                   style={{ filter: "url(#ind-dim)" }}
                   className="object-cover"
                 />
-                {/* Duotono morado en la base: la foto es blanco y negro y esto
-                    es lo que la ata a la paleta sin tocar el resto. */}
-                <div className="absolute inset-0 bg-gradient-to-t from-violet/35 via-transparent to-transparent" />
+                {/* Morado en la base para atar la foto a la paleta. Con la
+                    foto a color y de luz cálida, 35% la teñía de lila: a 18%
+                    ancla el pie de la imagen y deja la escena en su color. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-violet/18 to-violet/0 to-[45%]" />
               </div>
             </Reveal>
           </div>
