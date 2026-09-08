@@ -36,6 +36,42 @@ export const BOTON_DUDA = "DUDA";
 const payload = (prefijo: string, token: string) => `${prefijo}_${token}`;
 
 /**
+ * Cuando el bot no sabe qué hacer, se lo pasa a una persona.
+ *
+ * Va por plantilla y no por texto libre a propósito: quien opera no le escribe
+ * a la línea todos los días, así que la ventana de 24 horas de Meta suele
+ * estar cerrada y un mensaje de texto se perdería justo cuando más falta hace.
+ *
+ * Nunca lanza. Que falle un aviso no puede tumbar la conversación con la
+ * persona que está del otro lado.
+ */
+export async function escalarAUnaPersona(
+  registro: Registro,
+  quePaso: string
+): Promise<void> {
+  const destino = process.env.WHATSAPP_ESCALAMIENTO;
+  const plantilla = process.env.INFOBIP_TPL_ALERTA;
+  if (!destino || !plantilla) return;
+
+  const quien =
+    `${registro.luma.nombre || "Sin nombre"}` +
+    `${registro.telefono ? ` (+${registro.telefono})` : ""}` +
+    ` · ${registro.tier === "vip" ? "VIP" : "General"}`;
+
+  try {
+    await enviarPlantilla({
+      a: destino,
+      plantilla,
+      placeholders: [quien.slice(0, 300), quePaso.slice(0, 500)],
+      botones: [],
+    });
+    await anotar(registro.token, "escalado a una persona", () => ({}), quePaso.slice(0, 200));
+  } catch (error) {
+    console.warn("[bot] no se pudo escalar:", (error as Error).message);
+  }
+}
+
+/**
  * Primer mensaje, el que sale apenas alguien se registra en Luma.
  *
  * Son dos plantillas distintas porque son dos conversaciones distintas: a
@@ -51,6 +87,13 @@ export async function darLaBienvenida(registro: Registro): Promise<void> {
       "sin WhatsApp",
       (r) => ({ whatsapp: { ...r.whatsapp, error: "el registro no trae un celular usable" } }),
       registro.luma.telefonoCrudo || "(vacío)"
+    );
+    // Se registró y no hay por dónde escribirle: es una venta que se pierde en
+    // silencio si nadie se entera.
+    await escalarAUnaPersona(
+      registro,
+      `se registró sin un celular usable ("${registro.luma.telefonoCrudo || "vacío"}"). ` +
+        `Su correo es ${registro.luma.email}`
     );
     return;
   }
@@ -104,6 +147,13 @@ export async function darLaBienvenida(registro: Registro): Promise<void> {
     }),
     salida.ok ? (salida.estado ?? undefined) : salida.error
   );
+
+  if (!salida.ok) {
+    await escalarAUnaPersona(
+      registro,
+      `no se le pudo mandar el WhatsApp de bienvenida: ${salida.error ?? `HTTP ${salida.status}`}`
+    );
+  }
 }
 
 /**
@@ -189,7 +239,16 @@ export const RESPUESTA_COMPROBANTE =
 
 export const RESPUESTA_DUDA =
   "¡Hola! 👋 Con gusto te ayudamos. Cuéntanos por acá qué necesitas saber de Habi Next " +
-  "y una persona del equipo te responde hoy mismo.";
+  "y una persona del equipo te responde por este mismo chat.";
+
+/**
+ * Lo que se le contesta a alguien cuyo mensaje el bot no supo resolver. Se dice
+ * en primera persona y sin prometer un tiempo que no controlamos: lo que sí es
+ * cierto es que a partir de aquí hay una persona mirando.
+ */
+export const RESPUESTA_ESCALADA =
+  "¡Gracias por escribirnos! 🙌 Esto lo va a ver una persona del equipo, " +
+  "que te responde por acá mismo.";
 
 /** Lo que se le dice a quien acaba de ser aprobado en Luma. */
 export function textoDeAprobacion(nombre: string): string {

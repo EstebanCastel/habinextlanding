@@ -1,9 +1,11 @@
 import { after, NextResponse } from "next/server";
 import {
   BOTON_VIP,
+  escalarAUnaPersona,
   pasarAVip,
   RESPUESTA_COMPROBANTE,
   RESPUESTA_DUDA,
+  RESPUESTA_ESCALADA,
 } from "@/lib/bot";
 import { tokenValido } from "@/lib/seguridad";
 import { anotar, normalizarTelefono, porTelefono, porToken, type Registro } from "@/lib/registros";
@@ -39,14 +41,43 @@ type Resultado = {
   seenAt?: string;
   doneAt?: string;
   receivedAt?: string;
-  message?: {
-    type?: string;
-    text?: string;
-    url?: string;
-    caption?: string;
-    payload?: string;
-  };
+  cleanText?: string;
+  message?: Mensaje;
+  content?: Mensaje;
 };
+
+type Mensaje = {
+  type?: string;
+  text?: string;
+  url?: string;
+  caption?: string;
+  payload?: string;
+  button?: { payload?: string; text?: string };
+  content?: { text?: string; url?: string };
+};
+
+/**
+ * Infobip no entrega los entrantes en una sola forma: según el renderer que
+ * quede configurado en la línea, el cuerpo viene en `message` o en `content`,
+ * el texto en `text`, en `content.text` o en `cleanText`, y el payload de un
+ * botón en `payload` o en `button.payload`. Se leen todas las variantes en vez
+ * de apostar por una: equivocarse aquí significa que el bot se queda mudo justo
+ * cuando alguien le contesta.
+ */
+function leerMensaje(r: Resultado): {
+  tipo: string;
+  texto: string;
+  url: string | null;
+  payload: string;
+} {
+  const m = r.message ?? r.content ?? {};
+  return {
+    tipo: String(m.type ?? "").toUpperCase(),
+    texto: String(m.text ?? m.content?.text ?? m.caption ?? r.cleanText ?? "").trim(),
+    url: m.url ?? m.content?.url ?? null,
+    payload: String(m.payload ?? m.button?.payload ?? "").toUpperCase(),
+  };
+}
 
 /** El token del registro viaja en `callbackData`; si no, se busca por número. */
 async function registroDe(r: Resultado): Promise<Registro | null> {
@@ -102,11 +133,32 @@ async function procesarDlr(resultados: Resultado[]): Promise<number> {
 
 /** ---------- mensajes entrantes ---------- */
 
-function pareceComprobante(m: Resultado["message"]): boolean {
-  const tipo = String(m?.type || "").toUpperCase();
+function pareceComprobante(tipo: string, texto: string): boolean {
   if (["IMAGE", "DOCUMENT", "VIDEO"].includes(tipo)) return true;
-  const texto = `${m?.text || ""} ${m?.caption || ""}`.toLowerCase();
-  return /comprobante|pagu[eé]|transferenc|nequi|daviplata|pse|consign|recibo|soporte del pago/.test(texto);
+  return /comprobante|pagu[eé]|transferenc|nequi|daviplata|pse|consign|recibo|soporte del pago/i.test(
+    texto
+  );
+}
+
+/**
+ * Reconoce la intención sin acentos ni mayúsculas. El texto del botón es el
+ * respaldo del payload: algunos renderers de Infobip entregan la respuesta a un
+ * QUICK_REPLY como texto plano y sin payload, y en ese caso lo único que llega
+ * es exactamente la etiqueta del botón.
+ */
+function sinAcentos(t: string): string {
+  return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function quiereVip(payload: string, texto: string): boolean {
+  if (payload.startsWith(`${BOTON_VIP}_`)) return true;
+  const t = sinAcentos(texto);
+  return /^(prefiero el vip|quiero el vip|quiero ser vip|me paso a vip|vip)$/.test(t);
+}
+
+function pideAyuda(payload: string, texto: string): boolean {
+  if (payload.startsWith("DUDA")) return true;
+  return /^(tengo una duda|una duda|ayuda|tengo una pregunta)$/.test(sinAcentos(texto));
 }
 
 async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
@@ -116,13 +168,12 @@ async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
     if (!registro) continue;
     vistos += 1;
 
-    const m = r.message;
-    const boton = String(m?.payload || "").toUpperCase();
-    const esBotonVip = boton.startsWith(`${BOTON_VIP}_`);
-    const esBotonDuda = boton.startsWith("DUDA");
+    const m = leerMensaje(r);
+    const esBotonVip = quiereVip(m.payload, m.texto);
+    const esBotonDuda = pideAyuda(m.payload, m.texto);
     const ahora = r.receivedAt || new Date().toISOString();
 
-    if (pareceComprobante(m)) {
+    if (pareceComprobante(m.tipo, m.texto)) {
       await anotar(
         registro.token,
         "mandó comprobante por WhatsApp",
@@ -134,14 +185,14 @@ async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
               ...reg.pago.comprobantes,
               {
                 en: ahora,
-                tipo: String(m?.type || "TEXTO"),
-                ...(m?.url ? { url: m.url } : {}),
-                ...(m?.text || m?.caption ? { texto: String(m.text || m.caption).slice(0, 500) } : {}),
+                tipo: m.tipo || "TEXTO",
+                ...(m.url ? { url: m.url } : {}),
+                ...(m.texto ? { texto: m.texto.slice(0, 500) } : {}),
               },
             ].slice(-10),
           },
         }),
-        String(m?.type || "")
+        m.tipo
       );
 
       // Responder está permitido: la persona acaba de escribir, así que la
@@ -163,31 +214,43 @@ async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
       const res = await pasarAVip(registro);
       if (!res.ok) {
         console.warn("[bot] no se pudo pasar a VIP:", res.nota);
+        await escalarAUnaPersona(registro, `quiso pasarse a VIP y no se pudo: ${res.nota}`);
         if (registro.telefono) {
           await enviarTexto({
             a: registro.telefono,
             texto:
               "¡Gracias por avisarnos! Tuvimos un problema al pasarte a VIP. " +
-              "Un momento y una persona del equipo te escribe por acá para dejarlo listo.",
+              "Una persona del equipo te escribe por acá para dejarlo listo.",
           }).catch(() => null);
         }
       }
       continue;
     }
 
-    const texto = String(m?.text || m?.caption || "").slice(0, 500);
-    await anotar(
-      registro.token,
-      esBotonDuda ? "pidió ayuda desde el botón" : "escribió por WhatsApp",
-      () => ({}),
-      texto || undefined
-    );
+    const texto = m.texto.slice(0, 500);
 
-    if (esBotonDuda && registro.telefono) {
-      after(() =>
-        enviarTexto({ a: registro.telefono!, texto: RESPUESTA_DUDA }).catch(() => {})
-      );
+    // Botón de ayuda: se le responde y se avisa, pero sin alarma — todavía no
+    // ha dicho qué necesita.
+    if (esBotonDuda) {
+      await anotar(registro.token, "pidió ayuda desde el botón", () => ({}), texto || undefined);
+      if (registro.telefono) {
+        after(() => enviarTexto({ a: registro.telefono!, texto: RESPUESTA_DUDA }).catch(() => null));
+      }
+      continue;
     }
+
+    // Cualquier otra cosa: el bot no la sabe resolver. En vez de contestar una
+    // torpeza, se la pasa a una persona y se lo dice de frente a quien escribió.
+    await anotar(registro.token, "escribió algo que el bot no resuelve", () => ({}), texto || undefined);
+    after(async () => {
+      await escalarAUnaPersona(
+        registro,
+        texto ? `escribió: «${texto}»` : `mandó un mensaje de tipo ${m.tipo || "desconocido"}`
+      );
+      if (registro.telefono) {
+        await enviarTexto({ a: registro.telefono, texto: RESPUESTA_ESCALADA }).catch(() => null);
+      }
+    });
   }
   return vistos;
 }

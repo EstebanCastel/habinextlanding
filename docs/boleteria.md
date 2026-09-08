@@ -81,9 +81,24 @@ apuntar los eventos a `https://www.habinext.com/api/wompi` y copiar el secreto
 de eventos a `WOMPI_EVENTS_SECRET`. Sin esa variable el endpoint rechaza todo
 por firma inválida, que es el comportamiento correcto.
 
-**2. Registrar el webhook de mensajes entrantes en Infobip.** La línea
-`573009110459` tiene que apuntar sus mensajes entrantes a
-`https://www.habinext.com/api/infobip?k=<INFOBIP_WEBHOOK_TOKEN>`.
+**2. Registrar el webhook de mensajes entrantes en Infobip.** En el portal, la
+línea `573009110459` → *Inbound configuration* → **Forwarding action → Forward
+to HTTP**:
+
+| Campo | Qué va |
+| --- | --- |
+| URL | `https://www.habinext.com/api/infobip?k=<INFOBIP_WEBHOOK_TOKEN>` |
+| Renderer | `MO_OTT_CONTACT` (el que viene por defecto) |
+| Use custom renderer | sin marcar |
+| Auto response | **apagado** — responde el bot, no Infobip |
+| Conversations | apagado |
+| Blocking action | apagado |
+
+El endpoint lee el cuerpo en `message` o en `content`, el texto en `text`,
+`content.text` o `cleanText`, y el payload del botón en `payload` o
+`button.payload`, porque el renderer decide cuál manda. Además reconoce la
+respuesta por el *texto* del botón («Prefiero el VIP», «Tengo una duda») para
+el caso en que llegue como texto plano y sin payload.
 
 ⚠️ **Ojo con el bot que ya vive en esa línea.** Hoy, quien responde un mensaje
 recibe *«Lo siento, no pudimos entenderte… wa.me/573009114406»*: es otro flujo
@@ -93,6 +108,21 @@ atiende la línea, o mover Habi Next a una línea propia.
 
 Los reportes de entrega no necesitan configuración: viajan en el `notifyUrl` de
 cada envío.
+
+## Cuando el bot no sabe qué hacer
+
+Escala a una persona por WhatsApp (`WHATSAPP_ESCALAMIENTO`), con quién es y qué
+pasó, y a quien escribió le dice que lo va a ver alguien del equipo. Escala en
+cuatro casos:
+
+- alguien escribe algo que no es un comprobante ni un botón conocido;
+- se registra sin un celular usable —una venta que si no se pierde en silencio—;
+- falla el envío del mensaje de bienvenida;
+- toca «Prefiero el VIP» y el paso a VIP no se pudo completar.
+
+El aviso va por la plantilla `habinext_alerta_operador_co_sep26`, no por texto
+libre: quien opera no le escribe a la línea todos los días y la ventana de 24
+horas de Meta suele estar cerrada justo cuando más falta hace el aviso.
 
 ## Cambiar el precio o la etapa
 
