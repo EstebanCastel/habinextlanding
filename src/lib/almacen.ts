@@ -38,14 +38,27 @@ export async function leer<T = Registro>(ruta: string): Promise<T | null> {
   }
 }
 
+/**
+ * Un ETag débil (`W/"…"`) no sirve para `ifMatch`: la precondición usa
+ * comparación fuerte y falla siempre. La CDN devuelve el ETag debilitado
+ * cuando comprime la respuesta, cosa que hace en cuanto el documento pasa de
+ * unos pocos cientos de bytes — es decir, casi enseguida, apenas un registro
+ * acumula bitácora. El hash que va dentro es el mismo, así que quitarle el
+ * prefijo recupera el ETag fuerte que el almacén espera.
+ */
+function etagFuerte(etag: string | undefined): string | undefined {
+  return etag ? etag.replace(/^W\//, "") : undefined;
+}
+
 /** Lee el documento junto con su ETag, para poder escribirlo condicionalmente. */
 async function leerConEtag<T = Registro>(ruta: string): Promise<{ dato: T | null; etag?: string }> {
   const res = await get(ruta, { ...OPCIONES, useCache: false }).catch(() => null);
   if (!res || res.statusCode !== 200 || !res.stream) return { dato: null };
+  const etag = etagFuerte(res.blob.etag);
   try {
-    return { dato: JSON.parse(await new Response(res.stream).text()) as T, etag: res.blob.etag };
+    return { dato: JSON.parse(await new Response(res.stream).text()) as T, etag };
   } catch {
-    return { dato: null, etag: res.blob.etag };
+    return { dato: null, etag };
   }
 }
 
