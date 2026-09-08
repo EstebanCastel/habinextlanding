@@ -31,12 +31,18 @@ export const EVENT = {
 } as const;
 
 /**
- * La venta se hace en Luma. Se configuran por variable de entorno para poder
- * cambiar el link sin tocar código; los valores por defecto son placeholders.
+ * El registro se hace en Luma, uno por tipo de entrada. Los dos eventos tienen
+ * aprobación obligatoria: quien se registra queda pendiente y recibe por
+ * WhatsApp su link de pago; el cupo se aprueba —y Luma manda la entrada con el
+ * QR— solo cuando el pago está confirmado. Ese recorrido vive en `/webhook`,
+ * `/p/[token]` y `/admin`.
+ *
+ * Se leen de variables de entorno para poder cambiarlos sin tocar código; los
+ * valores por defecto son los eventos reales de octubre de 2026.
  */
 export const LINKS = {
-  general: process.env.NEXT_PUBLIC_LUMA_GENERAL || "https://lu.ma/habinext",
-  vip: process.env.NEXT_PUBLIC_LUMA_VIP || "https://lu.ma/habinext-vip",
+  general: process.env.NEXT_PUBLIC_LUMA_GENERAL || "https://luma.com/habinext-general",
+  vip: process.env.NEXT_PUBLIC_LUMA_VIP || "https://luma.com/habinext-vip",
   sponsors: process.env.NEXT_PUBLIC_SPONSOR_URL || "mailto:habinext@habi.co",
 } as const;
 
