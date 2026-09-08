@@ -104,6 +104,36 @@ export async function modificar<T extends Registro>(
 }
 
 /**
+ * Escribe solo si la ruta no existe todavía, y dice si ganó.
+ *
+ * Es la única operación atómica que hace falta en todo el sistema, y hace
+ * falta de verdad: Luma dispara `guest.registered` y `ticket.registered` para
+ * la misma persona con milisegundos de diferencia. Con un "leer, ver que no
+ * está, escribir" los dos leen vacío, los dos escriben, y esa persona termina
+ * con dos registros y dos mensajes de WhatsApp con dos links de pago
+ * distintos. Pasó de verdad la primera vez que alguien se registró.
+ *
+ * `put` sin `allowOverwrite` falla si el destino ya existe, así que el primero
+ * en llegar gana y el segundo se entera.
+ */
+export async function crearSiNoExiste(ruta: string, dato: unknown): Promise<boolean> {
+  try {
+    await put(ruta, JSON.stringify(dato), {
+      ...OPCIONES,
+      addRandomSuffix: false,
+      contentType: "application/json",
+      cacheControlMaxAge: 0,
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && /already exists|conflict|precondition/i.test(error.message)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
  * Rutas de todos los documentos bajo un prefijo, para el panel de operación.
  * `list` no recibe `access`: el modo lo define el store, y aquí es privado.
  */

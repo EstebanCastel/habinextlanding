@@ -1,4 +1,4 @@
-import { escribir, leer, listarRutas, modificar } from "./almacen";
+import { crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
 import { activeStageIndex, TICKETS, type Ticket } from "@/config/event";
 import { nuevoToken } from "./seguridad";
 
@@ -86,6 +86,17 @@ export type Registro = {
     decididoPor?: string;
     motivo?: string;
   };
+  /**
+   * Solo para General: el recordatorio de que por la diferencia se pasa a VIP.
+   * `decision` queda en null mientras la persona no conteste — que es la
+   * respuesta más común y significa que se queda en General.
+   */
+  upsell?: {
+    ofrecidoEn?: string;
+    diferencia?: string;
+    respondidoEn?: string;
+    decision?: "vip" | "general";
+  };
   /** Bitácora append-only: es lo que permite auditar qué pasó y cuándo. */
   bitacora: { en: string; que: string; detalle?: string }[];
   creadoEn: string;
@@ -96,6 +107,8 @@ export const rutaRegistro = (token: string) => `registros/${token}.json`;
 const rutaIndiceGuest = (guestId: string) => `indice/guest/${guestId}.json`;
 const rutaIndiceTelefono = (telefono: string) => `indice/telefono/${telefono}.json`;
 const rutaIndiceReferencia = (ref: string) => `indice/referencia/${ref.toLowerCase()}.json`;
+const rutaIndiceUpgrade = (email: string) =>
+  `indice/upgrade/${email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}.json`;
 
 /**
  * Normaliza a dígitos con indicativo de país. Luma entrega el número como lo
@@ -125,6 +138,18 @@ export function precioVigente(tier: Tier, ahora = new Date()) {
   const ticket = ticketDe(tier);
   const etapa = ticket.stages[activeStageIndex(ticket.stages, ahora)];
   return { etiqueta: etapa.label, precio: etapa.price, nota: etapa.note };
+}
+
+/**
+ * Cuánto más cuesta el VIP que el General en la etapa vigente. Es el número
+ * con el que se le habla a quien eligió General, y cambia con la etapa: en
+ * preventa la diferencia es de $100.000 y al final del calendario, de $160.000.
+ */
+export function diferenciaVip(ahora = new Date()): string {
+  const aNumero = (precio: string) => Number(precio.replace(/[^\d]/g, ""));
+  const general = aNumero(precioVigente("general", ahora).precio);
+  const vip = aNumero(precioVigente("vip", ahora).precio);
+  return `$${(vip - general).toLocaleString("es-CO")}`;
 }
 
 export function primerNombre(nombre: string): string {
@@ -184,14 +209,36 @@ export async function crearORecuperar(datos: {
   estadoAprobacion: string;
   empresa?: string;
 }): Promise<{ registro: Registro; nuevo: boolean }> {
-  const yaHecho = await tokenDeGuest(datos.guestId);
-  if (yaHecho) {
-    const existente = await porToken(yaHecho);
-    if (existente) return { registro: existente, nuevo: false };
-  }
-
   const ahora = new Date().toISOString();
   const token = nuevoToken();
+
+  // Quien vuelve de un upsell ya tiene registro: subió de General a VIP y
+  // Luma lo dio de alta como invitado nuevo en el otro evento. Se reusa el
+  // registro que ya venía en camino en vez de empezarle uno en blanco.
+  const upgrade = await leer<{ token: string }>(rutaIndiceUpgrade(datos.email));
+  if (upgrade?.token) {
+    const previo = await porToken(upgrade.token);
+    if (previo) {
+      await escribir(rutaIndiceGuest(datos.guestId), { token: previo.token, en: ahora });
+      return { registro: previo, nuevo: false };
+    }
+  }
+
+  // Reserva atómica del invitado. Si otro webhook llegó primero —Luma manda
+  // `guest.registered` y `ticket.registered` casi a la vez— este pierde y se
+  // queda con el registro que aquel creó, en vez de duplicar la persona.
+  const gano = await crearSiNoExiste(rutaIndiceGuest(datos.guestId), { token, en: ahora });
+  if (!gano) {
+    for (let intento = 0; intento < 5; intento += 1) {
+      const yaHecho = await tokenDeGuest(datos.guestId);
+      const existente = yaHecho ? await porToken(yaHecho) : null;
+      if (existente) return { registro: existente, nuevo: false };
+      // El que ganó todavía está escribiendo su registro: se le da un momento.
+      await new Promise((r) => setTimeout(r, 120 * (intento + 1)));
+    }
+    throw new Error(`el índice de ${datos.guestId} existe pero su registro no aparece`);
+  }
+
   const { etiqueta, precio } = precioVigente(datos.tier);
   const telefono = normalizarTelefono(datos.telefonoCrudo);
 
@@ -220,12 +267,31 @@ export async function crearORecuperar(datos: {
   };
 
   await escribir(rutaRegistro(token), registro);
-  // Los índices se escriben después del registro: si algo falla en medio,
-  // queda un registro huérfano (inofensivo) y no un índice que apunta al vacío.
-  await escribir(rutaIndiceGuest(datos.guestId), { token, en: ahora });
   if (telefono) await escribir(rutaIndiceTelefono(telefono), { token, en: ahora });
 
   return { registro, nuevo: true };
+}
+
+/**
+ * Pasa un registro de General a VIP.
+ *
+ * En Luma son dos eventos distintos, así que subir de categoría es darse de
+ * alta en el de VIP y bajarse del de General. El índice por correo se escribe
+ * **antes** de tocar Luma: el alta dispara `guest.registered` del evento VIP,
+ * y sin esa marca puesta de antemano ese webhook crearía un registro nuevo y
+ * la persona quedaría partida en dos.
+ */
+export async function marcarUpgradePendiente(email: string, token: string): Promise<void> {
+  await escribir(rutaIndiceUpgrade(email), { token, en: new Date().toISOString() });
+}
+
+export async function limpiarUpgrade(email: string): Promise<void> {
+  await escribir(rutaIndiceUpgrade(email), { token: "", en: new Date().toISOString() });
+}
+
+/** Reapunta el registro al invitado nuevo del otro evento. */
+export async function apuntarAInvitado(token: string, guestId: string): Promise<void> {
+  await escribir(rutaIndiceGuest(guestId), { token, en: new Date().toISOString() });
 }
 
 /** Aplica un cambio sobre el registro, anota la bitácora y refresca la etapa. */

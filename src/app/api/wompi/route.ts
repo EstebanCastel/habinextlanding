@@ -1,21 +1,22 @@
 import { after, NextResponse } from "next/server";
-import { reflejar } from "@/lib/hoja";
-import { aprobarInvitado } from "@/lib/luma";
 import { anotar, normalizarTelefono, porReferencia, porTelefono, todos, type Registro } from "@/lib/registros";
 import { firmaWompiValida } from "@/lib/seguridad";
 import { enviarTexto } from "@/lib/whatsapp";
 
 /**
- * Webhook de Wompi — el único punto del sistema donde un pago se da por bueno
- * sin que una persona lo mire.
+ * Webhook de Wompi: el aviso de que el banco aprobó (o rechazó) un pago.
  *
- * Eso solo es defendible porque el evento viene firmado: Wompi concatena las
- * propiedades que él mismo lista, el timestamp y el secreto de eventos, y
- * manda el SHA-256. Sin esa verificación, cualquiera que conozca la URL podría
- * regalarse una entrada mandando un JSON que diga "APPROVED".
+ * El evento viene firmado —Wompi concatena las propiedades que él mismo lista,
+ * el timestamp y el secreto de eventos, y manda el SHA-256— y sin verificar esa
+ * firma cualquiera que conozca la URL podría marcar su pago como aprobado
+ * mandando un JSON que diga "APPROVED".
  *
- * Cuando el pago está aprobado se aprueba el registro en Luma, y ahí Luma le
- * manda la entrada con el QR a la persona. Ese es el final del embudo.
+ * **Confirmar el pago no aprueba a nadie.** La aprobación se hace desde Luma,
+ * que es donde el equipo revisa y donde el botón de aprobar existe de verdad;
+ * este servicio se entera después por el webhook `guest.updated`. Lo que hace
+ * este endpoint es dejar el registro listo para esa decisión: marca el pago,
+ * guarda la transacción y le avisa a la persona que ya vimos su plata, para
+ * que no se quede en el aire entre que paga y le llega la entrada.
  */
 
 export const runtime = "nodejs";
@@ -60,12 +61,6 @@ async function conciliar(t: Transaccion): Promise<Registro | null> {
   return null;
 }
 
-const CONFIRMACION =
-  "¡Listo! 🎉 Confirmamos tu pago y tu registro a Habi Next quedó aprobado.\n\n" +
-  "Tu entrada con el código QR va en camino al correo con el que te registraste. " +
-  "Guárdala: es la que te van a pedir en la puerta.\n\n" +
-  "Nos vemos el martes 20 de octubre en el Centro de Convenciones Avenida 68. 💜";
-
 export async function POST(request: Request) {
   const evento = (await request.json().catch(() => null)) as
     | { event?: string; data?: { transaction?: Transaccion }; environment?: string }
@@ -95,18 +90,17 @@ export async function POST(request: Request) {
   }
 
   if (estado !== "APPROVED") {
-    const actualizado = await anotar(
+    await anotar(
       registro.token,
       `pago ${estado.toLowerCase() || "sin estado"}`,
       () => ({}),
       t.payment_method_type
     );
-    if (actualizado) after(() => reflejar(actualizado));
     return NextResponse.json({ ok: true, estado });
   }
 
-  // Aprobado. Se anota el pago antes de tocar Luma: si la llamada a Luma falla,
-  // el pago igual queda registrado y el panel muestra que falta aprobar.
+  // Aprobado por el banco. Se marca el pago y ahí queda, esperando que alguien
+  // lo apruebe en Luma.
   const conPago = await anotar(
     registro.token,
     "pago confirmado por Wompi",
@@ -123,42 +117,22 @@ export async function POST(request: Request) {
     t.payment_method_type
   );
 
-  // Idempotencia: si Wompi reenvía el evento y ya se aprobó, no se vuelve a
-  // llamar a Luma ni se manda otro WhatsApp de confirmación.
-  if (registro.etapa === "aprobado" || conPago?.etapa === "aprobado") {
-    return NextResponse.json({ ok: true, nota: "ya estaba aprobado" });
+  // El aviso sale una sola vez. Wompi reenvía `transaction.updated` ante
+  // cualquier cambio de la transacción, y sin esta guarda la persona recibiría
+  // el mismo mensaje varias veces.
+  const yaAvisado = Boolean(registro.pago.confirmadoEn);
+  if (!yaAvisado && conPago?.telefono) {
+    after(() =>
+      enviarTexto({
+        a: conPago.telefono!,
+        texto:
+          `¡Recibimos tu pago, ${conPago.luma.nombreCorto}! 🎉\n\n` +
+          "Estamos activando tu entrada de Habi Next. En cuanto quede lista te llega al " +
+          "correo con el que te registraste, con tu código QR.\n\n" +
+          "Nos vemos el martes 20 de octubre en el Centro de Convenciones Avenida 68. 💜",
+      }).catch(() => null)
+    );
   }
-
-  after(async () => {
-    try {
-      const res = await aprobarInvitado(
-        registro.luma.eventId,
-        registro.luma.guestId,
-        "¡Confirmamos tu pago! Nos vemos en Habi Next el 20 de octubre."
-      );
-      const final = await anotar(
-        registro.token,
-        res.ok ? "aprobado en Luma" : "falló la aprobación en Luma",
-        (r) => ({
-          ...(res.ok ? { etapa: "aprobado" as const } : {}),
-          aprobacion: {
-            ...r.aprobacion,
-            ...(res.ok
-              ? { decididoEn: new Date().toISOString(), decididoPor: "Wompi (automático)" }
-              : { motivo: `HTTP ${res.status}: ${res.cuerpo}` }),
-          },
-        }),
-        res.ok ? undefined : res.cuerpo
-      );
-      if (final) await reflejar(final);
-
-      if (res.ok && registro.telefono) {
-        await enviarTexto({ a: registro.telefono, texto: CONFIRMACION }).catch(() => {});
-      }
-    } catch (error) {
-      console.error("[wompi] no se pudo aprobar en Luma:", (error as Error).message);
-    }
-  });
 
   return NextResponse.json({ ok: true });
 }

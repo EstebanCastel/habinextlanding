@@ -1,5 +1,4 @@
 import { after, NextResponse } from "next/server";
-import { reflejar } from "@/lib/hoja";
 import { anotar, guardarReferencia, porToken } from "@/lib/registros";
 
 /**
@@ -94,7 +93,7 @@ export async function GET(_request: Request, contexto: { params: Promise<{ token
   after(async () => {
     try {
       await guardarReferencia(referencia, registro.token);
-      const actualizado = await anotar(
+      await anotar(
         registro.token,
         "abrió el link de pago",
         (r) => ({
@@ -108,7 +107,6 @@ export async function GET(_request: Request, contexto: { params: Promise<{ token
         }),
         registro.tier
       );
-      if (actualizado) await reflejar(actualizado);
     } catch (error) {
       console.error("[pago] no se pudo anotar la apertura:", (error as Error).message);
     }

@@ -1,15 +1,9 @@
 import { after, NextResponse } from "next/server";
+import { darLaBienvenida, textoDeAprobacion } from "@/lib/bot";
 import { firmaLumaValida } from "@/lib/seguridad";
 import { tierDeEvento } from "@/lib/luma";
-import { reflejar } from "@/lib/hoja";
-import {
-  anotar,
-  crearORecuperar,
-  porToken,
-  tokenDeGuest,
-  type Registro,
-} from "@/lib/registros";
-import { enviarPlantilla } from "@/lib/whatsapp";
+import { anotar, crearORecuperar, porToken, tokenDeGuest } from "@/lib/registros";
+import { enviarTexto } from "@/lib/whatsapp";
 
 /**
  * Webhook de Luma — `POST https://www.habinext.com/webhook`.
@@ -72,57 +66,6 @@ function empresaDe(data: NonNullable<CuerpoLuma["data"]>): string | undefined {
   return v?.trim() || undefined;
 }
 
-/** Manda la plantilla del link de pago y deja anotado lo que pasó. */
-async function escribirPorWhatsApp(registro: Registro): Promise<void> {
-  if (!registro.telefono) {
-    await anotar(
-      registro.token,
-      "sin WhatsApp",
-      () => ({ whatsapp: { ...registro.whatsapp, error: "el registro no trae un celular usable" } }),
-      registro.luma.telefonoCrudo || "(vacío)"
-    );
-    return;
-  }
-  if (registro.whatsapp.enviadoEn) return; // ya se le escribió
-
-  const plantilla =
-    registro.tier === "vip" ? process.env.INFOBIP_TPL_VIP : process.env.INFOBIP_TPL_GENERAL;
-  if (!plantilla) {
-    await anotar(registro.token, "sin plantilla configurada", () => ({}));
-    return;
-  }
-
-  const salida = await enviarPlantilla({
-    a: registro.telefono,
-    plantilla,
-    nombre: registro.luma.nombreCorto || "hola",
-    token: registro.token,
-    callbackData: { token: registro.token },
-  }).catch((error: Error) => ({
-    ok: false as const,
-    status: 0,
-    messageId: null,
-    estado: null,
-    error: error.message,
-  }));
-
-  await anotar(
-    registro.token,
-    salida.ok ? "WhatsApp enviado" : "falló el envío de WhatsApp",
-    (r) => ({
-      etapa: salida.ok ? ("mensaje_enviado" as const) : r.etapa,
-      whatsapp: {
-        ...r.whatsapp,
-        plantilla,
-        ...(salida.messageId ? { messageId: salida.messageId } : {}),
-        ...(salida.ok ? { enviadoEn: new Date().toISOString(), error: undefined } : {}),
-        ...(salida.ok ? {} : { error: salida.error || `HTTP ${salida.status}` }),
-      },
-    }),
-    salida.ok ? (salida.estado ?? undefined) : salida.error
-  );
-}
-
 export async function POST(request: Request) {
   // El cuerpo crudo, tal cual llegó: volver a serializar el JSON cambiaría el
   // digest y ninguna firma legítima cuadraría.
@@ -159,7 +102,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (tipo === "guest.registered" || tipo === "ticket.registered") {
+    // Solo `guest.registered` crea. `ticket.registered` describe el mismo
+    // hecho desde la otra punta y llega a la vez: tratar los dos como alta
+    // dejaba a la persona con dos registros y dos links de pago distintos.
+    if (tipo === "guest.registered") {
       const { registro, nuevo } = await crearORecuperar({
         guestId: data.id,
         eventId,
@@ -174,12 +120,7 @@ export async function POST(request: Request) {
 
       // Solo la primera vez se escribe. El reintento de Luma cae acá y sale
       // sin hacer nada, que es exactamente lo que tiene que pasar.
-      if (nuevo) await escribirPorWhatsApp(registro);
-
-      after(async () => {
-        const fresco = await porToken(registro.token);
-        if (fresco) await reflejar(fresco);
-      });
+      if (nuevo) await darLaBienvenida(registro);
 
       return NextResponse.json({ ok: true, nuevo });
     }
@@ -189,19 +130,42 @@ export async function POST(request: Request) {
       if (!token) return NextResponse.json({ ok: true, nota: "sin registro previo" });
 
       const estado = data.approval_status || "";
+      const previo = await porToken(token);
+      const yaEstabaAprobado = previo?.etapa === "aprobado";
+
       const actualizado = await anotar(
         token,
         tipo === "guest.refunded" ? "reembolso en Luma" : `estado en Luma: ${estado}`,
         (r) => ({
           luma: { ...r.luma, estadoAprobacion: estado || r.luma.estadoAprobacion },
-          // Aprobado en Luma —por este sistema o a mano desde el panel de
-          // Luma— es el final del embudo: la entrada ya salió.
-          ...(estado === "approved" ? { etapa: "aprobado" as const } : {}),
+          // Aprobar se hace desde Luma, y este webhook es cómo nos enteramos.
+          // Es el final del embudo: la entrada con el QR ya salió por correo.
+          ...(estado === "approved"
+            ? {
+                etapa: "aprobado" as const,
+                aprobacion: {
+                  ...r.aprobacion,
+                  decididoEn: r.aprobacion.decididoEn ?? new Date().toISOString(),
+                  decididoPor: r.aprobacion.decididoPor ?? "Luma",
+                },
+              }
+            : {}),
           ...(estado === "declined" ? { etapa: "rechazado" as const } : {}),
         })
       );
 
-      if (actualizado) after(() => reflejar(actualizado));
+      // El aviso sale una sola vez: Luma manda `guest.updated` por cualquier
+      // cambio, y sin esta guarda alguien recibiría el mismo "¡Listo!" cada
+      // vez que se le tocara algo del registro.
+      if (estado === "approved" && !yaEstabaAprobado && actualizado?.telefono) {
+        after(() =>
+          enviarTexto({
+            a: actualizado.telefono!,
+            texto: textoDeAprobacion(actualizado.luma.nombreCorto),
+          }).catch(() => null)
+        );
+      }
+
       return NextResponse.json({ ok: true });
     }
 

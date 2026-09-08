@@ -92,8 +92,14 @@ async function despachar(ruta: string, mensaje: Record<string, unknown>): Promis
 export async function enviarPlantilla(opciones: {
   a: string;
   plantilla: string;
-  nombre: string;
-  token: string;
+  /** Valores de `{{1}}`, `{{2}}`… en el orden en que aparecen en el cuerpo. */
+  placeholders: string[];
+  /**
+   * Payload de cada botón de respuesta rápida, en el mismo orden en que están
+   * en la plantilla. Todos tienen que ir: si la plantilla declara dos botones
+   * y el envío manda uno, Meta descarta el mensaje.
+   */
+  botones: string[];
   callbackData?: unknown;
 }): Promise<Salida> {
   const notifyUrl = urlDeReportes();
@@ -104,14 +110,16 @@ export async function enviarPlantilla(opciones: {
       templateName: opciones.plantilla,
       language: "es_CO",
       templateData: {
-        body: { placeholders: [opciones.nombre, opciones.token] },
-        // El botón «Tengo una duda» de la plantilla tiene que declararse en el
-        // envío: sin esto Infobip acepta el POST (PENDING_ENROUTE) y Meta lo
-        // descarta después con "Failed to match template parameters", de modo
-        // que el mensaje nunca llega y el único rastro está en el reporte de
-        // entrega. El payload lleva el token para reconocer a la persona
-        // cuando toca el botón y su respuesta vuelve por el webhook.
-        buttons: [{ type: "QUICK_REPLY", parameter: `DUDA_${opciones.token}` }],
+        body: { placeholders: opciones.placeholders.map(String) },
+        // Los botones de la plantilla tienen que declararse en el envío: sin
+        // esto Infobip acepta el POST (PENDING_ENROUTE) y Meta lo descarta
+        // después con "Failed to match template parameters", de modo que el
+        // mensaje nunca llega y el único rastro está en el reporte de entrega.
+        // El payload lleva el token para reconocer a la persona cuando toca el
+        // botón y su respuesta vuelve por el webhook.
+        ...(opciones.botones.length
+          ? { buttons: opciones.botones.map((p) => ({ type: "QUICK_REPLY", parameter: p })) }
+          : {}),
       },
     },
     ...(notifyUrl ? { notifyUrl } : {}),

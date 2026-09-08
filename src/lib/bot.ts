@@ -1,0 +1,202 @@
+import {
+  agregarInvitado,
+  buscarInvitadoPorEmail,
+  eventoDeTier,
+  rechazarInvitado,
+} from "./luma";
+import {
+  anotar,
+  apuntarAInvitado,
+  diferenciaVip,
+  limpiarUpgrade,
+  marcarUpgradePendiente,
+  precioVigente,
+  type Registro,
+} from "./registros";
+import { enviarPlantilla, enviarTexto } from "./whatsapp";
+
+/**
+ * El bot de boletería. Toda la conversación cabe en dos decisiones:
+ *
+ *   se registró  →  ¿VIP o General?
+ *                   VIP     → link de pago, y a esperar el comprobante
+ *                   General → link de pago + «por X más te pasas a VIP»
+ *                             └─ si dice que sí → se pasa a VIP y recibe el
+ *                                link del VIP; si no dice nada, sigue en
+ *                                General, que es lo que la mayoría hará
+ *
+ * De ahí en adelante solo queda recibir el comprobante y esperar a que alguien
+ * apruebe en Luma. La aprobación no vive acá: se hace desde Luma, y este
+ * servicio se entera por el webhook `guest.updated`.
+ */
+
+/** Payloads de los botones. Llevan el token para saber de quién es la respuesta. */
+export const BOTON_VIP = "VIP";
+export const BOTON_DUDA = "DUDA";
+const payload = (prefijo: string, token: string) => `${prefijo}_${token}`;
+
+/**
+ * Primer mensaje, el que sale apenas alguien se registra en Luma.
+ *
+ * Son dos plantillas distintas porque son dos conversaciones distintas: a
+ * quien ya eligió VIP no hay nada que ofrecerle, y a quien eligió General se
+ * le muestra qué se está perdiendo antes de que pague — que es el único
+ * momento en que ese mensaje no suena a venta insistente, porque todavía no
+ * ha pagado nada.
+ */
+export async function darLaBienvenida(registro: Registro): Promise<void> {
+  if (!registro.telefono) {
+    await anotar(
+      registro.token,
+      "sin WhatsApp",
+      (r) => ({ whatsapp: { ...r.whatsapp, error: "el registro no trae un celular usable" } }),
+      registro.luma.telefonoCrudo || "(vacío)"
+    );
+    return;
+  }
+  if (registro.whatsapp.enviadoEn) return; // ya se le escribió
+
+  const esVip = registro.tier === "vip";
+  const plantilla = esVip
+    ? process.env.INFOBIP_TPL_VIP
+    : process.env.INFOBIP_TPL_GENERAL_UPSELL;
+  if (!plantilla) {
+    await anotar(registro.token, "sin plantilla configurada", () => ({}));
+    return;
+  }
+
+  const diferencia = diferenciaVip();
+  const nombre = registro.luma.nombreCorto || "hola";
+
+  const salida = await enviarPlantilla({
+    a: registro.telefono,
+    plantilla,
+    // El orden es el de los marcadores del cuerpo de cada plantilla: la de VIP
+    // lleva nombre y token; la de General mete la diferencia de precio en medio.
+    placeholders: esVip ? [nombre, registro.token] : [nombre, diferencia, registro.token],
+    botones: esVip
+      ? [payload(BOTON_DUDA, registro.token)]
+      : [payload(BOTON_VIP, registro.token), payload(BOTON_DUDA, registro.token)],
+    callbackData: { token: registro.token },
+  }).catch((error: Error) => ({
+    ok: false as const,
+    status: 0,
+    messageId: null,
+    estado: null,
+    error: error.message,
+  }));
+
+  await anotar(
+    registro.token,
+    salida.ok ? "WhatsApp de bienvenida enviado" : "falló el envío de WhatsApp",
+    (r) => ({
+      etapa: salida.ok ? ("mensaje_enviado" as const) : r.etapa,
+      whatsapp: {
+        ...r.whatsapp,
+        plantilla,
+        ...(salida.messageId ? { messageId: salida.messageId } : {}),
+        ...(salida.ok ? { enviadoEn: new Date().toISOString(), error: undefined } : {}),
+        ...(salida.ok ? {} : { error: salida.error || `HTTP ${salida.status}` }),
+      },
+      ...(esVip || !salida.ok
+        ? {}
+        : { upsell: { ...r.upsell, ofrecidoEn: new Date().toISOString(), diferencia } }),
+    }),
+    salida.ok ? (salida.estado ?? undefined) : salida.error
+  );
+}
+
+/**
+ * Alguien que venía por General tocó «Prefiero el VIP».
+ *
+ * En Luma son dos eventos separados, así que subir de categoría es darse de
+ * alta en el de VIP y bajarse del de General. El orden importa: primero se
+ * marca el upgrade —porque el alta dispara un `guest.registered` que si no
+ * partiría a la persona en dos registros—, después se da de alta, y solo al
+ * final se la baja del evento viejo. Si algo falla en medio, la persona queda
+ * inscrita en los dos y eso se arregla mirando; queda registrado en la
+ * bitácora.
+ */
+export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota: string }> {
+  if (registro.tier === "vip") return { ok: true, nota: "ya era VIP" };
+
+  const eventoVip = eventoDeTier("vip");
+  const eventoGeneral = registro.luma.eventId;
+  if (!eventoVip) return { ok: false, nota: "falta LUMA_EVENT_VIP" };
+
+  await marcarUpgradePendiente(registro.luma.email, registro.token);
+
+  const alta = await agregarInvitado(eventoVip, {
+    email: registro.luma.email,
+    nombre: registro.luma.nombre,
+    telefono: registro.luma.telefonoCrudo || (registro.telefono ? `+${registro.telefono}` : null),
+  });
+  if (!alta.ok) {
+    await limpiarUpgrade(registro.luma.email);
+    await anotar(registro.token, "no se pudo pasar a VIP", () => ({}), alta.cuerpo);
+    return { ok: false, nota: `Luma rechazó el alta en VIP (${alta.status})` };
+  }
+
+  // El alta no devuelve el id del invitado, así que se busca por correo. Sin
+  // ese id no se podría relacionar la aprobación que se haga después en Luma.
+  const nuevo = await buscarInvitadoPorEmail(eventoVip, registro.luma.email);
+  if (nuevo?.id) await apuntarAInvitado(registro.token, nuevo.id);
+
+  const { etiqueta, precio } = precioVigente("vip");
+  const actualizado = await anotar(
+    registro.token,
+    "se pasó a VIP desde WhatsApp",
+    (r) => ({
+      tier: "vip" as const,
+      luma: { ...r.luma, eventId: eventoVip, ...(nuevo?.id ? { guestId: nuevo.id } : {}) },
+      // El precio se recalcula: ya no paga General.
+      pago: { ...r.pago, etiquetaEtapa: etiqueta, precio, abiertoEn: undefined, url: undefined },
+      upsell: { ...r.upsell, respondidoEn: new Date().toISOString(), decision: "vip" as const },
+    }),
+    precio
+  );
+
+  // Bajarlo de General va al final y sin correo: que Luma le mande un "no
+  // asistirás" justo cuando acaba de subir de categoría sería desconcertante.
+  if (eventoGeneral && eventoGeneral !== eventoVip) {
+    await rechazarInvitado(eventoGeneral, registro.luma.guestId, undefined, false).catch(() => null);
+  }
+  await limpiarUpgrade(registro.luma.email);
+
+  // La persona acaba de escribirnos, así que la ventana de 24 horas de Meta
+  // está abierta y esto puede ir como texto libre, sin plantilla.
+  if (actualizado?.telefono) {
+    await enviarTexto({
+      a: actualizado.telefono,
+      texto:
+        `¡Excelente decisión, ${actualizado.luma.nombreCorto}! 🙌 Te pasamos a *VIP*.\n\n` +
+        `Vas a estar en primeras filas, con acceso a la zona VIP, almuerzo, kit premium, ` +
+        `las guías exclusivas y tu avatar digital. Son 250 cupos y uno acaba de quedar a tu nombre.\n\n` +
+        `Tu entrada VIP queda en ${precio} (${etiqueta.toLowerCase()}). Este es tu link seguro y personal:\n` +
+        `https://www.habinext.com/p/${actualizado.token}\n\n` +
+        `Apenas confirmemos el pago te llega tu entrada con el código QR. 💜`,
+    }).catch(() => null);
+  }
+
+  return { ok: true, nota: "pasado a VIP" };
+}
+
+/** Acuse cuando alguien manda el comprobante. */
+export const RESPUESTA_COMPROBANTE =
+  "¡Gracias! 🙌 Ya recibimos tu comprobante y lo estamos revisando. " +
+  "Apenas quede confirmado te llega tu entrada de Habi Next al correo, con tu código QR. " +
+  "Te avisamos por acá mismo cuando esté lista.";
+
+export const RESPUESTA_DUDA =
+  "¡Hola! 👋 Con gusto te ayudamos. Cuéntanos por acá qué necesitas saber de Habi Next " +
+  "y una persona del equipo te responde hoy mismo.";
+
+/** Lo que se le dice a quien acaba de ser aprobado en Luma. */
+export function textoDeAprobacion(nombre: string): string {
+  return (
+    `¡Listo${nombre ? `, ${nombre}` : ""}! 🎉 Tu registro a Habi Next quedó aprobado.\n\n` +
+    "Tu entrada con el código QR va en camino al correo con el que te registraste. " +
+    "Guárdala: es la que te van a pedir en la puerta.\n\n" +
+    "Nos vemos el martes 20 de octubre en el Centro de Convenciones Avenida 68. 💜"
+  );
+}

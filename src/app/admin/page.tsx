@@ -3,12 +3,16 @@ import { todos, type Etapa, type Registro } from "@/lib/registros";
 import { haySesion } from "@/lib/sesion";
 
 /**
- * Panel de operación de la boletería. Es la pantalla donde alguien del equipo
- * ve, persona por persona, en qué punto va: si le llegó el WhatsApp, si abrió
- * el pago, si mandó comprobante, y desde ahí aprueba o rechaza.
+ * Panel de operación de la boletería: la trazabilidad completa de cada persona
+ * en una sola pantalla, desde que se registra en Luma hasta que tiene su
+ * entrada. Reemplaza a la hoja de cálculo que había antes — todo lo que se
+ * miraba allí se mira acá, sin desfase y sin un espejo que mantener.
+ *
+ * Lo que no está acá es aprobar: eso se hace en Luma, que es donde está la
+ * lista de invitados. El panel muestra a quién le toca y lleva directo.
  *
  * Está fuera de los buscadores y detrás de una clave. No se cachea nunca: una
- * versión vieja de esta página haría que alguien apruebe mirando datos de hace
+ * versión vieja de esta página haría que alguien decida mirando datos de hace
  * cinco minutos.
  */
 
@@ -30,6 +34,11 @@ const ETAPAS: { id: Etapa; texto: string }[] = [
   { id: "pago_confirmado", texto: "Pago confirmado" },
   { id: "aprobado", texto: "Aprobado" },
 ];
+
+const LUMA_INVITADOS: Record<string, string> = {
+  general: "https://luma.com/habinext-general",
+  vip: "https://luma.com/habinext-vip",
+};
 
 function hora(iso?: string | null): string {
   if (!iso) return "—";
@@ -76,13 +85,14 @@ function Entrar({ error }: { error: boolean }) {
 }
 
 function Embudo({ registros }: { registros: Registro[] }) {
-  const total = registros.length;
-  // Cuenta acumulada: quien llegó a "pagó" también pasó por "le llegó el
-  // mensaje". Contar solo la etapa actual haría ver el embudo lleno de huecos.
+  const vivos = registros.filter((r) => r.etapa !== "rechazado");
+  const total = vivos.length;
   const orden = ETAPAS.map((e) => e.id);
+  // Conteo acumulado: quien pagó también pasó por "le llegó el mensaje".
+  // Contar solo la etapa actual dejaría el embudo lleno de huecos.
   const conteo = ETAPAS.map((etapa, i) => ({
     ...etapa,
-    n: registros.filter((r) => orden.indexOf(r.etapa) >= i && r.etapa !== "rechazado").length,
+    n: vivos.filter((r) => orden.indexOf(r.etapa) >= i).length,
   }));
 
   return (
@@ -102,17 +112,37 @@ function Embudo({ registros }: { registros: Registro[] }) {
   );
 }
 
+/** Todo lo que le pasó a una persona, en orden. Es el detalle que traía la hoja. */
+function Bitacora({ r }: { r: Registro }) {
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-xs text-white/40 hover:text-white/70">
+        Historia ({r.bitacora.length})
+      </summary>
+      <ol className="mt-1 border-l border-white/10 pl-3">
+        {r.bitacora.map((b, i) => (
+          <li key={i} className="text-xs text-white/50">
+            <span className="text-white/35">{hora(b.en)}</span> · {b.que}
+            {b.detalle ? <span className="text-white/35"> — {b.detalle}</span> : null}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
 function Fila({ r }: { r: Registro }) {
-  const pendiente = r.etapa !== "aprobado" && r.etapa !== "rechazado";
-  const listoParaAprobar = r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado";
+  const decidido = r.etapa === "aprobado" || r.etapa === "rechazado";
+  const leToca = r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado";
 
   return (
-    <tr className="border-t border-white/8 align-top">
+    <tr className={`border-t border-white/8 align-top ${leToca ? "bg-violet/[0.07]" : ""}`}>
       <td className="px-3 py-3">
         <p className="font-medium">{r.luma.nombre || "(sin nombre)"}</p>
         <p className="text-xs text-white/45">{r.luma.email}</p>
         <p className="text-xs text-white/45">{r.telefono ? `+${r.telefono}` : "sin celular ⚠"}</p>
         {r.luma.empresa ? <p className="text-xs text-white/35">{r.luma.empresa}</p> : null}
+        <Bitacora r={r} />
       </td>
       <td className="px-3 py-3">
         <span
@@ -123,15 +153,25 @@ function Fila({ r }: { r: Registro }) {
           {r.tier === "vip" ? "VIP" : "General"}
         </span>
         <p className="mt-1 text-xs text-white/45">{r.pago.precio}</p>
+        <p className="text-xs text-white/35">{r.pago.etiquetaEtapa}</p>
+        {r.upsell?.decision === "vip" ? (
+          <p className="mt-1 text-xs text-violet-soft">subió desde General</p>
+        ) : null}
+        {r.tier === "general" && r.upsell?.ofrecidoEn ? (
+          <p className="mt-1 text-xs text-white/35">se le ofreció VIP</p>
+        ) : null}
       </td>
       <td className="px-3 py-3 text-xs">
-        <p className={listoParaAprobar ? "font-semibold text-violet-soft" : ""}>
+        <p className={leToca ? "font-semibold text-violet-soft" : ""}>
           {ETAPAS.find((e) => e.id === r.etapa)?.texto ?? r.etapa}
         </p>
         <p className="text-white/40">Registro {hora(r.luma.registradoEn)}</p>
         <p className="text-white/40">WhatsApp {hora(r.whatsapp.enviadoEn)}</p>
-        {r.whatsapp.error ? <p className="text-red-400">{r.whatsapp.error}</p> : null}
+        <p className="text-white/40">Entregado {hora(r.whatsapp.entregadoEn)}</p>
+        <p className="text-white/40">Leído {hora(r.whatsapp.leidoEn)}</p>
         <p className="text-white/40">Abrió pago {hora(r.pago.abiertoEn)}</p>
+        <p className="text-white/40">Pago {hora(r.pago.confirmadoEn)}</p>
+        {r.whatsapp.error ? <p className="text-red-400">{r.whatsapp.error}</p> : null}
       </td>
       <td className="px-3 py-3 text-xs">
         {r.pago.comprobantes.length === 0 ? (
@@ -146,7 +186,7 @@ function Fila({ r }: { r: Registro }) {
                   rel="noreferrer noopener"
                   className="text-violet-soft underline"
                 >
-                  {c.tipo} · {hora(c.en)}
+                  Ver {c.tipo.toLowerCase()} · {hora(c.en)}
                 </a>
               ) : (
                 <span className="text-white/60">
@@ -157,23 +197,29 @@ function Fila({ r }: { r: Registro }) {
             </p>
           ))
         )}
+        {r.pago.referencia ? (
+          <p className="mt-1 text-white/35">Ref. {r.pago.referencia}</p>
+        ) : null}
       </td>
       <td className="px-3 py-3">
         <div className="flex flex-col gap-1.5">
-          {pendiente ? (
+          {decidido ? (
+            <p className="text-xs text-white/50">
+              {r.etapa === "aprobado" ? "Entrada enviada" : "Rechazado"}
+              <span className="block text-white/35">{hora(r.aprobacion.decididoEn)}</span>
+            </p>
+          ) : (
             <>
-              <form method="post" action="/api/admin">
-                <input type="hidden" name="accion" value="aprobar" />
-                <input type="hidden" name="token" value={r.token} />
-                <button
-                  type="submit"
-                  className={`w-full rounded-full px-3 py-1.5 text-xs font-semibold ${
-                    listoParaAprobar ? "bg-violet text-white" : "bg-white/10 text-white/70"
-                  }`}
-                >
-                  Aprobar y enviar entrada
-                </button>
-              </form>
+              <a
+                href={LUMA_INVITADOS[r.tier]}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={`rounded-full px-3 py-1.5 text-center text-xs font-semibold ${
+                  leToca ? "bg-violet text-white" : "border border-white/15 text-white/70"
+                }`}
+              >
+                {leToca ? "Aprobar en Luma →" : "Ver en Luma"}
+              </a>
               <form method="post" action="/api/admin">
                 <input type="hidden" name="accion" value="reenviar" />
                 <input type="hidden" name="token" value={r.token} />
@@ -184,23 +230,19 @@ function Fila({ r }: { r: Registro }) {
                   Reenviar WhatsApp
                 </button>
               </form>
-              <form method="post" action="/api/admin">
-                <input type="hidden" name="accion" value="rechazar" />
-                <input type="hidden" name="token" value={r.token} />
-                <button
-                  type="submit"
-                  className="w-full rounded-full border border-red-500/30 px-3 py-1.5 text-xs text-red-300/80"
-                >
-                  Rechazar
-                </button>
-              </form>
+              {r.tier === "general" ? (
+                <form method="post" action="/api/admin">
+                  <input type="hidden" name="accion" value="pasar-a-vip" />
+                  <input type="hidden" name="token" value={r.token} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-full border border-violet/40 px-3 py-1.5 text-xs text-violet-soft"
+                  >
+                    Pasar a VIP
+                  </button>
+                </form>
+              ) : null}
             </>
-          ) : (
-            <p className="text-xs text-white/50">
-              {r.etapa === "aprobado" ? "Entrada enviada" : "Rechazado"}
-              <span className="block text-white/35">{hora(r.aprobacion.decididoEn)}</span>
-              <span className="block text-white/35">{r.aprobacion.decididoPor}</span>
-            </p>
           )}
         </div>
       </td>
@@ -218,9 +260,12 @@ export default async function Panel({
   if (!(await haySesion())) return <Entrar error={error === "1"} />;
 
   const registros = await todos().catch(() => [] as Registro[]);
+  const pendientes = registros.filter(
+    (r) => r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado"
+  );
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10">
+    <main className="mx-auto max-w-[90rem] px-4 py-10">
       <header className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Boletería Habi Next</h1>
@@ -229,31 +274,35 @@ export default async function Panel({
             octubre
           </p>
         </div>
-        <div className="flex gap-2">
-          <form method="post" action="/api/admin">
-            <input type="hidden" name="accion" value="resincronizar" />
-            <button
-              type="submit"
-              className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70"
-            >
-              Reconstruir la hoja
-            </button>
-          </form>
-          <form method="post" action="/api/admin">
-            <input type="hidden" name="accion" value="salir" />
-            <button
-              type="submit"
-              className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70"
-            >
-              Salir
-            </button>
-          </form>
-        </div>
+        <form method="post" action="/api/admin">
+          <input type="hidden" name="accion" value="salir" />
+          <button
+            type="submit"
+            className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70"
+          >
+            Salir
+          </button>
+        </form>
       </header>
 
       {aviso ? (
         <p className="mb-6 rounded-lg border border-violet/40 bg-violet/10 px-4 py-3 text-sm">
           {aviso}
+        </p>
+      ) : null}
+
+      {pendientes.length > 0 ? (
+        <p className="mb-6 rounded-lg border border-violet/40 bg-violet/10 px-4 py-3 text-sm">
+          <strong>{pendientes.length}</strong>{" "}
+          {pendientes.length === 1 ? "persona pagó y espera" : "personas pagaron y esperan"} su
+          entrada. Se aprueban en Luma:{" "}
+          <a href={LUMA_INVITADOS.general} target="_blank" rel="noreferrer noopener" className="underline">
+            invitados de General
+          </a>{" "}
+          ·{" "}
+          <a href={LUMA_INVITADOS.vip} target="_blank" rel="noreferrer noopener" className="underline">
+            invitados de VIP
+          </a>
         </p>
       ) : null}
 
@@ -265,7 +314,7 @@ export default async function Panel({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-white/10">
-          <table className="w-full min-w-[64rem] text-left text-sm">
+          <table className="w-full min-w-[70rem] text-left text-sm">
             <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
               <tr>
                 <th className="px-3 py-3 font-medium">Persona</th>

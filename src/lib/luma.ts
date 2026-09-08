@@ -54,14 +54,90 @@ export async function aprobarInvitado(eventId: string, guestId: string, mensaje?
   });
 }
 
-export async function rechazarInvitado(eventId: string, guestId: string, mensaje?: string) {
+export async function rechazarInvitado(
+  eventId: string,
+  guestId: string,
+  mensaje?: string,
+  avisarPorCorreo = true
+) {
   return pedir("/v1/events/guests/update-status", {
     event_id: eventId,
     guest_id: guestId,
     status: "declined",
-    send_email: true,
+    send_email: avisarPorCorreo,
     ...(mensaje ? { message: mensaje.slice(0, 200) } : {}),
   });
+}
+
+/**
+ * Da de alta a alguien en un evento, pendiente de aprobación y sin correo.
+ * Se usa al pasar a alguien de General a VIP: no es una invitación nueva, es
+ * la misma persona cambiando de puerta, y un correo de Luma en ese momento
+ * solo confundiría.
+ */
+export async function agregarInvitado(
+  eventId: string,
+  persona: { email: string; nombre: string; telefono: string | null }
+) {
+  return pedir("/v1/events/guests/add", {
+    event_id: eventId,
+    approval_status: "pending_approval",
+    send_email: false,
+    guests: [
+      {
+        email: persona.email,
+        name: persona.nombre || null,
+        registration_answers: [
+          ...(persona.telefono
+            ? [{ question_id: "whatsapp", question_type: "phone-number", value: persona.telefono }]
+            : []),
+        ],
+      },
+    ],
+  });
+}
+
+/**
+ * Busca a alguien en la lista de invitados por su correo. Hace falta porque
+ * `guests/add` no devuelve el id del invitado que creó, y sin ese id no se
+ * puede relacionar después la aprobación que alguien haga desde Luma.
+ */
+export async function buscarInvitadoPorEmail(
+  eventId: string,
+  email: string
+): Promise<{ id: string; estado: string } | null> {
+  const objetivo = email.trim().toLowerCase();
+  let cursor: string | undefined;
+
+  for (let pagina = 0; pagina < 20; pagina += 1) {
+    const url = new URL(`${BASE}/v1/events/guests/list`);
+    url.searchParams.set("event_id", eventId);
+    url.searchParams.set("pagination_limit", "100");
+    if (cursor) url.searchParams.set("pagination_cursor", cursor);
+
+    const res = await fetch(url, {
+      headers: { "x-luma-api-key": llave() },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json().catch(() => null)) as {
+      entries?: { guest?: Record<string, unknown> }[];
+      has_more?: boolean;
+      next_cursor?: string;
+    } | null;
+
+    for (const fila of data?.entries ?? []) {
+      const g = (fila.guest ?? fila) as Record<string, unknown>;
+      if (String(g.user_email ?? "").trim().toLowerCase() !== objetivo) continue;
+      const id = String(g.api_id ?? g.id ?? "");
+      if (id) return { id, estado: String(g.approval_status ?? "") };
+    }
+
+    if (!data?.has_more || !data.next_cursor) return null;
+    cursor = data.next_cursor;
+  }
+  return null;
 }
 
 /** Datos completos de un invitado, para reconciliar si un webhook llegó cojo. */
