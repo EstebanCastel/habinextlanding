@@ -92,13 +92,11 @@ async function escribirPorWhatsApp(registro: Registro): Promise<void> {
     return;
   }
 
-  const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
   const salida = await enviarPlantilla({
     a: registro.telefono,
     plantilla,
     nombre: registro.luma.nombreCorto || "hola",
     token: registro.token,
-    notifyUrl: `${sitio}/api/infobip?dlr=1`,
     callbackData: { token: registro.token },
   }).catch((error: Error) => ({
     ok: false as const,

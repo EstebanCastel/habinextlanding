@@ -38,6 +38,22 @@ export type Salida = {
   error?: string;
 };
 
+/**
+ * A dónde le pide Infobip que mande los reportes de entrega.
+ *
+ * Se arma acá y en un solo lugar porque el token de la query no es opcional:
+ * sin él, `/api/infobip` responde 401 y los reportes se pierden en silencio —
+ * el mensaje sale, la persona lo recibe, y el panel se queda diciendo
+ * «enviado» para siempre. Es el tipo de fallo que no se nota hasta que alguien
+ * pregunta por qué nadie parece haber leído nada.
+ */
+function urlDeReportes(): string | undefined {
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+  const token = process.env.INFOBIP_WEBHOOK_TOKEN;
+  if (!token) return undefined;
+  return `${sitio}/api/infobip?dlr=1&k=${encodeURIComponent(token)}`;
+}
+
 async function despachar(ruta: string, mensaje: Record<string, unknown>): Promise<Salida> {
   const res = await fetch(`${base()}${ruta}`, {
     method: "POST",
@@ -78,9 +94,9 @@ export async function enviarPlantilla(opciones: {
   plantilla: string;
   nombre: string;
   token: string;
-  notifyUrl?: string;
   callbackData?: unknown;
 }): Promise<Salida> {
+  const notifyUrl = urlDeReportes();
   return despachar("/whatsapp/1/message/template", {
     from: linea(),
     to: opciones.a.replace(/\D/g, ""),
@@ -89,22 +105,19 @@ export async function enviarPlantilla(opciones: {
       language: "es_CO",
       templateData: { body: { placeholders: [opciones.nombre, opciones.token] } },
     },
-    ...(opciones.notifyUrl ? { notifyUrl: opciones.notifyUrl } : {}),
+    ...(notifyUrl ? { notifyUrl } : {}),
     ...(opciones.callbackData !== undefined
       ? { callbackData: JSON.stringify(opciones.callbackData) }
       : {}),
   });
 }
 
-export async function enviarTexto(opciones: {
-  a: string;
-  texto: string;
-  notifyUrl?: string;
-}): Promise<Salida> {
+export async function enviarTexto(opciones: { a: string; texto: string }): Promise<Salida> {
+  const notifyUrl = urlDeReportes();
   return despachar("/whatsapp/1/message/text", {
     from: linea(),
     to: opciones.a.replace(/\D/g, ""),
     content: { text: opciones.texto },
-    ...(opciones.notifyUrl ? { notifyUrl: opciones.notifyUrl } : {}),
+    ...(notifyUrl ? { notifyUrl } : {}),
   });
 }

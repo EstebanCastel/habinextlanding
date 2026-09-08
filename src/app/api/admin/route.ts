@@ -142,13 +142,11 @@ export async function POST(request: Request) {
       registro.tier === "vip" ? process.env.INFOBIP_TPL_VIP : process.env.INFOBIP_TPL_GENERAL;
     if (!plantilla) return volver("Falta configurar la plantilla de WhatsApp");
 
-    const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
     const salida = await enviarPlantilla({
       a: registro.telefono,
       plantilla,
       nombre: registro.luma.nombreCorto || "hola",
       token: registro.token,
-      notifyUrl: `${sitio}/api/infobip?dlr=1&k=${process.env.INFOBIP_WEBHOOK_TOKEN ?? ""}`,
       callbackData: { token: registro.token },
     }).catch((e: Error) => ({ ok: false as const, status: 0, messageId: null, estado: null, error: e.message }));
 
