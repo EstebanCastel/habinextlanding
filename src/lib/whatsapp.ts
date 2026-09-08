@@ -103,7 +103,16 @@ export async function enviarPlantilla(opciones: {
     content: {
       templateName: opciones.plantilla,
       language: "es_CO",
-      templateData: { body: { placeholders: [opciones.nombre, opciones.token] } },
+      templateData: {
+        body: { placeholders: [opciones.nombre, opciones.token] },
+        // El botón «Tengo una duda» de la plantilla tiene que declararse en el
+        // envío: sin esto Infobip acepta el POST (PENDING_ENROUTE) y Meta lo
+        // descarta después con "Failed to match template parameters", de modo
+        // que el mensaje nunca llega y el único rastro está en el reporte de
+        // entrega. El payload lleva el token para reconocer a la persona
+        // cuando toca el botón y su respuesta vuelve por el webhook.
+        buttons: [{ type: "QUICK_REPLY", parameter: `DUDA_${opciones.token}` }],
+      },
     },
     ...(notifyUrl ? { notifyUrl } : {}),
     ...(opciones.callbackData !== undefined
