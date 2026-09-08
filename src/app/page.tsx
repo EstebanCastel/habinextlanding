@@ -27,7 +27,12 @@ const jsonLd = {
   location: {
     "@type": "Place",
     name: EVENT.venue || EVENT.venueLabel,
-    address: { "@type": "PostalAddress", addressLocality: EVENT.city, addressCountry: "CO" },
+    address: {
+      "@type": "PostalAddress",
+      ...(EVENT.venueAddress ? { streetAddress: EVENT.venueAddress } : {}),
+      addressLocality: EVENT.city,
+      addressCountry: "CO",
+    },
   },
   organizer: { "@type": "Organization", name: "Habi", url: "https://habi.co" },
   offers: TICKETS.map((t) => ({

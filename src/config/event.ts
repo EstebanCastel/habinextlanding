@@ -18,8 +18,14 @@ export const EVENT = {
   startsAt: "2026-10-20T08:00:00-05:00",
   dateLong: "Martes 20 de octubre de 2026",
   dateShort: "20 de octubre",
-  /** Pendiente de confirmar: al tenerla, reemplazar por el nombre del recinto. */
-  venue: "",
+  /** Sede confirmada (4 sep 2026). */
+  venue: "Centro de Convenciones Avenida 68",
+  /**
+   * Domicilio del recinto. Solo alimenta el schema.org del evento; si queda
+   * vacío, el dato de ubicación se limita a la ciudad.
+   */
+  venueAddress: "",
+  /** Se usa como respaldo si `venue` se vacía entre ediciones del evento. */
   venueLabel: "Sede por confirmar",
   durationLabel: "Un día completo",
 } as const;
