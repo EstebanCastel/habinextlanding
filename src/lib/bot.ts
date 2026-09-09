@@ -4,15 +4,19 @@ import {
   eventoDeTier,
   rechazarInvitado,
 } from "./luma";
+import * as codigos from "./codigos";
 import {
   anotar,
   apuntarAInvitado,
+  crearCortesia,
   diferenciaVip,
-  limpiarUpgrade,
-  marcarUpgradePendiente,
   precioVigente,
+  reservarCorreo,
+  soltarCorreo,
   type Registro,
+  type Tier,
 } from "./registros";
+import { nuevoToken } from "./seguridad";
 import { enviarPlantilla, enviarTexto } from "./whatsapp";
 
 /**
@@ -174,7 +178,7 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
   const eventoGeneral = registro.luma.eventId;
   if (!eventoVip) return { ok: false, nota: "falta LUMA_EVENT_VIP" };
 
-  await marcarUpgradePendiente(registro.luma.email, registro.token);
+  await reservarCorreo(registro.luma.email, registro.token);
 
   const alta = await agregarInvitado(eventoVip, {
     email: registro.luma.email,
@@ -182,7 +186,7 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
     telefono: registro.luma.telefonoCrudo || (registro.telefono ? `+${registro.telefono}` : null),
   });
   if (!alta.ok) {
-    await limpiarUpgrade(registro.luma.email);
+    await soltarCorreo(registro.luma.email);
     await anotar(registro.token, "no se pudo pasar a VIP", () => ({}), alta.cuerpo);
     return { ok: false, nota: `Luma rechazó el alta en VIP (${alta.status})` };
   }
@@ -211,7 +215,7 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
   if (eventoGeneral && eventoGeneral !== eventoVip) {
     await rechazarInvitado(eventoGeneral, registro.luma.guestId, undefined, false).catch(() => null);
   }
-  await limpiarUpgrade(registro.luma.email);
+  await soltarCorreo(registro.luma.email);
 
   // La persona acaba de escribirnos, así que la ventana de 24 horas de Meta
   // está abierta y esto puede ir como texto libre, sin plantilla.
@@ -258,4 +262,94 @@ export function textoDeAprobacion(nombre: string): string {
     "Guárdala: es la que te van a pedir en la puerta.\n\n" +
     "Nos vemos el martes 20 de octubre en el Centro de Convenciones Avenida 68. 💜"
   );
+}
+
+/**
+ * Redime un código de invitación: la entrada sale gratis y aprobada.
+ *
+ * Es el único camino en que alguien queda aprobado sin que una persona lo
+ * mire, y se sostiene porque el código es la autorización: alguien del equipo
+ * lo creó, decidió cuántas entradas regala y hasta cuándo sirve. Por eso el
+ * cupo se descuenta antes de tocar Luma y se devuelve si el alta falla.
+ *
+ * A diferencia del registro normal, aquí no hay embudo de pago: se da de alta
+ * en Luma con `approval_status: "approved"` —y Luma manda la entrada con el QR
+ * en el acto— y el WhatsApp que sale es de bienvenida, sin link de pago.
+ */
+export async function redimirCodigo(datos: {
+  codigo: string;
+  tier: Tier;
+  nombre: string;
+  email: string;
+  telefono: string | null;
+}): Promise<{ ok: boolean; nota: string; token?: string }> {
+  const evento = eventoDeTier(datos.tier);
+  if (!evento) return { ok: false, nota: "Ese evento no está configurado" };
+
+  const correo = datos.email.trim().toLowerCase();
+  const token = nuevoToken();
+
+  const cupo = await codigos.tomarCupo(datos.codigo, {
+    email: correo,
+    nombre: datos.nombre,
+    tier: datos.tier,
+    token,
+  });
+  if (!cupo.ok) return { ok: false, nota: codigos.explicar(cupo.motivo) };
+
+  // La reserva va antes del alta: el alta dispara un `guest.registered` y sin
+  // esta marca ese webhook abriría un registro paralelo para la misma persona.
+  await reservarCorreo(correo, token);
+
+  const alta = await agregarInvitado(evento, {
+    email: correo,
+    nombre: datos.nombre,
+    telefono: datos.telefono,
+    aprobado: true,
+  });
+  if (!alta.ok) {
+    await soltarCorreo(correo);
+    await codigos.devolverCupo(datos.codigo, token);
+    return { ok: false, nota: "No pudimos registrarte en Luma. Inténtalo de nuevo en un momento." };
+  }
+
+  const invitado = await buscarInvitadoPorEmail(evento, correo);
+  const ahora = new Date().toISOString();
+
+  const registro = await crearCortesia({
+    token,
+    tier: datos.tier,
+    codigo: codigos.normalizar(datos.codigo),
+    guestId: invitado?.id ?? "",
+    eventId: evento,
+    email: correo,
+    nombre: datos.nombre,
+    telefonoCrudo: datos.telefono,
+    redimidoEn: ahora,
+  });
+
+  await soltarCorreo(correo);
+
+  if (registro.telefono) {
+    const plantilla = process.env.INFOBIP_TPL_CORTESIA;
+    if (plantilla) {
+      const salida = await enviarPlantilla({
+        a: registro.telefono,
+        plantilla,
+        placeholders: [
+          registro.luma.nombreCorto || "hola",
+          datos.tier === "vip" ? "VIP" : "General",
+        ],
+        botones: [],
+        callbackData: { token },
+      }).catch(() => null);
+      if (salida?.ok) {
+        await anotar(token, "WhatsApp de cortesía enviado", (r) => ({
+          whatsapp: { ...r.whatsapp, plantilla, enviadoEn: ahora, messageId: salida.messageId ?? undefined },
+        }));
+      }
+    }
+  }
+
+  return { ok: true, nota: "Entrada confirmada", token };
 }

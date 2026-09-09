@@ -97,6 +97,11 @@ export type Registro = {
     respondidoEn?: string;
     decision?: "vip" | "general";
   };
+  /**
+   * Presente solo si la entrada salió de un código de invitación. Quien entra
+   * por acá no pasa por el embudo de pago: nace aprobado.
+   */
+  cortesia?: { codigo: string; redimidoEn: string };
   /** Bitácora append-only: es lo que permite auditar qué pasó y cuándo. */
   bitacora: { en: string; que: string; detalle?: string }[];
   creadoEn: string;
@@ -107,8 +112,16 @@ export const rutaRegistro = (token: string) => `registros/${token}.json`;
 const rutaIndiceGuest = (guestId: string) => `indice/guest/${guestId}.json`;
 const rutaIndiceTelefono = (telefono: string) => `indice/telefono/${telefono}.json`;
 const rutaIndiceReferencia = (ref: string) => `indice/referencia/${ref.toLowerCase()}.json`;
-const rutaIndiceUpgrade = (email: string) =>
-  `indice/upgrade/${email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}.json`;
+/**
+ * Marca de «este correo ya tiene registro, no le abras otro».
+ *
+ * La ponemos antes de dar de alta a alguien en Luma por nuestra cuenta —al
+ * pasarlo a VIP o al redimir un código—, porque esa alta dispara un
+ * `guest.registered` que si no crearía un registro nuevo y partiría a la
+ * persona en dos.
+ */
+const rutaIndiceReserva = (email: string) =>
+  `indice/reserva/${email.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}.json`;
 
 /**
  * Normaliza a dígitos con indicativo de país. Luma entrega el número como lo
@@ -212,12 +225,12 @@ export async function crearORecuperar(datos: {
   const ahora = new Date().toISOString();
   const token = nuevoToken();
 
-  // Quien vuelve de un upsell ya tiene registro: subió de General a VIP y
-  // Luma lo dio de alta como invitado nuevo en el otro evento. Se reusa el
-  // registro que ya venía en camino en vez de empezarle uno en blanco.
-  const upgrade = await leer<{ token: string }>(rutaIndiceUpgrade(datos.email));
-  if (upgrade?.token) {
-    const previo = await porToken(upgrade.token);
+  // Quien viene de un alta nuestra ya tiene registro: subió de General a VIP,
+  // o redimió un código. Se reusa el que ya venía en camino en vez de
+  // empezarle uno en blanco.
+  const reservado = await leer<{ token: string }>(rutaIndiceReserva(datos.email));
+  if (reservado?.token) {
+    const previo = await porToken(reservado.token);
     if (previo) {
       await escribir(rutaIndiceGuest(datos.guestId), { token: previo.token, en: ahora });
       return { registro: previo, nuevo: false };
@@ -281,17 +294,67 @@ export async function crearORecuperar(datos: {
  * y sin esa marca puesta de antemano ese webhook crearía un registro nuevo y
  * la persona quedaría partida en dos.
  */
-export async function marcarUpgradePendiente(email: string, token: string): Promise<void> {
-  await escribir(rutaIndiceUpgrade(email), { token, en: new Date().toISOString() });
+export async function reservarCorreo(email: string, token: string): Promise<void> {
+  await escribir(rutaIndiceReserva(email), { token, en: new Date().toISOString() });
 }
 
-export async function limpiarUpgrade(email: string): Promise<void> {
-  await escribir(rutaIndiceUpgrade(email), { token: "", en: new Date().toISOString() });
+export async function soltarCorreo(email: string): Promise<void> {
+  await escribir(rutaIndiceReserva(email), { token: "", en: new Date().toISOString() });
 }
 
 /** Reapunta el registro al invitado nuevo del otro evento. */
 export async function apuntarAInvitado(token: string, guestId: string): Promise<void> {
   await escribir(rutaIndiceGuest(guestId), { token, en: new Date().toISOString() });
+}
+
+/**
+ * Registro de alguien que entró con un código de invitación. Nace en la última
+ * etapa: no hay pago que esperar ni aprobación que pedir, porque el código ya
+ * era la autorización y Luma acaba de mandarle la entrada.
+ */
+export async function crearCortesia(datos: {
+  token: string;
+  tier: Tier;
+  codigo: string;
+  guestId: string;
+  eventId: string;
+  email: string;
+  nombre: string;
+  telefonoCrudo: string | null;
+  redimidoEn: string;
+}): Promise<Registro> {
+  const telefono = normalizarTelefono(datos.telefonoCrudo);
+  const registro: Registro = {
+    token: datos.token,
+    tier: datos.tier,
+    etapa: "aprobado",
+    luma: {
+      guestId: datos.guestId,
+      eventId: datos.eventId,
+      email: datos.email,
+      nombre: datos.nombre,
+      nombreCorto: primerNombre(datos.nombre),
+      telefonoCrudo: datos.telefonoCrudo,
+      registradoEn: datos.redimidoEn,
+      estadoAprobacion: "approved",
+    },
+    telefono,
+    whatsapp: {},
+    pago: { etiquetaEtapa: "Cortesía", precio: "$0", comprobantes: [] },
+    aprobacion: {
+      decididoEn: datos.redimidoEn,
+      decididoPor: `código ${datos.codigo}`,
+    },
+    cortesia: { codigo: datos.codigo, redimidoEn: datos.redimidoEn },
+    bitacora: [{ en: datos.redimidoEn, que: "redimió un código de invitación", detalle: datos.codigo }],
+    creadoEn: datos.redimidoEn,
+    actualizadoEn: datos.redimidoEn,
+  };
+
+  await escribir(rutaRegistro(datos.token), registro);
+  if (datos.guestId) await escribir(rutaIndiceGuest(datos.guestId), { token: datos.token, en: datos.redimidoEn });
+  if (telefono) await escribir(rutaIndiceTelefono(telefono), { token: datos.token, en: datos.redimidoEn });
+  return registro;
 }
 
 /** Aplica un cambio sobre el registro, anota la bitácora y refresca la etapa. */

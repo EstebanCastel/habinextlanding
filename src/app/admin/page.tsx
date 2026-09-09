@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { todos as todosLosCodigos, type CodigoConEstado } from "@/lib/codigos";
 import { todos, type Etapa, type Registro } from "@/lib/registros";
 import { haySesion } from "@/lib/sesion";
 
@@ -131,6 +132,166 @@ function Bitacora({ r }: { r: Registro }) {
   );
 }
 
+/**
+ * Códigos de invitación: crear uno y ver cuánto le queda a cada uno.
+ *
+ * El cupo es lo que se mira: un código sin límite que se filtró por ahí es la
+ * forma más silenciosa de llenar el evento de entradas que nadie pagó, y acá
+ * se ve de un vistazo cuánto lleva usado cada uno y quién lo usó.
+ */
+function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
+  const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+
+  return (
+    <section className="mb-10">
+      <h2 className="mb-4 text-lg font-semibold">Códigos de invitación</h2>
+
+      <form
+        method="post"
+        action="/api/admin"
+        className="mb-6 grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:grid-cols-2 lg:grid-cols-6"
+      >
+        <input type="hidden" name="accion" value="crear-codigo" />
+        <label className="flex flex-col gap-1 lg:col-span-2">
+          <span className="text-xs text-white/45">Código</span>
+          <input
+            name="codigo"
+            required
+            placeholder="HABINEXT-ALIADOS"
+            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm uppercase text-white placeholder:text-white/25"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/45">Sirve para</span>
+          <select
+            name="sirve"
+            defaultValue="ambos"
+            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+          >
+            <option value="ambos">Las dos</option>
+            <option value="general">Solo General</option>
+            <option value="vip">Solo VIP</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/45">Entradas (0 = sin tope)</span>
+          <input
+            name="usos"
+            type="number"
+            min={0}
+            defaultValue={1}
+            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/45">Vence (opcional)</span>
+          <input
+            name="vence"
+            type="date"
+            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-white/45">Para quién</span>
+          <input
+            name="nota"
+            placeholder="Aliados comerciales"
+            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/25"
+          />
+        </label>
+        <button
+          type="submit"
+          className="self-end rounded-full bg-violet px-4 py-2 text-sm font-semibold text-white sm:col-span-2 lg:col-span-6"
+        >
+          Crear código
+        </button>
+      </form>
+
+      {codigos.length === 0 ? (
+        <p className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/50">
+          Todavía no hay códigos.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-white/10">
+          <table className="w-full min-w-[52rem] text-left text-sm">
+            <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
+              <tr>
+                <th className="px-3 py-3 font-medium">Código</th>
+                <th className="px-3 py-3 font-medium">Sirve para</th>
+                <th className="px-3 py-3 font-medium">Usado</th>
+                <th className="px-3 py-3 font-medium">Vence</th>
+                <th className="px-3 py-3 font-medium">Quiénes lo usaron</th>
+                <th className="px-3 py-3 font-medium">Link para repartir</th>
+                <th className="px-3 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {codigos.map((c) => {
+                return (
+                  <tr key={c.codigo} className="border-t border-white/8 align-top">
+                    <td className="px-3 py-3">
+                      <p className="font-mono font-medium tracking-wider">{c.codigo}</p>
+                      {c.nota ? <p className="text-xs text-white/40">{c.nota}</p> : null}
+                      {!c.activo ? (
+                        <p className="text-xs text-red-400">desactivado</p>
+                      ) : c.agotado ? (
+                        <p className="text-xs text-white/40">sin cupo</p>
+                      ) : c.vencido ? (
+                        <p className="text-xs text-white/40">vencido</p>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-white/60">
+                      {c.sirvePara === "ambos" ? "Las dos" : c.sirvePara === "vip" ? "VIP" : "General"}
+                    </td>
+                    <td className="px-3 py-3 tabular-nums">
+                      {c.usos}
+                      {c.usosMaximos > 0 ? ` / ${c.usosMaximos}` : " · sin tope"}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-white/50">
+                      {c.venceEl ? hora(c.venceEl) : "no vence"}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-white/50">
+                      {c.redenciones.length === 0
+                        ? "—"
+                        : c.redenciones.map((r) => (
+                            <p key={r.token}>
+                              {r.nombre} · {r.email}{" "}
+                              <span className="text-white/30">
+                                ({r.tier === "vip" ? "VIP" : "General"}, {hora(r.en)})
+                              </span>
+                            </p>
+                          ))}
+                    </td>
+                    <td className="px-3 py-3 text-xs">
+                      <code className="text-violet-soft">
+                        {sitio}/codigo?tier=
+                        {c.sirvePara === "vip" ? "vip" : "general"}&amp;codigo={c.codigo}
+                      </code>
+                    </td>
+                    <td className="px-3 py-3">
+                      <form method="post" action="/api/admin">
+                        <input type="hidden" name="accion" value="codigo-estado" />
+                        <input type="hidden" name="codigo" value={c.codigo} />
+                        <input type="hidden" name="activo" value={c.activo ? "0" : "1"} />
+                        <button
+                          type="submit"
+                          className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70"
+                        >
+                          {c.activo ? "Desactivar" : "Activar"}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Fila({ r }: { r: Registro }) {
   const decidido = r.etapa === "aprobado" || r.etapa === "rechazado";
   const leToca = r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado";
@@ -154,6 +315,9 @@ function Fila({ r }: { r: Registro }) {
         </span>
         <p className="mt-1 text-xs text-white/45">{r.pago.precio}</p>
         <p className="text-xs text-white/35">{r.pago.etiquetaEtapa}</p>
+        {r.cortesia ? (
+          <p className="mt-1 font-mono text-xs text-violet-soft">{r.cortesia.codigo}</p>
+        ) : null}
         {r.upsell?.decision === "vip" ? (
           <p className="mt-1 text-xs text-violet-soft">subió desde General</p>
         ) : null}
@@ -259,7 +423,10 @@ export default async function Panel({
 
   if (!(await haySesion())) return <Entrar error={error === "1"} />;
 
-  const registros = await todos().catch(() => [] as Registro[]);
+  const [registros, codigos] = await Promise.all([
+    todos().catch(() => [] as Registro[]),
+    todosLosCodigos().catch(() => [] as CodigoConEstado[]),
+  ]);
   const pendientes = registros.filter(
     (r) => r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado"
   );
@@ -306,6 +473,9 @@ export default async function Panel({
         </p>
       ) : null}
 
+      <Codigos codigos={codigos} />
+
+      <h2 className="mb-4 text-lg font-semibold">Embudo</h2>
       <Embudo registros={registros} />
 
       {registros.length === 0 ? (

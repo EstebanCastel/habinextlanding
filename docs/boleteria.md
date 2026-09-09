@@ -109,6 +109,36 @@ atiende la línea, o mover Habi Next a una línea propia.
 Los reportes de entrega no necesitan configuración: viajan en el `notifyUrl` de
 cada envío.
 
+## Códigos de invitación
+
+Los invitados de la casa —aliados, prensa, equipo, patrocinadores— entran por
+otra puerta. En cada boleta hay un enlace discreto, *«Tengo un código de
+invitación»*, que lleva a `/codigo`. La persona escribe su código, nombre,
+correo y celular, y su entrada sale en el acto:
+
+1. Se descuenta un cupo del código. **Va antes de tocar Luma**: si el alta
+   falla sobra un cupo consumido —molesto pero inofensivo, se devuelve solo—,
+   mientras que al revés dos personas podrían llevarse la última entrada a la
+   vez. La escritura es condicional, así que la segunda relee y ve el cupo
+   gastado.
+2. Alta en Luma con `approval_status: "approved"` y correo activado: ese correo
+   **es** la entrada con el QR, y la persona la está esperando en ese momento.
+3. Se crea el registro directo en etapa `aprobado`, con precio `$0` y el código
+   con el que entró, y se le manda un WhatsApp de bienvenida sin link de pago.
+
+Es el único camino en que alguien queda aprobado sin que una persona lo mire, y
+se sostiene porque **el código es la autorización**: alguien del equipo lo creó
+y decidió cuántas entradas regala, para qué boleta y hasta cuándo sirve.
+
+Los códigos se crean y se apagan desde `/admin`. Lo que hay que mirar es el
+cupo: un código sin tope que se filtre por ahí es la forma más silenciosa de
+llenar el evento de entradas que nadie pagó. El panel muestra cuánto lleva
+usado cada uno y quién lo usó.
+
+`/api/codigo` es el único endpoint público que escribe, así que lleva su propio
+límite por IP —8 intentos cada 10 minutos— para que nadie pueda probar códigos
+al azar hasta acertar uno.
+
 ## Cuando el bot no sabe qué hacer
 
 Escala a una persona por WhatsApp (`WHATSAPP_ESCALAMIENTO`), con quién es y qué

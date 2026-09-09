@@ -99,6 +99,16 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
       >
         {ticket.cta}
       </CTAButton>
+
+      {/* Los invitados de la casa entran por otra puerta: su código ya es la
+          autorización, así que no pasan por Luma ni por la pasarela. Va como
+          enlace discreto y no como segundo botón, porque es para unos pocos. */}
+      <a
+        href={`/codigo?tier=${ticket.id}`}
+        className="mt-4 block text-center text-sm font-light text-white/50 underline underline-offset-4 transition-colors hover:text-violet-soft"
+      >
+        Tengo un código de invitación
+      </a>
     </article>
   );
 }

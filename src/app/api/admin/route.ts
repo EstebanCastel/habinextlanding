@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { darLaBienvenida, pasarAVip } from "@/lib/bot";
+import { cambiarEstado, crear as crearCodigo } from "@/lib/codigos";
 import { anotar, porToken } from "@/lib/registros";
 import { igualSeguro } from "@/lib/seguridad";
 import { cabecerasDeCookie, claveAdmin, haySesion } from "@/lib/sesion";
@@ -61,6 +62,36 @@ export async function POST(request: Request) {
   // ---------- de aquí en adelante hace falta sesión ----------
   if (!(await haySesion())) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+  }
+
+  // ---------- códigos de invitación ----------
+  if (accion === "crear-codigo") {
+    const vence = String(form.get("vence") ?? "").trim();
+    const res = await crearCodigo({
+      codigo: String(form.get("codigo") ?? ""),
+      sirvePara: (["general", "vip", "ambos"] as const).includes(
+        String(form.get("sirve") ?? "") as "general" | "vip" | "ambos"
+      )
+        ? (String(form.get("sirve")) as "general" | "vip" | "ambos")
+        : "ambos",
+      usosMaximos: Number(form.get("usos") ?? 1) || 0,
+      // El día que se elige vale entero: vence al final de esa jornada en
+      // Bogotá, no a la medianoche del día anterior en UTC.
+      venceEl: vence ? `${vence}T23:59:59-05:00` : null,
+      nota: String(form.get("nota") ?? "").trim() || undefined,
+    });
+    return volver(res.nota);
+  }
+
+  if (accion === "codigo-estado") {
+    const codigo = String(form.get("codigo") ?? "");
+    const activar = String(form.get("activo") ?? "") === "1";
+    const ok = await cambiarEstado(codigo, activar);
+    return volver(
+      ok
+        ? `${codigo.toUpperCase()} quedó ${activar ? "activo" : "desactivado"}`
+        : "No encontramos ese código"
+    );
   }
 
   const token = String(form.get("token") ?? "");

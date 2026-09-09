@@ -70,19 +70,25 @@ export async function rechazarInvitado(
 }
 
 /**
- * Da de alta a alguien en un evento, pendiente de aprobación y sin correo.
- * Se usa al pasar a alguien de General a VIP: no es una invitación nueva, es
- * la misma persona cambiando de puerta, y un correo de Luma en ese momento
- * solo confundiría.
+ * Da de alta a alguien en un evento.
+ *
+ * Dos usos con comportamiento opuesto a propósito:
+ *
+ * - **Pasar de General a VIP** (`aprobado: false`): pendiente y sin correo. No
+ *   es una invitación nueva, es la misma persona cambiando de puerta, y un
+ *   correo de Luma en ese momento solo confundiría.
+ * - **Redimir un código** (`aprobado: true`): aprobado y con correo, porque
+ *   ese correo *es* la entrada con el código QR y la persona la está esperando
+ *   en ese mismo momento.
  */
 export async function agregarInvitado(
   eventId: string,
-  persona: { email: string; nombre: string; telefono: string | null }
+  persona: { email: string; nombre: string; telefono: string | null; aprobado?: boolean }
 ) {
   return pedir("/v1/events/guests/add", {
     event_id: eventId,
-    approval_status: "pending_approval",
-    send_email: false,
+    approval_status: persona.aprobado ? "approved" : "pending_approval",
+    send_email: Boolean(persona.aprobado),
     guests: [
       {
         email: persona.email,
