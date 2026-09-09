@@ -67,7 +67,6 @@ export async function escalarAUnaPersona(
       a: destino,
       plantilla,
       placeholders: [quien.slice(0, 300), quePaso.slice(0, 500)],
-      botones: [],
     });
     await anotar(registro.token, "escalado a una persona", () => ({}), quePaso.slice(0, 200));
   } catch (error) {
@@ -118,12 +117,18 @@ export async function darLaBienvenida(registro: Registro): Promise<void> {
   const salida = await enviarPlantilla({
     a: registro.telefono,
     plantilla,
-    // El orden es el de los marcadores del cuerpo de cada plantilla: la de VIP
-    // lleva nombre y token; la de General mete la diferencia de precio en medio.
-    placeholders: esVip ? [nombre, registro.token] : [nombre, diferencia, registro.token],
+    // El nombre va en el encabezado y el token en el botón. El cuerpo queda sin
+    // variables a propósito: Infobip rechaza un botón con URL variable si el
+    // cuerpo tiene marcadores, porque los dos comparten numeración. El
+    // encabezado no, y por eso es el único sitio donde cabe el nombre sin
+    // renunciar al botón que lleva directo al pago.
+    encabezado: nombre,
     botones: esVip
-      ? [payload(BOTON_DUDA, registro.token)]
-      : [payload(BOTON_VIP, registro.token), payload(BOTON_DUDA, registro.token)],
+      ? [{ tipo: "URL" as const, parametro: registro.token }]
+      : [
+          { tipo: "URL" as const, parametro: registro.token },
+          { tipo: "QUICK_REPLY" as const, parametro: payload(BOTON_VIP, registro.token) },
+        ],
     callbackData: { token: registro.token },
   }).catch((error: Error) => ({
     ok: false as const,
@@ -226,7 +231,8 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
         `¡Excelente decisión, ${actualizado.luma.nombreCorto}! 🙌 Te pasamos a *VIP*.\n\n` +
         `Vas a estar en primeras filas, con acceso a la zona VIP, almuerzo, kit premium, ` +
         `las guías exclusivas y tu avatar digital. Son 250 cupos y uno acaba de quedar a tu nombre.\n\n` +
-        `Tu entrada VIP queda en ${precio} (${etiqueta.toLowerCase()}). Este es tu link seguro y personal:\n` +
+        `La diferencia con la General son *${diferenciaVip()}*: tu entrada VIP queda en ${precio} ` +
+        `(${etiqueta.toLowerCase()}). Este es tu link seguro y personal:\n` +
         `https://www.habinext.com/p/${actualizado.token}\n\n` +
         `Apenas confirmemos el pago te llega tu entrada con el código QR. 💜`,
     }).catch(() => null);
@@ -354,7 +360,6 @@ export async function redimirCodigo(datos: {
           registro.luma.nombreCorto || "hola",
           datos.tier === "vip" ? "VIP" : "General",
         ],
-        botones: [],
         callbackData: { token },
       }).catch(() => null);
       if (salida?.ok) {

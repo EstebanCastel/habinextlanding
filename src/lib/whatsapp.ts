@@ -78,31 +78,34 @@ async function despachar(ruta: string, mensaje: Record<string, unknown>): Promis
 }
 
 /**
- * Manda la plantilla del link de pago.
+ * Un botón del envío. El orden de la lista tiene que ser el mismo que el de la
+ * plantilla: si la plantilla declara dos y el envío manda uno, o los manda al
+ * revés, Meta descarta el mensaje.
  *
- * Los dos marcadores de la plantilla son, en orden: `{{1}}` el primer nombre y
- * `{{2}}` el token del registro, que se pega al final de la URL corta que va
- * escrita dentro del cuerpo. Ese token es lo que hace que el link sea de esa
- * persona y de nadie más, y lo que después permite saber quién abrió el pago.
- *
- * `notifyUrl` es lo que hace que después sepamos si el mensaje llegó y si lo
- * leyeron: sin eso, un fallo masivo de entrega pasaría inadvertido hasta el
- * día del evento.
+ * - `URL`: el parámetro es **solo el sufijo variable** de la URL, nunca la URL
+ *   entera. La base (`https://www.habinext.com/p/`) se horneó al registrar la
+ *   plantilla.
+ * - `QUICK_REPLY`: el parámetro es el payload que vuelve por el webhook.
  */
+export type Boton = { tipo: "URL" | "QUICK_REPLY"; parametro: string };
+
 export async function enviarPlantilla(opciones: {
   a: string;
   plantilla: string;
-  /** Valores de `{{1}}`, `{{2}}`… en el orden en que aparecen en el cuerpo. */
-  placeholders: string[];
   /**
-   * Payload de cada botón de respuesta rápida, en el mismo orden en que están
-   * en la plantilla. Todos tienen que ir: si la plantilla declara dos botones
-   * y el envío manda uno, Meta descarta el mensaje.
+   * Valor de la variable del encabezado, si la plantilla tiene una. Meta solo
+   * admite **una** por encabezado, y ahí es donde va el nombre: es el único
+   * lugar donde cabe una variable sin chocar con el parámetro del botón URL,
+   * porque el cuerpo y el botón comparten numeración y el encabezado no.
    */
-  botones: string[];
+  encabezado?: string;
+  /** Valores de `{{1}}`, `{{2}}`… en el orden en que aparecen en el cuerpo. */
+  placeholders?: string[];
+  botones?: Boton[];
   callbackData?: unknown;
 }): Promise<Salida> {
   const notifyUrl = urlDeReportes();
+  const botones = opciones.botones ?? [];
   return despachar("/whatsapp/1/message/template", {
     from: linea(),
     to: opciones.a.replace(/\D/g, ""),
@@ -110,15 +113,15 @@ export async function enviarPlantilla(opciones: {
       templateName: opciones.plantilla,
       language: "es_CO",
       templateData: {
-        body: { placeholders: opciones.placeholders.map(String) },
-        // Los botones de la plantilla tienen que declararse en el envío: sin
-        // esto Infobip acepta el POST (PENDING_ENROUTE) y Meta lo descarta
-        // después con "Failed to match template parameters", de modo que el
-        // mensaje nunca llega y el único rastro está en el reporte de entrega.
-        // El payload lleva el token para reconocer a la persona cuando toca el
-        // botón y su respuesta vuelve por el webhook.
-        ...(opciones.botones.length
-          ? { buttons: opciones.botones.map((p) => ({ type: "QUICK_REPLY", parameter: p })) }
+        body: { placeholders: (opciones.placeholders ?? []).map(String) },
+        ...(opciones.encabezado !== undefined
+          ? { header: { type: "TEXT", placeholder: opciones.encabezado } }
+          : {}),
+        // Sin esto Infobip acepta el POST (PENDING_ENROUTE) y Meta lo descarta
+        // después con "Failed to match template parameters": el mensaje nunca
+        // llega y el único rastro está en el reporte de entrega.
+        ...(botones.length
+          ? { buttons: botones.map((b) => ({ type: b.tipo, parameter: b.parametro })) }
           : {}),
       },
     },
