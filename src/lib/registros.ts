@@ -230,10 +230,18 @@ export async function crearORecuperar(datos: {
   // empezarle uno en blanco.
   const reservado = await leer<{ token: string }>(rutaIndiceReserva(datos.email));
   if (reservado?.token) {
-    const previo = await porToken(reservado.token);
-    if (previo) {
-      await escribir(rutaIndiceGuest(datos.guestId), { token: previo.token, en: ahora });
-      return { registro: previo, nuevo: false };
+    // La reserva puede llegar antes que el registro al que apunta: quien la
+    // puso está a mitad de escribirlo. Se espera en vez de darlo por
+    // inexistente, porque darlo por inexistente significa abrirle a esa
+    // persona un segundo registro —y, si venía de un código, mandarle un link
+    // de pago por una entrada que ya es suya.
+    for (let intento = 0; intento < 5; intento += 1) {
+      const previo = await porToken(reservado.token);
+      if (previo) {
+        await escribir(rutaIndiceGuest(datos.guestId), { token: previo.token, en: ahora });
+        return { registro: previo, nuevo: false };
+      }
+      await new Promise((r) => setTimeout(r, 150 * (intento + 1)));
     }
   }
 

@@ -297,9 +297,27 @@ export async function redimirCodigo(datos: {
   });
   if (!cupo.ok) return { ok: false, nota: codigos.explicar(cupo.motivo) };
 
-  // La reserva va antes del alta: el alta dispara un `guest.registered` y sin
-  // esta marca ese webhook abriría un registro paralelo para la misma persona.
+  const ahora = new Date().toISOString();
+
+  // El orden de estos dos pasos es lo que evita que la persona termine con dos
+  // registros. El alta en Luma dispara un `guest.registered` que vuelve por el
+  // webhook casi de inmediato, y ese webhook necesita encontrar **ya escrito**
+  // el registro al que apunta la reserva. Si solo dejáramos la marca y
+  // creáramos el registro después del alta, el webhook llegaría en medio, no
+  // encontraría nada y abriría un registro de pago paralelo — a alguien que
+  // acaba de entrar gratis.
   await reservarCorreo(correo, token);
+  const registro = await crearCortesia({
+    token,
+    tier: datos.tier,
+    codigo: codigos.normalizar(datos.codigo),
+    guestId: "",
+    eventId: evento,
+    email: correo,
+    nombre: datos.nombre,
+    telefonoCrudo: datos.telefono,
+    redimidoEn: ahora,
+  });
 
   const alta = await agregarInvitado(evento, {
     email: correo,
@@ -310,23 +328,19 @@ export async function redimirCodigo(datos: {
   if (!alta.ok) {
     await soltarCorreo(correo);
     await codigos.devolverCupo(datos.codigo, token);
+    await anotar(token, "no se pudo dar de alta en Luma", () => ({}), alta.cuerpo);
     return { ok: false, nota: "No pudimos registrarte en Luma. Inténtalo de nuevo en un momento." };
   }
 
+  // El id del invitado no viene en la respuesta del alta; sin él no se podría
+  // relacionar después nada que se haga desde Luma con esta persona.
   const invitado = await buscarInvitadoPorEmail(evento, correo);
-  const ahora = new Date().toISOString();
-
-  const registro = await crearCortesia({
-    token,
-    tier: datos.tier,
-    codigo: codigos.normalizar(datos.codigo),
-    guestId: invitado?.id ?? "",
-    eventId: evento,
-    email: correo,
-    nombre: datos.nombre,
-    telefonoCrudo: datos.telefono,
-    redimidoEn: ahora,
-  });
+  if (invitado?.id) {
+    await apuntarAInvitado(token, invitado.id);
+    await anotar(token, "entrada emitida por Luma", (r) => ({
+      luma: { ...r.luma, guestId: invitado.id },
+    }));
+  }
 
   await soltarCorreo(correo);
 
