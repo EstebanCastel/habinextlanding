@@ -117,17 +117,16 @@ export async function darLaBienvenida(registro: Registro): Promise<void> {
   const salida = await enviarPlantilla({
     a: registro.telefono,
     plantilla,
-    // El nombre va en el encabezado y el token en el botón. El cuerpo queda sin
-    // variables a propósito: Infobip rechaza un botón con URL variable si el
-    // cuerpo tiene marcadores, porque los dos comparten numeración. El
-    // encabezado no, y por eso es el único sitio donde cabe el nombre sin
-    // renunciar al botón que lleva directo al pago.
-    encabezado: nombre,
+    // Formato de las plantillas vigentes: el nombre, la diferencia y el token
+    // viajan como marcadores del cuerpo, y el link va escrito dentro del texto.
+    // La versión con botón «Completar mi pago» está en revisión de Meta; hasta
+    // que la apruebe, cambiar esto rompe el envío en silencio.
+    placeholders: esVip ? [nombre, registro.token] : [nombre, diferencia, registro.token],
     botones: esVip
-      ? [{ tipo: "URL" as const, parametro: registro.token }]
+      ? [{ tipo: "QUICK_REPLY" as const, parametro: payload(BOTON_DUDA, registro.token) }]
       : [
-          { tipo: "URL" as const, parametro: registro.token },
           { tipo: "QUICK_REPLY" as const, parametro: payload(BOTON_VIP, registro.token) },
+          { tipo: "QUICK_REPLY" as const, parametro: payload(BOTON_DUDA, registro.token) },
         ],
     callbackData: { token: registro.token },
   }).catch((error: Error) => ({
