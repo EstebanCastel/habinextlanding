@@ -37,6 +37,23 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image", title, description },
   robots: { index: true, follow: true },
+  /**
+   * Verificación del dominio ante Meta.
+   *
+   * Meta **rechaza toda plantilla de WhatsApp cuyo botón apunte a un dominio
+   * sin verificar**, y lo hace sin decir por qué: la plantilla queda en
+   * REJECTED y no hay forma de saber la causa por la API. Está comprobado
+   * contra la cuenta real — el mismo botón, con el mismo texto, pasa la
+   * revisión si apunta a un dominio ya verificado y la falla si apunta a
+   * habinext.com.
+   *
+   * El código sale de Meta Business Manager → Configuración del negocio →
+   * Seguridad de la marca → Dominios. Al ponerlo en `META_DOMAIN_VERIFICATION`
+   * esta etiqueta aparece en el `<head>` y el dominio queda verificado.
+   */
+  ...(process.env.META_DOMAIN_VERIFICATION
+    ? { other: { "facebook-domain-verification": process.env.META_DOMAIN_VERIFICATION } }
+    : {}),
 };
 
 export const viewport: Viewport = {

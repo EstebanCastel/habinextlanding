@@ -139,6 +139,35 @@ usado cada uno y quién lo usó.
 límite por IP —8 intentos cada 10 minutos— para que nadie pueda probar códigos
 al azar hasta acertar uno.
 
+## Por qué el link de pago va en el texto y no en un botón
+
+Un botón «Completar mi pago» sería mejor que un link escrito en el cuerpo, y
+está escrito el código para mandarlo. No se usa porque **Meta rechaza toda
+plantilla cuyo botón apunte a un dominio sin verificar**, y lo hace en
+silencio: la plantilla queda en `REJECTED` y la API no dice la causa.
+
+Está comprobado contra la cuenta real, aislando una variable por vez:
+
+| Plantilla de prueba | Resultado |
+| --- | --- |
+| Botón → `habinext.com`, texto «Completar mi pago» | RECHAZADA |
+| Botón → `habinext.com`, texto neutro «Ver mi entrada» | RECHAZADA |
+| Botón → dominio ya verificado, texto «Completar mi pago» | aceptada |
+| Sin botón | aceptada |
+
+No es el texto, ni la categoría (`UTILITY` y `MARKETING` fallan igual), ni que
+la URL sea dinámica: es el dominio.
+
+**Cómo habilitarlo.** En Meta Business Manager → Configuración del negocio →
+Seguridad de la marca → Dominios, agregar `habinext.com` y copiar el código de
+verificación a `META_DOMAIN_VERIFICATION`. La etiqueta sale sola en el `<head>`
+de la landing. Con el dominio verificado, se crean las plantillas con botón y
+se apuntan `INFOBIP_TPL_VIP` e `INFOBIP_TPL_GENERAL_UPSELL` a ellas; en
+`bot.ts`, `darLaBienvenida` lleva el comentario de qué cambiar.
+
+Mientras tanto el link va escrito en el cuerpo, que WhatsApp autoenlaza igual y
+no pasa por esa validación.
+
 ## Cuando el bot no sabe qué hacer
 
 Escala a una persona por WhatsApp (`WHATSAPP_ESCALAMIENTO`), con quién es y qué
