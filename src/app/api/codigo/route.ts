@@ -64,11 +64,14 @@ export async function POST(request: Request) {
   if (nombre.length < 3) return volver({ ...conservar, error: "Escribe tu nombre completo." });
   if (!correoValido(email)) return volver({ ...conservar, error: "Ese correo no parece válido." });
 
+  // El formulario ya fija el +57, así que aquí llegan los diez dígitos
+  // colombianos. `normalizarTelefono` los completa, y si alguien pegó el
+  // número entero con indicativo tampoco se rompe.
   const telefono = normalizarTelefono(telefonoCrudo);
   if (!telefono) {
     return volver({
       ...conservar,
-      error: "Escribe tu celular con indicativo, por ejemplo +57 300 123 4567.",
+      error: "Ese celular no parece completo. Son diez dígitos, empezando por 3.",
     });
   }
 

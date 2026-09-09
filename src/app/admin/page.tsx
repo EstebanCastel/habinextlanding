@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Asterisk from "@/components/Asterisk";
+import Dot from "@/components/Dot";
 import { todos as todosLosCodigos, type CodigoConEstado } from "@/lib/codigos";
 import { todos, type Etapa, type Registro } from "@/lib/registros";
 import { haySesion } from "@/lib/sesion";
@@ -54,16 +56,20 @@ function hora(iso?: string | null): string {
 
 function Entrar({ error }: { error: boolean }) {
   return (
-    <main className="min-h-dvh grid place-items-center px-6">
-      <form
-        method="post"
-        action="/api/admin"
-        className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#0d0618] p-8"
-      >
+    <main className="s-night relative grid min-h-dvh place-items-center overflow-hidden px-6">
+      <Asterisk
+        color="var(--violet)"
+        className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 opacity-[0.07]"
+      />
+      <form method="post" action="/api/admin" className="relative z-10 w-full max-w-sm">
         <input type="hidden" name="accion" value="entrar" />
-        <h1 className="text-xl font-semibold text-violet-soft">Operación Habi Next</h1>
-        <p className="mt-2 mb-6 text-sm text-white/55">
-          Boletería del 20 de octubre. Necesitas la clave del equipo.
+        <p className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
+          <Dot className="h-1.5 w-1.5" />
+          Operación
+        </p>
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight">Boletería Habi Next</h1>
+        <p className="mt-3 mb-8 text-base font-light text-white/55">
+          Necesitas la clave del equipo.
         </p>
         <input
           type="password"
@@ -71,12 +77,14 @@ function Entrar({ error }: { error: boolean }) {
           autoComplete="current-password"
           required
           placeholder="Clave"
-          className="w-full rounded-lg border border-white/15 bg-black/40 px-4 py-3 text-white placeholder:text-white/30"
+          className="w-full rounded-2xl border border-white/12 bg-white/[0.04] px-5 py-4 text-lg text-white placeholder:text-white/25 transition-colors focus:border-violet-soft/70 focus:bg-white/[0.07] focus:outline-none"
         />
-        {error ? <p className="mt-3 text-sm text-red-400">Esa clave no es.</p> : null}
+        {error ? (
+          <p className="mt-4 text-base font-light text-red-300">Esa clave no es.</p>
+        ) : null}
         <button
           type="submit"
-          className="mt-5 w-full rounded-full bg-violet px-6 py-3 font-semibold text-white"
+          className="mt-6 w-full rounded-full bg-violet px-8 py-4 text-lg font-semibold tracking-tight text-white shadow-[0_18px_44px_-14px_rgba(128,46,246,0.9)] transition-colors hover:bg-violet-press"
         >
           Entrar
         </button>
@@ -99,11 +107,13 @@ function Embudo({ registros }: { registros: Registro[] }) {
   return (
     <section className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {conteo.map((e) => (
-        <div key={e.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <p className="text-2xl font-semibold tabular-nums">{e.n}</p>
-          <p className="text-xs uppercase tracking-wide text-white/45">{e.texto}</p>
+        <div key={e.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p className="text-3xl font-semibold tabular-nums tracking-tight">{e.n}</p>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
+            {e.texto}
+          </p>
           {total > 0 ? (
-            <p className="mt-1 text-xs text-violet-soft tabular-nums">
+            <p className="mt-2 text-sm tabular-nums text-violet-soft">
               {Math.round((e.n / total) * 100)}%
             </p>
           ) : null}
@@ -144,29 +154,29 @@ function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
 
   return (
     <section className="mb-10">
-      <h2 className="mb-4 text-lg font-semibold">Códigos de invitación</h2>
+      <h2 className="mb-5 text-xl font-semibold tracking-tight">Códigos de invitación</h2>
 
       <form
         method="post"
         action="/api/admin"
-        className="mb-6 grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:grid-cols-2 lg:grid-cols-6"
+        className="mb-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:grid-cols-2 lg:grid-cols-6"
       >
         <input type="hidden" name="accion" value="crear-codigo" />
         <label className="flex flex-col gap-1 lg:col-span-2">
-          <span className="text-xs text-white/45">Código</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Código</span>
           <input
             name="codigo"
             required
             placeholder="HABINEXT-ALIADOS"
-            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm uppercase text-white placeholder:text-white/25"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 font-mono text-sm uppercase tracking-wider text-white transition-colors placeholder:font-sans placeholder:tracking-normal placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/45">Sirve para</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Sirve para</span>
           <select
             name="sirve"
             defaultValue="ambos"
-            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
           >
             <option value="ambos">Las dos</option>
             <option value="general">Solo General</option>
@@ -174,45 +184,45 @@ function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/45">Entradas (0 = sin tope)</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Entradas (0 = sin tope)</span>
           <input
             name="usos"
             type="number"
             min={0}
             defaultValue={1}
-            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/45">Vence (opcional)</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Vence (opcional)</span>
           <input
             name="vence"
             type="date"
-            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/45">Para quién</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Para quién</span>
           <input
             name="nota"
             placeholder="Aliados comerciales"
-            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/25"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
         <button
           type="submit"
-          className="self-end rounded-full bg-violet px-4 py-2 text-sm font-semibold text-white sm:col-span-2 lg:col-span-6"
+          className="mt-1 self-end rounded-full bg-violet px-6 py-3 text-sm font-semibold tracking-tight text-white transition-colors hover:bg-violet-press sm:col-span-2 lg:col-span-6"
         >
           Crear código
         </button>
       </form>
 
       {codigos.length === 0 ? (
-        <p className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/50">
-          Todavía no hay códigos.
+        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-base font-light text-white/50">
+          Todavía no hay códigos. Crea uno arriba y compártelo con tus invitados.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
           <table className="w-full min-w-[52rem] text-left text-sm">
             <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
               <tr>
@@ -275,7 +285,7 @@ function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
                         <input type="hidden" name="activo" value={c.activo ? "0" : "1"} />
                         <button
                           type="submit"
-                          className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70"
+                          className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white"
                         >
                           {c.activo ? "Desactivar" : "Activar"}
                         </button>
@@ -389,7 +399,7 @@ function Fila({ r }: { r: Registro }) {
                 <input type="hidden" name="token" value={r.token} />
                 <button
                   type="submit"
-                  className="w-full rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70"
+                  className="w-full rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white"
                 >
                   Reenviar WhatsApp
                 </button>
@@ -400,7 +410,7 @@ function Fila({ r }: { r: Registro }) {
                   <input type="hidden" name="token" value={r.token} />
                   <button
                     type="submit"
-                    className="w-full rounded-full border border-violet/40 px-3 py-1.5 text-xs text-violet-soft"
+                    className="w-full rounded-full border border-violet/40 px-3 py-2 text-xs text-violet-soft transition-colors hover:bg-violet/15"
                   >
                     Pasar a VIP
                   </button>
@@ -432,11 +442,15 @@ export default async function Panel({
   );
 
   return (
-    <main className="mx-auto max-w-[90rem] px-4 py-10">
-      <header className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
+    <main className="s-night mx-auto min-h-dvh max-w-[92rem] px-5 py-12 md:px-8">
+      <header className="mb-10 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h1 className="text-2xl font-semibold">Boletería Habi Next</h1>
-          <p className="text-sm text-white/50">
+          <p className="mb-3 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
+            <Dot className="h-1.5 w-1.5" />
+            Operación
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Boletería Habi Next</h1>
+          <p className="mt-2 text-base font-light text-white/50">
             {registros.length} {registros.length === 1 ? "registro" : "registros"} · martes 20 de
             octubre
           </p>
@@ -445,7 +459,7 @@ export default async function Panel({
           <input type="hidden" name="accion" value="salir" />
           <button
             type="submit"
-            className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70"
+            className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-light text-white/60 transition-colors hover:border-white/30 hover:text-white"
           >
             Salir
           </button>
@@ -453,14 +467,15 @@ export default async function Panel({
       </header>
 
       {aviso ? (
-        <p className="mb-6 rounded-lg border border-violet/40 bg-violet/10 px-4 py-3 text-sm">
+        <p className="mb-7 flex items-start gap-3 rounded-2xl border border-violet/40 bg-violet/10 px-5 py-4 text-base font-light">
+          <Dot color="var(--violet-soft)" className="mt-2.5 h-1.5 w-1.5" />
           {aviso}
         </p>
       ) : null}
 
       {pendientes.length > 0 ? (
-        <p className="mb-6 rounded-lg border border-violet/40 bg-violet/10 px-4 py-3 text-sm">
-          <strong>{pendientes.length}</strong>{" "}
+        <p className="mb-7 rounded-2xl border border-violet/40 bg-violet/10 px-5 py-4 text-base font-light">
+          <strong className="font-semibold">{pendientes.length}</strong>{" "}
           {pendientes.length === 1 ? "persona pagó y espera" : "personas pagaron y esperan"} su
           entrada. Se aprueban en Luma:{" "}
           <a href={LUMA_INVITADOS.general} target="_blank" rel="noreferrer noopener" className="underline">
@@ -475,15 +490,15 @@ export default async function Panel({
 
       <Codigos codigos={codigos} />
 
-      <h2 className="mb-4 text-lg font-semibold">Embudo</h2>
+      <h2 className="mb-5 text-xl font-semibold tracking-tight">El embudo</h2>
       <Embudo registros={registros} />
 
       {registros.length === 0 ? (
-        <p className="rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center text-white/50">
+        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center text-base font-light text-white/50">
           Todavía no hay registros. Aparecen acá apenas alguien se inscriba en Luma.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
           <table className="w-full min-w-[70rem] text-left text-sm">
             <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
               <tr>
