@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Rastro from "@/components/Rastro";
 import { Urbanist } from "next/font/google";
 import Pixels from "@/components/Pixels";
 import { EVENT } from "@/config/event";
@@ -69,6 +70,7 @@ export default function RootLayout({
     <html lang="es-CO" className={urbanist.variable}>
       <body className="antialiased">
         {children}
+        <Rastro />
         <Pixels />
       </body>
     </html>
