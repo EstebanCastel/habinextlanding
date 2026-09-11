@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { darLaBienvenida, pasarAVip } from "@/lib/bot";
 import { cambiarEstado, crear as crearCodigo } from "@/lib/codigos";
+import { crear as crearEnlace } from "@/lib/enlaces";
 import { anotar, porToken } from "@/lib/registros";
 import { igualSeguro } from "@/lib/seguridad";
 import { cabecerasDeCookie, claveAdmin, haySesion } from "@/lib/sesion";
@@ -92,6 +93,20 @@ export async function POST(request: Request) {
         ? `${codigo.toUpperCase()} quedó ${activar ? "activo" : "desactivado"}`
         : "No encontramos ese código"
     );
+  }
+
+  // ---------- enlaces cortos ----------
+  if (accion === "crear-enlace") {
+    const res = await crearEnlace({
+      slug: String(form.get("slug") ?? ""),
+      destino: String(form.get("destino") ?? "/"),
+      source: String(form.get("source") ?? ""),
+      medium: String(form.get("medium") ?? "social"),
+      campaign: String(form.get("campaign") ?? "habinext-2026"),
+      content: String(form.get("content") ?? ""),
+      nota: String(form.get("nota") ?? ""),
+    });
+    return volver(res.nota);
   }
 
   const token = String(form.get("token") ?? "");

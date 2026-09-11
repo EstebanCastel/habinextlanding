@@ -13,6 +13,7 @@ export default function robots(): MetadataRoute.Robots {
         // Es una señal para los robots que se portan bien; lo que de verdad
         // protege el panel es la clave, y al link de pago, su token.
         disallow: ["/admin", "/p/", "/webhook", "/api/"],
+        // `/l/` sí se deja: son los enlaces que se publican en redes.
       },
     ],
     sitemap: `${SITE}/sitemap.xml`,
