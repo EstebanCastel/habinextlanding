@@ -31,6 +31,22 @@ export const EVENT = {
 } as const;
 
 /**
+ * El CTA de patrocinios abre WhatsApp con el mensaje ya escrito.
+ *
+ * Un `mailto:` obliga a redactar un correo desde cero, y en el celular —que es
+ * de donde llegan 8 de cada 10 visitas— muchas veces ni siquiera abre nada.
+ * Con el mensaje puesto, a quien le interesa solo le queda darle enviar.
+ *
+ * El texto se escribe en claro y se codifica acá: dejarlo escapado a mano en la
+ * URL lo vuelve ilegible y cualquiera que lo edite después rompe el enlace.
+ */
+function whatsappPatrocinios(): string {
+  const numero = "573043342330";
+  const mensaje = "Hola, quiero ser patrocinador del evento Habi Next";
+  return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
+}
+
+/**
  * El registro se hace en Luma, uno por tipo de entrada. Los dos eventos tienen
  * aprobación obligatoria: quien se registra queda pendiente y recibe por
  * WhatsApp su link de pago; el cupo se aprueba —y Luma manda la entrada con el
@@ -43,7 +59,7 @@ export const EVENT = {
 export const LINKS = {
   general: process.env.NEXT_PUBLIC_LUMA_GENERAL || "https://luma.com/habinext-general",
   vip: process.env.NEXT_PUBLIC_LUMA_VIP || "https://luma.com/habinext-vip",
-  sponsors: process.env.NEXT_PUBLIC_SPONSOR_URL || "mailto:habinext@habi.co",
+  sponsors: process.env.NEXT_PUBLIC_SPONSOR_URL || whatsappPatrocinios(),
 } as const;
 
 export type Stage = {

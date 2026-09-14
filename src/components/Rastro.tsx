@@ -170,7 +170,7 @@ export default function Rastro() {
       if (href.includes("luma.com/habinext-vip")) nombre = "boleteria:vip";
       else if (href.includes("luma.com/habinext-general")) nombre = "boleteria:general";
       else if (href.startsWith("/codigo")) nombre = "boleteria:codigo";
-      else if (href.startsWith("mailto:")) nombre = "patrocinadores";
+      else if (href.includes("wa.me/") || href.startsWith("mailto:")) nombre = "patrocinadores";
       else if (el.tagName === "A" && href.startsWith("http")) nombre = `externo:${texto}`;
       if (nombre) anotar("clic", nombre);
     };
