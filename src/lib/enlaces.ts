@@ -22,8 +22,12 @@ export type Enlace = {
   nota?: string;
   /** Quién reparte este enlace, cuando es de una persona y no de un canal. */
   persona?: { nombre: string; email?: string };
-  /** Cuántos registros se espera que traiga. 0 = sin meta. */
-  meta: number;
+  /**
+   * Cuántos registros se espera que traiga, por tipo de entrada. Van separadas
+   * porque no cuestan lo mismo de conseguir: quince Generales y cinco VIP son
+   * dos trabajos distintos, y una sola cifra los esconde.
+   */
+  metas: { general: number; vip: number };
   creadoEn: string;
 };
 
@@ -47,7 +51,8 @@ export async function crear(datos: {
   content?: string;
   nota?: string;
   persona?: { nombre: string; email?: string };
-  meta?: number;
+  metaGeneral?: number;
+  metaVip?: number;
 }): Promise<{ ok: boolean; nota: string }> {
   const slug = normalizar(datos.slug);
   if (slug.length < 1) return { ok: false, nota: "El enlace necesita un nombre corto" };
@@ -72,7 +77,10 @@ export async function crear(datos: {
           },
         }
       : {}),
-    meta: Math.max(0, Math.trunc(datos.meta ?? 0)),
+    metas: {
+      general: Math.max(0, Math.trunc(datos.metaGeneral ?? 0)),
+      vip: Math.max(0, Math.trunc(datos.metaVip ?? 0)),
+    },
     creadoEn: new Date().toISOString(),
   };
 
@@ -106,7 +114,19 @@ export async function todos(): Promise<Enlace[]> {
   const salida: Enlace[] = [];
   for (const r of rutas) {
     const e = await leer<Enlace>(r);
-    if (e) salida.push(e);
+    // Los enlaces de canal se crearon antes de que existieran las metas.
+    if (e) salida.push({ ...e, metas: e.metas ?? { general: 0, vip: 0 } });
   }
   return salida.sort((a, b) => b.clics - a.clics);
+}
+
+/** Cambia las metas de un enlace que ya circula, sin tocar sus clics. */
+export async function fijarMetas(
+  slug: string,
+  metas: { general: number; vip: number }
+): Promise<boolean> {
+  const res = await modificar<Enlace>(ruta(normalizar(slug)), (e) =>
+    e ? { ...e, metas: { general: Math.max(0, metas.general), vip: Math.max(0, metas.vip) } } : null
+  );
+  return Boolean(res);
 }

@@ -36,8 +36,11 @@ export type Marcador = {
   general: number;
   vip: number;
   pagados: number;
-  /** Porcentaje de la meta, o null si el enlace no tiene meta. */
+  /** Porcentaje contra la meta de cada tipo, o null si el enlace no tiene meta. */
   avance: number | null;
+  avanceGeneral: number | null;
+  avanceVip: number | null;
+  meta: number;
 };
 
 export type Tablero = {
@@ -90,7 +93,10 @@ export async function tablero(): Promise<Tablero> {
 
   const marcadores: Marcador[] = enlaces.map((enlace) => {
     const suyos = porOrigen.get(enlace.utm.source) ?? [];
-    const meta = enlace.meta ?? 0;
+    const metas = enlace.metas ?? { general: 0, vip: 0 };
+    const meta = metas.general + metas.vip;
+    const generales = suyos.filter((r) => r.tier === "general").length;
+    const vips = suyos.filter((r) => r.tier === "vip").length;
     const trafico = visitasPorFuente.get(enlace.utm.source);
     return {
       enlace,
@@ -99,10 +105,13 @@ export async function tablero(): Promise<Tablero> {
       personas: trafico?.visitantes.size ?? 0,
       clicsBoleteria: trafico?.clics ?? 0,
       registros: suyos.length,
-      general: suyos.filter((r) => r.tier === "general").length,
-      vip: suyos.filter((r) => r.tier === "vip").length,
+      general: generales,
+      vip: vips,
       pagados: suyos.filter((r) => r.pago.confirmadoEn || r.etapa === "aprobado").length,
+      meta,
       avance: meta > 0 ? Math.round((suyos.length / meta) * 100) : null,
+      avanceGeneral: metas.general > 0 ? Math.round((generales / metas.general) * 100) : null,
+      avanceVip: metas.vip > 0 ? Math.round((vips / metas.vip) * 100) : null,
     };
   });
 
@@ -122,7 +131,7 @@ export async function tablero(): Promise<Tablero> {
     marcadores,
     sinAtribuir,
     totalRegistros: registros.length,
-    metaTotal: marcadores.reduce((n, m) => n + (m.enlace.meta ?? 0), 0),
+    metaTotal: marcadores.reduce((n, m) => n + m.meta, 0),
     traidosTotal: marcadores.reduce((n, m) => n + m.registros, 0),
   };
 }
@@ -134,7 +143,8 @@ export function aCsv(t: Tablero, sitio: string): string {
     "Nombre",
     "Correo",
     "Enlace para compartir",
-    "Meta",
+    "Meta General",
+    "Meta VIP",
     "Registros traídos",
     "Avance",
     "General",
@@ -159,7 +169,8 @@ export function aCsv(t: Tablero, sitio: string): string {
       m.quien,
       e.persona?.email ?? "",
       `${sitio}/l/${e.slug}`,
-      e.meta || "",
+      e.metas?.general || "",
+      e.metas?.vip || "",
       m.registros,
       m.avance === null ? "" : `${m.avance}%`,
       m.general,

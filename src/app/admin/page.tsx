@@ -490,12 +490,22 @@ function Enlaces({ enlaces, sitio }: { enlaces: Enlace[]; sitio: string }) {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-tight text-white/50">Meta de registros</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Meta General</span>
           <input
-            name="meta"
+            name="metaGeneral"
             type="number"
             min={0}
-            defaultValue={0}
+            defaultValue={15}
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium tracking-tight text-white/50">Meta VIP</span>
+          <input
+            name="metaVip"
+            type="number"
+            min={0}
+            defaultValue={5}
             className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
@@ -619,8 +629,6 @@ function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
           </thead>
           <tbody>
             {t.marcadores.map((m) => {
-              const lleno = m.avance === null ? 0 : Math.min(100, m.avance);
-              const cumplio = m.avance !== null && m.avance >= 100;
               return (
                 <tr key={m.enlace.slug} className="border-t border-white/8">
                   <td className="px-4 py-3">
@@ -632,24 +640,46 @@ function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
                       <p className="text-xs text-white/35">{m.enlace.persona.email}</p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3" style={{ minWidth: "9rem" }}>
+                  <td className="px-4 py-3" style={{ minWidth: "11rem" }}>
                     {m.avance === null ? (
                       <span className="text-xs text-white/35">sin meta</span>
                     ) : (
-                      <>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${lleno}%`,
-                              background: cumplio ? "#7ddba4" : "var(--color-violet)",
-                            }}
-                          />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-12 text-[10px] uppercase tracking-wider text-white/40">
+                            Gral
+                          </span>
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.min(100, m.avanceGeneral ?? 0)}%`,
+                                background: (m.avanceGeneral ?? 0) >= 100 ? "#7ddba4" : "#ba9dfa",
+                              }}
+                            />
+                          </div>
+                          <span className="w-12 text-right text-[11px] tabular-nums text-white/55">
+                            {m.general}/{m.enlace.metas?.general ?? 0}
+                          </span>
                         </div>
-                        <p className="mt-1.5 text-xs tabular-nums text-white/55">
-                          {m.registros} de {m.enlace.meta} · {m.avance}%
-                        </p>
-                      </>
+                        <div className="flex items-center gap-2">
+                          <span className="w-12 text-[10px] uppercase tracking-wider text-white/40">
+                            VIP
+                          </span>
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.min(100, m.avanceVip ?? 0)}%`,
+                                background: (m.avanceVip ?? 0) >= 100 ? "#7ddba4" : "#802ef6",
+                              }}
+                            />
+                          </div>
+                          <span className="w-12 text-right text-[11px] tabular-nums text-white/55">
+                            {m.vip}/{m.enlace.metas?.vip ?? 0}
+                          </span>
+                        </div>
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 tabular-nums text-white/45">{m.enlace.clics}</td>
