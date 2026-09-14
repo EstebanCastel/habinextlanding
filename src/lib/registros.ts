@@ -59,6 +59,12 @@ export type Registro = {
     registradoEn: string;
     estadoAprobacion: string;
     empresa?: string;
+    /**
+     * `utm_source` con el que la persona llegó a Luma. Es lo que permite saber
+     * a quién atribuirle el registro cuando alguien comparte su enlace; llega
+     * vacío en quien entró escribiendo la dirección a mano.
+     */
+    origen?: string;
   };
   /** Solo dígitos, con indicativo (57…). Es la llave del canal de WhatsApp. */
   telefono: string | null;
@@ -221,6 +227,7 @@ export async function crearORecuperar(datos: {
   registradoEn: string;
   estadoAprobacion: string;
   empresa?: string;
+  origen?: string;
 }): Promise<{ registro: Registro; nuevo: boolean }> {
   const ahora = new Date().toISOString();
   const token = nuevoToken();
@@ -277,6 +284,7 @@ export async function crearORecuperar(datos: {
       registradoEn: datos.registradoEn,
       estadoAprobacion: datos.estadoAprobacion,
       ...(datos.empresa ? { empresa: datos.empresa } : {}),
+      ...(datos.origen ? { origen: datos.origen } : {}),
     },
     telefono,
     whatsapp: {},

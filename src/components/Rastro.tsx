@@ -120,6 +120,34 @@ export default function Rastro() {
       dispositivo: dispositivo(),
     };
 
+    /**
+     * Le pega la fuente de la visita a los botones que salen a Luma.
+     *
+     * Es lo único que conecta a quien compartió el enlace con el registro que
+     * salió de él: Luma guarda el `utm_source` de su propia URL y lo devuelve
+     * después en el webhook. Sin este paso, el salto a Luma borra de dónde
+     * venía la persona y todos los registros se ven iguales.
+     *
+     * La fuente se lee de la sesión, no de la URL del momento, para que siga
+     * funcionando si la persona navegó dentro del sitio antes de decidirse.
+     */
+    const marcarEnlacesDeLuma = () => {
+      if (!utm.source) return;
+      for (const a of document.querySelectorAll<HTMLAnchorElement>('a[href*="luma.com/habinext"]')) {
+        try {
+          const destino = new URL(a.href);
+          if (destino.searchParams.get("utm_source")) continue;
+          destino.searchParams.set("utm_source", utm.source);
+          if (utm.medium) destino.searchParams.set("utm_medium", utm.medium);
+          if (utm.campaign) destino.searchParams.set("utm_campaign", utm.campaign);
+          a.href = destino.toString();
+        } catch {
+          /* href relativo o raro: se deja como está */
+        }
+      }
+    };
+    marcarEnlacesDeLuma();
+
     const pendientes: Evento[] = [];
     const anotar = (tipo: string, valor?: string | number) =>
       pendientes.push({ tipo, en: new Date().toISOString(), valor });

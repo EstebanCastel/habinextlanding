@@ -20,6 +20,10 @@ export type Enlace = {
   clics: number;
   ultimoClic?: string;
   nota?: string;
+  /** Quién reparte este enlace, cuando es de una persona y no de un canal. */
+  persona?: { nombre: string; email?: string };
+  /** Cuántos registros se espera que traiga. 0 = sin meta. */
+  meta: number;
   creadoEn: string;
 };
 
@@ -42,6 +46,8 @@ export async function crear(datos: {
   campaign?: string;
   content?: string;
   nota?: string;
+  persona?: { nombre: string; email?: string };
+  meta?: number;
 }): Promise<{ ok: boolean; nota: string }> {
   const slug = normalizar(datos.slug);
   if (slug.length < 1) return { ok: false, nota: "El enlace necesita un nombre corto" };
@@ -58,6 +64,15 @@ export async function crear(datos: {
     },
     clics: 0,
     ...(datos.nota?.trim() ? { nota: datos.nota.trim() } : {}),
+    ...(datos.persona?.nombre?.trim()
+      ? {
+          persona: {
+            nombre: datos.persona.nombre.trim(),
+            ...(datos.persona.email?.trim() ? { email: datos.persona.email.trim().toLowerCase() } : {}),
+          },
+        }
+      : {}),
+    meta: Math.max(0, Math.trunc(datos.meta ?? 0)),
     creadoEn: new Date().toISOString(),
   };
 

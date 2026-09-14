@@ -105,6 +105,15 @@ export async function POST(request: Request) {
       campaign: String(form.get("campaign") ?? "habinext-2026"),
       content: String(form.get("content") ?? ""),
       nota: String(form.get("nota") ?? ""),
+      meta: Number(form.get("meta") ?? 0) || 0,
+      ...(String(form.get("persona") ?? "").trim()
+        ? {
+            persona: {
+              nombre: String(form.get("persona")).trim(),
+              email: String(form.get("email") ?? "").trim(),
+            },
+          }
+        : {}),
     });
     return volver(res.nota);
   }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Asterisk from "@/components/Asterisk";
 import Dot from "@/components/Dot";
 import { todos as todosLosCodigos, type CodigoConEstado } from "@/lib/codigos";
+import { tablero, type Tablero } from "@/lib/embajadores";
 import { destinoDe, todos as todosLosEnlaces, type Enlace } from "@/lib/enlaces";
 import { lotes, resumir, type Resumen } from "@/lib/rastro";
 import { todos, type Etapa, type Registro } from "@/lib/registros";
@@ -472,6 +473,33 @@ function Enlaces({ enlaces, sitio }: { enlaces: Enlace[]; sitio: string }) {
           />
         </label>
         <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium tracking-tight text-white/50">Persona (opcional)</span>
+          <input
+            name="persona"
+            placeholder="María Gómez"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium tracking-tight text-white/50">Su correo</span>
+          <input
+            name="email"
+            type="email"
+            placeholder="maria@habi.co"
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium tracking-tight text-white/50">Meta de registros</span>
+          <input
+            name="meta"
+            type="number"
+            min={0}
+            defaultValue={0}
+            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
           <span className="text-xs font-medium tracking-tight text-white/50">Pieza</span>
           <input
             name="content"
@@ -520,6 +548,124 @@ function Enlaces({ enlaces, sitio }: { enlaces: Enlace[]; sitio: string }) {
           </table>
         </div>
       )}
+    </section>
+  );
+}
+
+/**
+ * Cuánta gente trajo cada quien. Lo que cuenta es el registro, no el clic: un
+ * clic dice que compartió bien el enlace, un registro dice que la persona del
+ * otro lado quiso ir.
+ */
+function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
+  const conMeta = t.marcadores.filter((m) => m.avance !== null);
+  if (t.marcadores.length === 0) return null;
+
+  return (
+    <section className="mb-10">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold tracking-tight">Quién está trayendo gente</h2>
+        <a
+          href="/api/admin/embajadores.csv"
+          className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-light text-white/60 transition-colors hover:border-white/30 hover:text-white"
+        >
+          Bajar la planilla
+        </a>
+      </div>
+
+      {conMeta.length > 0 ? (
+        <div className="mb-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-3xl font-semibold tabular-nums tracking-tight">
+              {t.traidosTotal}
+              <span className="text-lg text-white/35"> / {t.metaTotal}</span>
+            </p>
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
+              Registros contra la meta
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-3xl font-semibold tabular-nums tracking-tight">
+              {t.metaTotal > 0 ? Math.round((t.traidosTotal / t.metaTotal) * 100) : 0}%
+            </p>
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
+              Avance del equipo
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-3xl font-semibold tabular-nums tracking-tight text-white/60">
+              {t.sinAtribuir}
+            </p>
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
+              Sin enlace conocido
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[54rem] text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
+            <tr>
+              <th className="px-4 py-3 font-medium">Quién</th>
+              <th className="px-4 py-3 font-medium">Avance</th>
+              <th className="px-4 py-3 font-medium">Trajo</th>
+              <th className="px-4 py-3 font-medium">General</th>
+              <th className="px-4 py-3 font-medium">VIP</th>
+              <th className="px-4 py-3 font-medium">Pagados</th>
+              <th className="px-4 py-3 font-medium">Clics</th>
+            </tr>
+          </thead>
+          <tbody>
+            {t.marcadores.map((m) => {
+              const lleno = m.avance === null ? 0 : Math.min(100, m.avance);
+              const cumplio = m.avance !== null && m.avance >= 100;
+              return (
+                <tr key={m.enlace.slug} className="border-t border-white/8">
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{m.quien}</p>
+                    <p className="font-mono text-xs text-violet-soft">
+                      {sitio.replace(/^https?:\/\//, "")}/l/{m.enlace.slug}
+                    </p>
+                    {m.enlace.persona?.email ? (
+                      <p className="text-xs text-white/35">{m.enlace.persona.email}</p>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3" style={{ minWidth: "9rem" }}>
+                    {m.avance === null ? (
+                      <span className="text-xs text-white/35">sin meta</span>
+                    ) : (
+                      <>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${lleno}%`,
+                              background: cumplio ? "#7ddba4" : "var(--color-violet)",
+                            }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs tabular-nums text-white/55">
+                          {m.registros} de {m.enlace.meta} · {m.avance}%
+                        </p>
+                      </>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-lg font-semibold tabular-nums">{m.registros}</td>
+                  <td className="px-4 py-3 tabular-nums text-white/60">{m.general}</td>
+                  <td className="px-4 py-3 tabular-nums text-violet-soft">{m.vip}</td>
+                  <td className="px-4 py-3 tabular-nums">{m.pagados}</td>
+                  <td className="px-4 py-3 tabular-nums text-white/45">{m.enlace.clics}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-xs text-white/40">
+        Se cuenta el registro en Luma, no el clic. Un registro se atribuye cuando la persona
+        llegó por el enlace y de ahí pasó a Luma sin salirse del camino.
+      </p>
     </section>
   );
 }
@@ -660,7 +806,10 @@ export default async function Panel({
     todosLosCodigos().catch(() => [] as CodigoConEstado[]),
     lotes().catch(() => []),
   ]);
-  const enlaces = await todosLosEnlaces().catch(() => [] as Enlace[]);
+  const [enlaces, marcador] = await Promise.all([
+    todosLosEnlaces().catch(() => [] as Enlace[]),
+    tablero().catch(() => null),
+  ]);
   const trafico = resumir(rastro);
   const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
   const pendientes = registros.filter(
@@ -715,6 +864,8 @@ export default async function Panel({
       ) : null}
 
       <Trafico r={trafico} />
+
+      {marcador ? <Marcador t={marcador} sitio={sitio} /> : null}
 
       <Enlaces enlaces={enlaces} sitio={sitio} />
 

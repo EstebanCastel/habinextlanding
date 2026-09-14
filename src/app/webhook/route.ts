@@ -41,6 +41,7 @@ type CuerpoLuma = {
     approval_status?: string;
     registered_at?: string | null;
     registration_answers?: { question_id?: string; question_type?: string; value?: unknown }[] | null;
+    utm_source?: string | null;
     event?: { api_id?: string; id?: string } | null;
   };
 };
@@ -116,6 +117,10 @@ export async function POST(request: Request) {
         registradoEn: data.registered_at || new Date().toISOString(),
         estadoAprobacion: data.approval_status || "pending_approval",
         empresa: empresaDe(data),
+        // Luma guarda el `utm_source` de la URL con la que la persona llegó a
+        // su página y lo devuelve acá. Es lo único que dice de quién vino el
+        // registro.
+        origen: (data.utm_source ?? "").trim().toLowerCase() || undefined,
       });
 
       // Solo la primera vez se escribe. El reintento de Luma cae acá y sale
