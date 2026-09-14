@@ -609,11 +609,12 @@ function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
             <tr>
               <th className="px-4 py-3 font-medium">Quién</th>
               <th className="px-4 py-3 font-medium">Avance</th>
-              <th className="px-4 py-3 font-medium">Trajo</th>
-              <th className="px-4 py-3 font-medium">General</th>
+              <th className="px-4 py-3 font-medium" title="Tocaron su enlace">Clics</th>
+              <th className="px-4 py-3 font-medium" title="Llegaron a la landing">Visitas</th>
+              <th className="px-4 py-3 font-medium" title="Tocaron un botón de boletería">A boletería</th>
+              <th className="px-4 py-3 font-medium">Registros</th>
               <th className="px-4 py-3 font-medium">VIP</th>
               <th className="px-4 py-3 font-medium">Pagados</th>
-              <th className="px-4 py-3 font-medium">Clics</th>
             </tr>
           </thead>
           <tbody>
@@ -651,20 +652,24 @@ function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
                       </>
                     )}
                   </td>
+                  <td className="px-4 py-3 tabular-nums text-white/45">{m.enlace.clics}</td>
+                  <td className="px-4 py-3 tabular-nums text-white/60">{m.visitas}</td>
+                  <td className="px-4 py-3 tabular-nums text-white/60">{m.clicsBoleteria}</td>
                   <td className="px-4 py-3 text-lg font-semibold tabular-nums">{m.registros}</td>
-                  <td className="px-4 py-3 tabular-nums text-white/60">{m.general}</td>
                   <td className="px-4 py-3 tabular-nums text-violet-soft">{m.vip}</td>
                   <td className="px-4 py-3 tabular-nums">{m.pagados}</td>
-                  <td className="px-4 py-3 tabular-nums text-white/45">{m.enlace.clics}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-white/40">
-        Se cuenta el registro en Luma, no el clic. Un registro se atribuye cuando la persona
-        llegó por el enlace y de ahí pasó a Luma sin salirse del camino.
+      <p className="mt-3 max-w-3xl text-xs leading-relaxed text-white/40">
+        Las columnas son el recorrido completo: tocaron su enlace → llegaron a la landing →
+        tocaron boletería → se registraron en Luma. La meta se mide contra los registros, que
+        es lo único que significa que alguien quiso ir. Si alguien tiene muchos clics y pocas
+        visitas, el enlace se está compartiendo pero no se abre; si tiene muchas visitas y
+        pocos registros, la gente mira y no se inscribe.
       </p>
     </section>
   );

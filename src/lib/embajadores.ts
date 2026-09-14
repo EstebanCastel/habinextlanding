@@ -1,22 +1,37 @@
 import { todos as todosLosEnlaces, type Enlace } from "./enlaces";
+import { lotes, type Lote } from "./rastro";
 import { todos as todosLosRegistros, type Registro } from "./registros";
 
 /**
  * Cuánta gente trajo cada quien.
  *
- * El cruce es por `utm_source`: el enlace de cada persona lo lleva en la URL,
- * la landing se lo pega al botón que sale a Luma, Luma lo guarda y lo devuelve
- * en el webhook, y así el registro queda con el nombre de quien lo trajo.
+ * Se cruzan tres capas, todas por el mismo `utm_source`:
  *
- * Lo que se cuenta como logro es el **registro**, no el clic. Un clic dice que
- * alguien compartió bien el enlace; un registro dice que la persona del otro
- * lado quiso ir. La meta se mide contra lo segundo.
+ * 1. **El enlace corto** cuenta cuántos lo tocaron.
+ * 2. **El rastro de la landing** cuenta cuántos llegaron de verdad a la página
+ *    y cuántos tocaron boletería — es nuestro dato, no depende de nadie.
+ * 3. **El registro en Luma**, que guarda el `utm_source` de su URL y lo
+ *    devuelve en el webhook.
+ *
+ * Tenerlas las tres es lo que hace útil el tablero: entre los clics y las
+ * visitas se ve quién comparte un enlace que nadie abre, y entre las visitas y
+ * los registros, quién trae gente que mira y no se inscribe. Son dos problemas
+ * distintos y se arreglan de forma distinta.
+ *
+ * Lo que se cuenta como logro es el **registro**. Un clic dice que alguien
+ * compartió bien el enlace; un registro dice que la persona del otro lado
+ * quiso ir. La meta se mide contra lo segundo.
  */
 
 export type Marcador = {
   enlace: Enlace;
   /** Nombre visible: el de la persona si la hay, si no el del canal. */
   quien: string;
+  /** Del rastro propio de la landing. */
+  visitas: number;
+  personas: number;
+  clicsBoleteria: number;
+  /** De Luma. */
   registros: number;
   general: number;
   vip: number;
@@ -35,10 +50,35 @@ export type Tablero = {
 };
 
 export async function tablero(): Promise<Tablero> {
-  const [enlaces, registros] = await Promise.all([
+  const [enlaces, registros, rastro] = await Promise.all([
     todosLosEnlaces().catch(() => [] as Enlace[]),
     todosLosRegistros().catch(() => [] as Registro[]),
+    lotes().catch(() => [] as Lote[]),
   ]);
+
+  // Rastro propio, agrupado por sesión y por la fuente con la que entró.
+  const visitasPorFuente = new Map<string, { sesiones: Set<string>; visitantes: Set<string>; clics: number }>();
+  const sesionesVistas = new Map<string, Lote[]>();
+  for (const l of rastro) {
+    if (!sesionesVistas.has(l.sesion)) sesionesVistas.set(l.sesion, []);
+    sesionesVistas.get(l.sesion)!.push(l);
+  }
+  for (const ls of sesionesVistas.values()) {
+    const base = ls[ls.length - 1];
+    const f = (base.utm.source ?? "").trim().toLowerCase();
+    if (!f) continue;
+    if (!visitasPorFuente.has(f)) {
+      visitasPorFuente.set(f, { sesiones: new Set(), visitantes: new Set(), clics: 0 });
+    }
+    const acc = visitasPorFuente.get(f)!;
+    acc.sesiones.add(base.sesion);
+    acc.visitantes.add(base.visitante);
+    for (const l of ls) {
+      for (const e of l.eventos) {
+        if (e.tipo === "clic" && String(e.valor ?? "").startsWith("boleteria")) acc.clics += 1;
+      }
+    }
+  }
 
   const porOrigen = new Map<string, Registro[]>();
   for (const r of registros) {
@@ -51,9 +91,13 @@ export async function tablero(): Promise<Tablero> {
   const marcadores: Marcador[] = enlaces.map((enlace) => {
     const suyos = porOrigen.get(enlace.utm.source) ?? [];
     const meta = enlace.meta ?? 0;
+    const trafico = visitasPorFuente.get(enlace.utm.source);
     return {
       enlace,
       quien: enlace.persona?.nombre ?? enlace.utm.source,
+      visitas: trafico?.sesiones.size ?? 0,
+      personas: trafico?.visitantes.size ?? 0,
+      clicsBoleteria: trafico?.clics ?? 0,
       registros: suyos.length,
       general: suyos.filter((r) => r.tier === "general").length,
       vip: suyos.filter((r) => r.tier === "vip").length,
@@ -97,6 +141,9 @@ export function aCsv(t: Tablero, sitio: string): string {
     "VIP",
     "Pagados",
     "Clics al enlace",
+    "Visitas a la landing",
+    "Personas distintas",
+    "Clics a boletería",
     "utm_source",
     "Enlace largo",
   ];
@@ -119,6 +166,9 @@ export function aCsv(t: Tablero, sitio: string): string {
       m.vip,
       m.pagados,
       e.clics,
+      m.visitas,
+      m.personas,
+      m.clicsBoleteria,
       e.utm.source,
       largo.toString(),
     ].map(celda).join(";");
