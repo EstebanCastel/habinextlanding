@@ -24,6 +24,45 @@ const ANALYTICS_HOSTS = [
 const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 90);
 const WINDOW_MS = 60_000;
 
+/**
+ * Las tres versiones de la landing que se están comparando.
+ *
+ *   a · la página completa, tal como está
+ *   b · corta, con la boletería mucho más arriba
+ *   c · directo: hero y boletería, nada en medio
+ *
+ * La asignación va acá y no en el navegador porque el reparto tiene que estar
+ * decidido **antes** del primer render: hacerlo en el cliente significa pintar
+ * una versión y reemplazarla, que además de verse mal contamina la medición —
+ * el visitante alcanza a ver dos páginas distintas.
+ *
+ * Se guarda en cookie para que la misma persona vea siempre lo mismo. Un
+ * experimento en el que alguien ve A el lunes y C el martes no mide nada.
+ */
+const VARIANTES = ["a", "b", "c"] as const;
+type Variante = (typeof VARIANTES)[number];
+const COOKIE_VARIANTE = "hn_ab";
+const DIAS_VARIANTE = 60 * 60 * 24 * 45;
+
+function esVariante(v: string | undefined | null): v is Variante {
+  return v === "a" || v === "b" || v === "c";
+}
+
+/**
+ * A quién le toca cuál. El `?v=` de la URL manda sobre todo lo demás: es lo
+ * que permite abrir las tres a voluntad para revisarlas o mostrarlas, sin
+ * esperar a que el azar reparta.
+ */
+function asignarVariante(request: NextRequest): { variante: Variante; nueva: boolean } {
+  const forzada = request.nextUrl.searchParams.get("v")?.toLowerCase();
+  if (esVariante(forzada)) return { variante: forzada, nueva: true };
+
+  const guardada = request.cookies.get(COOKIE_VARIANTE)?.value;
+  if (esVariante(guardada)) return { variante: guardada, nueva: false };
+
+  return { variante: VARIANTES[Math.floor(Math.random() * VARIANTES.length)], nueva: true };
+}
+
 const hits = new Map<string, { count: number; resetAt: number }>();
 
 function overLimit(ip: string, now: number): boolean {
@@ -96,12 +135,28 @@ export function proxy(request: NextRequest) {
 
   // Next lee el nonce de la cabecera en la petición y lo aplica solo a sus
   // propios scripts y a los <Script>; por eso viaja en las dos direcciones.
+  const { variante, nueva } = asignarVariante(request);
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-variante", variante);
   requestHeaders.set("Content-Security-Policy", csp);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
+
+  if (nueva) {
+    // Legible desde JavaScript a propósito: el rastro tiene que poder decir
+    // con qué versión se comportó cada visita. No es un secreto, es la
+    // etiqueta del experimento.
+    response.cookies.set(COOKIE_VARIANTE, variante, {
+      path: "/",
+      maxAge: DIAS_VARIANTE,
+      sameSite: "lax",
+      secure: true,
+    });
+  }
+
   return response;
 }
 

@@ -50,6 +50,8 @@ export type Lote = {
     zona?: string;
   };
   geo?: { pais?: string; region?: string; ciudad?: string };
+  /** Versión de la landing que vio: `a`, `b` o `c`. */
+  variante?: string;
   eventos: Evento[];
   recibidoEn: string;
 };
@@ -82,9 +84,23 @@ export async function lotes(dias = 45, tope = 4000): Promise<Lote[]> {
   return salida.sort((a, b) => b.recibidoEn.localeCompare(a.recibidoEn));
 }
 
+export type PorVariante = {
+  id: string;
+  nombre: string;
+  sesiones: number;
+  /** Cuántas de esas visitas tocaron un botón de boletería. */
+  aBoleteria: number;
+  /** El número que decide el experimento. */
+  tasa: number;
+  /** Profundidad de lectura y permanencia, para explicar el porqué. */
+  hasta75: number;
+  segundos: number;
+};
+
 export type Resumen = {
   visitantes: number;
   sesiones: number;
+  variantes: PorVariante[];
   porFuente: { nombre: string; sesiones: number; visitantes: number; clicsBoleteria: number }[];
   porDispositivo: { nombre: string; sesiones: number }[];
   porPais: { nombre: string; sesiones: number }[];
@@ -137,6 +153,13 @@ export function resumir(lista: Lote[]): Resumen {
   const primeroDe = (ls: Lote[]) => ls[ls.length - 1];
   const eventosDe = (ls: Lote[]) => ls.flatMap((l) => l.eventos);
 
+  const NOMBRES: Record<string, string> = {
+    a: "A · completa",
+    b: "B · corta",
+    c: "C · directa",
+  };
+  const porVariante = new Map<string, { sesiones: number; aBoleteria: number; hasta75: number; segs: number[] }>();
+
   const clicsPorNombre = new Map<string, number>();
   const profundidad = { hasta25: 0, hasta50: 0, hasta75: 0, hasta100: 0 };
   const duraciones: number[] = [];
@@ -168,13 +191,42 @@ export function resumir(lista: Lote[]): Resumen {
     if (max >= 75) profundidad.hasta75 += 1;
     if (max >= 100) profundidad.hasta100 += 1;
     if (segundos > 0) duraciones.push(segundos);
+
+    const v = base.variante;
+    if (v) {
+      const acc = porVariante.get(v) ?? { sesiones: 0, aBoleteria: 0, hasta75: 0, segs: [] };
+      acc.sesiones += 1;
+      if (evs.some((e) => e.tipo === "clic" && String(e.valor ?? "").startsWith("boleteria"))) {
+        acc.aBoleteria += 1;
+      }
+      if (max >= 75) acc.hasta75 += 1;
+      if (segundos > 0) acc.segs.push(segundos);
+      porVariante.set(v, acc);
+    }
   }
 
   duraciones.sort((a, b) => a - b);
 
+  // Se cuenta **visitas que tocaron boletería**, no clics: alguien que toca
+  // tres veces el mismo botón no son tres conversiones.
+  const variantes: PorVariante[] = ["a", "b", "c"].map((id) => {
+    const v = porVariante.get(id);
+    const segs = (v?.segs ?? []).slice().sort((a, b) => a - b);
+    return {
+      id,
+      nombre: NOMBRES[id],
+      sesiones: v?.sesiones ?? 0,
+      aBoleteria: v?.aBoleteria ?? 0,
+      tasa: v && v.sesiones ? Math.round((v.aBoleteria / v.sesiones) * 100) : 0,
+      hasta75: v?.hasta75 ?? 0,
+      segundos: segs.length ? segs[Math.floor(segs.length / 2)] : 0,
+    };
+  });
+
   return {
     visitantes: new Set(lista.map((l) => l.visitante)).size,
     sesiones: sesiones.length,
+    variantes,
     porFuente: [...porFuenteMap.entries()]
       .map(([nombre, v]) => ({
         nombre,
@@ -205,6 +257,7 @@ export function aCsv(lista: Lote[]): string {
     "Contenido",
     "Referente",
     "Entrada",
+    "Versión",
     "Dispositivo",
     "Sistema",
     "Navegador",
@@ -246,6 +299,7 @@ export function aCsv(lista: Lote[]): string {
       base.utm.content ?? "",
       base.referente ?? "",
       base.entrada,
+      base.variante ?? "",
       base.dispositivo.tipo,
       base.dispositivo.sistema ?? "",
       base.dispositivo.navegador ?? "",

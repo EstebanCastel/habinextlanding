@@ -45,6 +45,12 @@ function recordar(almacen: Storage, clave: string, valor?: string): string | nul
   }
 }
 
+/** Qué versión de la página le tocó a esta visita. La pone el proxy. */
+function variante(): string | undefined {
+  const m = document.cookie.match(/(?:^|;\s*)hn_ab=([abc])(?:;|$)/);
+  return m?.[1];
+}
+
 function dispositivo() {
   const ua = navigator.userAgent;
   const tableta = /iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Android/.test(ua) && !/Mobile/.test(ua));
@@ -118,6 +124,7 @@ export default function Rastro() {
       referente: document.referrer || undefined,
       entrada: window.location.pathname + window.location.search,
       dispositivo: dispositivo(),
+      variante: variante(),
     };
 
     /**

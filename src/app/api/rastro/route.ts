@@ -47,6 +47,7 @@ export async function POST(request: Request) {
 
   if (!eventos.length) return NextResponse.json({ ok: true, guardados: 0 });
 
+  const v = String(crudo.variante ?? "").toLowerCase();
   const utm = (crudo.utm ?? {}) as Record<string, unknown>;
   const disp = (crudo.dispositivo ?? {}) as Record<string, unknown>;
   const tipoDisp = String(disp.tipo);
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
         ? { ciudad: decodeURIComponent(request.headers.get("x-vercel-ip-city")!) }
         : {}),
     },
+    ...(v === "a" || v === "b" || v === "c" ? { variante: v } : {}),
     eventos,
     recibidoEn: new Date().toISOString(),
   };
