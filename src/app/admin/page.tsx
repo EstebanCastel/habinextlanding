@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Asterisk from "@/components/Asterisk";
 import Dot from "@/components/Dot";
-import { todos as todosLosCodigos, type CodigoConEstado } from "@/lib/codigos";
+import { resumir as resumirCodigos, todos as todosLosCodigos, type CodigoConEstado } from "@/lib/codigos";
 import { tablero, type Tablero } from "@/lib/embajadores";
 import { destinoDe, todos as todosLosEnlaces, type Enlace } from "@/lib/enlaces";
 import { lotes, resumir, type Resumen } from "@/lib/rastro";
@@ -239,25 +239,138 @@ function Experimento({ r }: { r: Resumen }) {
  * forma más silenciosa de llenar el evento de entradas que nadie pagó, y acá
  * se ve de un vistazo cuánto lleva usado cada uno y quién lo usó.
  */
-function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
-  const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+/** Filtro del listado de códigos. Es un enlace, no un botón: ver `enlace()`. */
+function Pastilla({
+  activa,
+  href,
+  children,
+}: {
+  activa: boolean;
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      className={`rounded-full px-4 py-2 text-sm transition-colors ${
+        activa
+          ? "bg-violet font-semibold text-white"
+          : "border border-white/15 text-white/60 hover:border-white/35 hover:text-white"
+      }`}
+    >
+      {children}
+    </a>
+  );
+}
+
+function Codigos({
+  codigos,
+  estado,
+  entrada,
+}: {
+  codigos: CodigoConEstado[];
+  estado: string;
+  entrada: string;
+}) {
+  const resumen = resumirCodigos(codigos);
+
+  const filtrados = codigos.filter((c) => {
+    if (estado === "redimidos" && c.usos === 0) return false;
+    if (estado === "disponibles" && c.usos > 0) return false;
+    if (entrada === "vip" && c.sirvePara === "general") return false;
+    if (entrada === "general" && c.sirvePara === "vip") return false;
+    return true;
+  });
+
+  // Los filtros son enlaces, no botones con JavaScript: el estado vive en la
+  // dirección, así que «los VIP sin redimir» se puede compartir o dejar
+  // guardado en el navegador.
+  const enlace = (e: string, t: string) => {
+    const q = new URLSearchParams();
+    if (e !== "todos") q.set("cod", e);
+    if (t !== "todas") q.set("tier", t);
+    return `/admin${q.toString() ? `?${q}` : ""}#codigos`;
+  };
+
+  // Con cientos de códigos, listarlos todos vuelve la página inmanejable. Del
+  // listado se necesita ver los últimos redimidos o buscar uno concreto; para
+  // la lista entera está la descarga.
+  const TOPE = 120;
+  const visibles = filtrados.slice(0, TOPE);
 
   return (
-    <section className="mb-10">
-      <h2 className="mb-5 text-xl font-semibold tracking-tight">Códigos de invitación</h2>
+    <section id="codigos" className="mb-10 scroll-mt-8">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold tracking-tight">Códigos de invitación</h2>
+        <a
+          href={`/api/admin/codigos.csv${estado !== "todos" ? `?estado=${estado}` : ""}`}
+          className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-light text-white/60 transition-colors hover:border-white/30 hover:text-white"
+        >
+          Bajar los códigos
+        </a>
+      </div>
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { n: String(resumen.total), t: "Códigos en total" },
+          { n: String(resumen.redimidos), t: "Ya redimidos", acento: true },
+          { n: String(resumen.disponibles), t: "Sin usar" },
+          {
+            n: `${resumen.porTier.general.redimidos} · ${resumen.porTier.vip.redimidos}`,
+            t: "Redimidos General · VIP",
+          },
+        ].map((c) => (
+          <div key={c.t} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p
+              className={`text-3xl font-semibold tabular-nums tracking-tight ${
+                c.acento ? "text-violet-soft" : ""
+              }`}
+            >
+              {c.n}
+            </p>
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
+              {c.t}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs uppercase tracking-wider text-white/35">Estado</span>
+        <Pastilla activa={estado === "todos"} href={enlace("todos", entrada)}>
+          Todos
+        </Pastilla>
+        <Pastilla activa={estado === "redimidos"} href={enlace("redimidos", entrada)}>
+          Redimidos
+        </Pastilla>
+        <Pastilla activa={estado === "disponibles"} href={enlace("disponibles", entrada)}>
+          Sin usar
+        </Pastilla>
+
+        <span className="ml-4 mr-1 text-xs uppercase tracking-wider text-white/35">Entrada</span>
+        <Pastilla activa={entrada === "todas"} href={enlace(estado, "todas")}>
+          Las dos
+        </Pastilla>
+        <Pastilla activa={entrada === "general"} href={enlace(estado, "general")}>
+          General
+        </Pastilla>
+        <Pastilla activa={entrada === "vip"} href={enlace(estado, "vip")}>
+          VIP
+        </Pastilla>
+      </div>
 
       <form
         method="post"
         action="/api/admin"
-        className="mb-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:grid-cols-2 lg:grid-cols-6"
+        className="mb-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:grid-cols-2 lg:grid-cols-5"
       >
         <input type="hidden" name="accion" value="crear-codigo" />
         <label className="flex flex-col gap-1 lg:col-span-2">
-          <span className="text-xs font-medium tracking-tight text-white/50">Código</span>
+          <span className="text-xs font-medium tracking-tight text-white/50">Código nuevo</span>
           <input
             name="codigo"
             required
-            placeholder="HABINEXT-ALIADOS"
+            placeholder="HABI-XXXX-XXXX"
             className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 font-mono text-sm uppercase tracking-wider text-white transition-colors placeholder:font-sans placeholder:tracking-normal placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
@@ -265,31 +378,13 @@ function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
           <span className="text-xs font-medium tracking-tight text-white/50">Sirve para</span>
           <select
             name="sirve"
-            defaultValue="ambos"
+            defaultValue="general"
             className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
           >
+            <option value="general">General</option>
+            <option value="vip">VIP</option>
             <option value="ambos">Las dos</option>
-            <option value="general">Solo General</option>
-            <option value="vip">Solo VIP</option>
           </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-tight text-white/50">Entradas (0 = sin tope)</span>
-          <input
-            name="usos"
-            type="number"
-            min={0}
-            defaultValue={1}
-            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-tight text-white/50">Vence (opcional)</span>
-          <input
-            name="vence"
-            type="date"
-            className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors focus:border-violet-soft/70 focus:outline-none"
-          />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium tracking-tight text-white/50">Para quién</span>
@@ -299,94 +394,108 @@ function Codigos({ codigos }: { codigos: CodigoConEstado[] }) {
             className="rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition-colors placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
           />
         </label>
+        <input type="hidden" name="usos" value="1" />
         <button
           type="submit"
-          className="mt-1 self-end rounded-full bg-violet px-6 py-3 text-sm font-semibold tracking-tight text-white transition-colors hover:bg-violet-press sm:col-span-2 lg:col-span-6"
+          className="mt-1 self-end rounded-full bg-violet px-6 py-3 text-sm font-semibold tracking-tight text-white transition-colors hover:bg-violet-press"
         >
           Crear código
         </button>
       </form>
 
-      {codigos.length === 0 ? (
+      {filtrados.length === 0 ? (
         <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-base font-light text-white/50">
-          Todavía no hay códigos. Crea uno arriba y compártelo con tus invitados.
+          Ningún código con ese filtro.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[52rem] text-left text-sm">
-            <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
-              <tr>
-                <th className="px-3 py-3 font-medium">Código</th>
-                <th className="px-3 py-3 font-medium">Sirve para</th>
-                <th className="px-3 py-3 font-medium">Usado</th>
-                <th className="px-3 py-3 font-medium">Vence</th>
-                <th className="px-3 py-3 font-medium">Quiénes lo usaron</th>
-                <th className="px-3 py-3 font-medium">Link para repartir</th>
-                <th className="px-3 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {codigos.map((c) => {
-                return (
-                  <tr key={c.codigo} className="border-t border-white/8 align-top">
-                    <td className="px-3 py-3">
-                      <p className="font-mono font-medium tracking-wider">{c.codigo}</p>
-                      {c.nota ? <p className="text-xs text-white/40">{c.nota}</p> : null}
-                      {!c.activo ? (
-                        <p className="text-xs text-red-400">desactivado</p>
-                      ) : c.agotado ? (
-                        <p className="text-xs text-white/40">sin cupo</p>
-                      ) : c.vencido ? (
-                        <p className="text-xs text-white/40">vencido</p>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-white/60">
-                      {c.sirvePara === "ambos" ? "Las dos" : c.sirvePara === "vip" ? "VIP" : "General"}
-                    </td>
-                    <td className="px-3 py-3 tabular-nums">
-                      {c.usos}
-                      {c.usosMaximos > 0 ? ` / ${c.usosMaximos}` : " · sin tope"}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-white/50">
-                      {c.venceEl ? hora(c.venceEl) : "no vence"}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-white/50">
-                      {c.redenciones.length === 0
-                        ? "—"
-                        : c.redenciones.map((r) => (
-                            <p key={r.token}>
-                              {r.nombre} · {r.email}{" "}
-                              <span className="text-white/30">
-                                ({r.tier === "vip" ? "VIP" : "General"}, {hora(r.en)})
-                              </span>
-                            </p>
-                          ))}
-                    </td>
-                    <td className="px-3 py-3 text-xs">
-                      <code className="text-violet-soft">
-                        {sitio}/codigo?tier=
-                        {c.sirvePara === "vip" ? "vip" : "general"}&amp;codigo={c.codigo}
-                      </code>
-                    </td>
-                    <td className="px-3 py-3">
-                      <form method="post" action="/api/admin">
-                        <input type="hidden" name="accion" value="codigo-estado" />
-                        <input type="hidden" name="codigo" value={c.codigo} />
-                        <input type="hidden" name="activo" value={c.activo ? "0" : "1"} />
-                        <button
-                          type="submit"
-                          className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white"
+        <>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full min-w-[46rem] text-left text-sm">
+              <thead className="bg-white/[0.04] text-xs uppercase tracking-wide text-white/45">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Código</th>
+                  <th className="px-4 py-3 font-medium">Entrada</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium">Quién lo usó</th>
+                  <th className="px-4 py-3 font-medium">Cuándo</th>
+                  <th className="px-4 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibles.map((c) => {
+                  const usado = c.usos > 0;
+                  const r = c.redenciones[0];
+                  return (
+                    <tr key={c.codigo} className="border-t border-white/8">
+                      <td className="px-4 py-3 font-mono tracking-wider">{c.codigo}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            c.sirvePara === "vip" ? "bg-violet text-white" : "bg-white/10 text-white/75"
+                          }`}
                         >
-                          {c.activo ? "Desactivar" : "Activar"}
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          {c.sirvePara === "vip"
+                            ? "VIP"
+                            : c.sirvePara === "ambos"
+                              ? "Las dos"
+                              : "General"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {usado ? (
+                          <span className="text-violet-soft">Redimido</span>
+                        ) : !c.activo ? (
+                          <span className="text-red-300/80">Desactivado</span>
+                        ) : c.vencido ? (
+                          <span className="text-white/40">Vencido</span>
+                        ) : (
+                          <span className="text-white/55">Sin usar</span>
+                        )}
+                        {c.usosMaximos > 1 ? (
+                          <span className="block text-white/35">
+                            {c.usos}/{c.usosMaximos}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {r ? (
+                          <>
+                            <p className="text-white/75">{r.nombre}</p>
+                            <p className="text-white/40">{r.email}</p>
+                          </>
+                        ) : (
+                          <span className="text-white/25">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-white/50">{r ? hora(r.en) : "—"}</td>
+                      <td className="px-4 py-3">
+                        {usado ? null : (
+                          <form method="post" action="/api/admin">
+                            <input type="hidden" name="accion" value="codigo-estado" />
+                            <input type="hidden" name="codigo" value={c.codigo} />
+                            <input type="hidden" name="activo" value={c.activo ? "0" : "1"} />
+                            <button
+                              type="submit"
+                              className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white"
+                            >
+                              {c.activo ? "Desactivar" : "Activar"}
+                            </button>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {filtrados.length > TOPE ? (
+            <p className="mt-3 text-xs text-white/40">
+              Se muestran {TOPE} de {filtrados.length}. Para la lista completa, usa{" "}
+              <em className="not-italic text-white/60">Bajar los códigos</em>.
+            </p>
+          ) : null}
+        </>
       )}
     </section>
   );
@@ -920,9 +1029,11 @@ function Fila({ r }: { r: Registro }) {
 export default async function Panel({
   searchParams,
 }: {
-  searchParams: Promise<{ aviso?: string; error?: string }>;
+  searchParams: Promise<{ aviso?: string; error?: string; cod?: string; tier?: string }>;
 }) {
-  const { aviso, error } = await searchParams;
+  const { aviso, error, cod, tier } = await searchParams;
+  const estadoCodigos = cod === "redimidos" || cod === "disponibles" ? cod : "todos";
+  const entradaCodigos = tier === "vip" || tier === "general" ? tier : "todas";
 
   if (!(await haySesion())) return <Entrar error={error === "1"} />;
 
@@ -996,7 +1107,7 @@ export default async function Panel({
 
       <Enlaces enlaces={enlaces} sitio={sitio} />
 
-      <Codigos codigos={codigos} />
+      <Codigos codigos={codigos} estado={estadoCodigos} entrada={entradaCodigos} />
 
       <h2 className="mb-5 text-xl font-semibold tracking-tight">El embudo</h2>
       <Embudo registros={registros} />

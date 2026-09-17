@@ -185,6 +185,58 @@ export function conEstado(c: Codigo, ahora = Date.now()): CodigoConEstado {
   return { ...c, agotado, vencido, utilizable: c.activo && !agotado && !vencido };
 }
 
+export type ResumenCodigos = {
+  total: number;
+  redimidos: number;
+  disponibles: number;
+  porTier: { general: { total: number; redimidos: number }; vip: { total: number; redimidos: number } };
+};
+
+/**
+ * Las cuentas de los códigos.
+ *
+ * «Redimido» es haber gastado el cupo, no simplemente existir: un código de un
+ * uso ya usado y uno de diez con diez usos cuentan igual, porque en los dos
+ * casos ya no le sirven a nadie más.
+ */
+export function resumir(lista: CodigoConEstado[]): ResumenCodigos {
+  const cuenta = (filtro: (c: CodigoConEstado) => boolean) => {
+    const sub = lista.filter(filtro);
+    return { total: sub.length, redimidos: sub.filter((c) => c.usos > 0).length };
+  };
+  const redimidos = lista.filter((c) => c.usos > 0).length;
+  return {
+    total: lista.length,
+    redimidos,
+    disponibles: lista.filter((c) => c.utilizable).length,
+    porTier: {
+      general: cuenta((c) => c.sirvePara === "general" || c.sirvePara === "ambos"),
+      vip: cuenta((c) => c.sirvePara === "vip" || c.sirvePara === "ambos"),
+    },
+  };
+}
+
+/** Planilla de códigos, para repartir y para revisar quién ya entró. */
+export function aCsv(lista: CodigoConEstado[], sitio: string): string {
+  const celda = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const cab = ["Código", "Entrada", "Estado", "Redimido por", "Correo", "Cuándo", "Link para redimir", "Nota"];
+  const filas = lista.map((c) => {
+    const r = c.redenciones[0];
+    const tier = c.sirvePara === "ambos" ? "general" : c.sirvePara;
+    return [
+      c.codigo,
+      c.sirvePara === "vip" ? "VIP" : c.sirvePara === "ambos" ? "Las dos" : "General",
+      c.usos > 0 ? "Redimido" : !c.activo ? "Desactivado" : c.vencido ? "Vencido" : "Disponible",
+      r?.nombre ?? "",
+      r?.email ?? "",
+      r ? r.en.slice(0, 16).replace("T", " ") : "",
+      `${sitio}/codigo?tier=${tier}&codigo=${c.codigo}`,
+      c.nota ?? "",
+    ].map(celda).join(";");
+  });
+  return "\ufeff" + [cab.map(celda).join(";"), ...filas].join("\r\n");
+}
+
 export async function todos(): Promise<CodigoConEstado[]> {
   const rutas = await listarRutas("codigos/", 500);
   const ahora = Date.now();
