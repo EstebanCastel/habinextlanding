@@ -238,14 +238,27 @@ export function aCsv(lista: CodigoConEstado[], sitio: string): string {
 }
 
 export async function todos(): Promise<CodigoConEstado[]> {
-  const rutas = await listarRutas("codigos/", 500);
+  const rutas = await listarRutas("codigos/", 2000);
   const ahora = Date.now();
   const salida: CodigoConEstado[] = [];
-  for (const r of rutas) {
-    const c = await leer<Codigo>(r);
-    if (c) salida.push(conEstado(c, ahora));
+
+  // En tandas y no de a uno: con ochocientos códigos, leerlos en fila son
+  // ochocientas idas y vueltas al almacén y el panel tarda minutos en abrir.
+  const TANDA = 40;
+  for (let i = 0; i < rutas.length; i += TANDA) {
+    const trozo = await Promise.all(rutas.slice(i, i + TANDA).map((r) => leer<Codigo>(r)));
+    for (const c of trozo) if (c) salida.push(conEstado(c, ahora));
   }
-  return salida.sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+
+  // Los redimidos primero y, dentro de cada grupo, lo más reciente arriba: lo
+  // que se mira es quién acaba de entrar.
+  return salida.sort((a, b) => {
+    const ra = a.redenciones[0]?.en ?? "";
+    const rb = b.redenciones[0]?.en ?? "";
+    if (ra && rb) return rb.localeCompare(ra);
+    if (ra !== rb) return ra ? -1 : 1;
+    return a.codigo.localeCompare(b.codigo);
+  });
 }
 
 export async function cambiarEstado(codigo: string, activo: boolean): Promise<boolean> {

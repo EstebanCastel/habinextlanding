@@ -112,10 +112,11 @@ export async function contarClic(slug: string): Promise<void> {
 export async function todos(): Promise<Enlace[]> {
   const rutas = await listarRutas("enlaces/", 300);
   const salida: Enlace[] = [];
-  for (const r of rutas) {
-    const e = await leer<Enlace>(r);
+  const TANDA = 40;
+  for (let i = 0; i < rutas.length; i += TANDA) {
+    const trozo = await Promise.all(rutas.slice(i, i + TANDA).map((r) => leer<Enlace>(r)));
     // Los enlaces de canal se crearon antes de que existieran las metas.
-    if (e) salida.push({ ...e, metas: e.metas ?? { general: 0, vip: 0 } });
+    for (const e of trozo) if (e) salida.push({ ...e, metas: e.metas ?? { general: 0, vip: 0 } });
   }
   return salida.sort((a, b) => b.clics - a.clics);
 }
