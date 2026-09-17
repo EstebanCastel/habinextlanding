@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { redimirCodigo } from "@/lib/bot";
-import { normalizarTelefono, type Tier } from "@/lib/registros";
+import { normalizarCedula, normalizarTelefono, type Tier } from "@/lib/registros";
 
 /**
  * Redención de un código de invitación. Es el único endpoint público que
@@ -56,9 +56,10 @@ export async function POST(request: Request) {
   const nombre = String(form.get("nombre") ?? "").trim().replace(/\s+/g, " ");
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const telefonoCrudo = String(form.get("telefono") ?? "").trim();
+  const cedulaCruda = String(form.get("cedula") ?? "").trim();
   const tier = (String(form.get("tier") ?? "general") === "vip" ? "vip" : "general") as Tier;
 
-  const conservar = { codigo, nombre, email, telefono: telefonoCrudo, tier };
+  const conservar = { codigo, nombre, email, telefono: telefonoCrudo, cedula: cedulaCruda, tier };
 
   if (!codigo) return volver({ ...conservar, error: "Escribe tu código." });
   if (nombre.length < 3) return volver({ ...conservar, error: "Escribe tu nombre completo." });
@@ -67,6 +68,11 @@ export async function POST(request: Request) {
   // El formulario ya fija el +57, así que aquí llegan los diez dígitos
   // colombianos. `normalizarTelefono` los completa, y si alguien pegó el
   // número entero con indicativo tampoco se rompe.
+  const cedula = normalizarCedula(cedulaCruda);
+  if (!cedula) {
+    return volver({ ...conservar, error: "La cédula va solo en números, sin puntos ni comas." });
+  }
+
   const telefono = normalizarTelefono(telefonoCrudo);
   if (!telefono) {
     return volver({
@@ -76,7 +82,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}` });
+    const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}`, cedula });
     if (!res.ok) return volver({ ...conservar, error: res.nota });
     return volver({ listo: "1", tier, email });
   } catch (error) {

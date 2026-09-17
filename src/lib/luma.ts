@@ -83,8 +83,21 @@ export async function rechazarInvitado(
  */
 export async function agregarInvitado(
   eventId: string,
-  persona: { email: string; nombre: string; telefono: string | null; aprobado?: boolean }
+  persona: {
+    email: string;
+    nombre: string;
+    aprobado?: boolean;
+    /**
+     * Respuestas al formulario del evento. **Cada `id` tiene que existir hoy en
+     * el evento**: Luma rechaza el alta entera con "The event has no
+     * registration question with ID …" si se le manda una que ya no está.
+     * Por eso el valor por defecto es no mandar ninguna — quitar una pregunta
+     * del evento no puede volver a romper el alta desde aquí.
+     */
+    respuestas?: { id: string; tipo: string; valor: string }[];
+  }
 ) {
+  const respuestas = persona.respuestas ?? [];
   return pedir("/v1/events/guests/add", {
     event_id: eventId,
     approval_status: persona.aprobado ? "approved" : "pending_approval",
@@ -93,11 +106,15 @@ export async function agregarInvitado(
       {
         email: persona.email,
         name: persona.nombre || null,
-        registration_answers: [
-          ...(persona.telefono
-            ? [{ question_id: "whatsapp", question_type: "phone-number", value: persona.telefono }]
-            : []),
-        ],
+        ...(respuestas.length
+          ? {
+              registration_answers: respuestas.map((r) => ({
+                question_id: r.id,
+                question_type: r.tipo,
+                value: r.valor,
+              })),
+            }
+          : {}),
       },
     ],
   });

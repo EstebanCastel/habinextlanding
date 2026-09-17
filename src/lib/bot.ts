@@ -187,7 +187,11 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
   const alta = await agregarInvitado(eventoVip, {
     email: registro.luma.email,
     nombre: registro.luma.nombre,
-    telefono: registro.luma.telefonoCrudo || (registro.telefono ? `+${registro.telefono}` : null),
+    // La cédula se arrastra del registro de General: la persona ya la dio una
+    // vez y volvérsela a pedir por cambiar de entrada sería absurdo.
+    ...(registro.luma.cedula
+      ? { respuestas: [{ id: "cedula", tipo: "text", valor: registro.luma.cedula }] }
+      : {}),
   });
   if (!alta.ok) {
     await soltarCorreo(registro.luma.email);
@@ -287,6 +291,7 @@ export async function redimirCodigo(datos: {
   nombre: string;
   email: string;
   telefono: string | null;
+  cedula?: string;
 }): Promise<{ ok: boolean; nota: string; token?: string }> {
   const evento = eventoDeTier(datos.tier);
   if (!evento) return { ok: false, nota: "Ese evento no está configurado" };
@@ -321,14 +326,15 @@ export async function redimirCodigo(datos: {
     email: correo,
     nombre: datos.nombre,
     telefonoCrudo: datos.telefono,
+    ...(datos.cedula ? { cedula: datos.cedula } : {}),
     redimidoEn: ahora,
   });
 
   const alta = await agregarInvitado(evento, {
     email: correo,
     nombre: datos.nombre,
-    telefono: datos.telefono,
     aprobado: true,
+    ...(datos.cedula ? { respuestas: [{ id: "cedula", tipo: "text", valor: datos.cedula }] } : {}),
   });
   if (!alta.ok) {
     await soltarCorreo(correo);

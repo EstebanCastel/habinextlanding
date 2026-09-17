@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { darLaBienvenida, textoDeAprobacion } from "@/lib/bot";
 import { firmaLumaValida } from "@/lib/seguridad";
 import { tierDeEvento } from "@/lib/luma";
-import { anotar, crearORecuperar, porToken, tokenDeGuest } from "@/lib/registros";
+import { anotar, crearORecuperar, normalizarCedula, porToken, tokenDeGuest } from "@/lib/registros";
 import { enviarTexto } from "@/lib/whatsapp";
 
 /**
@@ -58,6 +58,12 @@ function telefonoDe(data: NonNullable<CuerpoLuma["data"]>): string | null {
   );
   if (delFormulario) return String(delFormulario.value);
   return data.phone_number ?? null;
+}
+
+function cedulaDe(data: NonNullable<CuerpoLuma["data"]>): string | undefined {
+  const respuestas = Array.isArray(data.registration_answers) ? data.registration_answers : [];
+  const r = respuestas.find((x) => x?.question_id === "cedula");
+  return normalizarCedula(r?.value);
 }
 
 function empresaDe(data: NonNullable<CuerpoLuma["data"]>): string | undefined {
@@ -117,6 +123,7 @@ export async function POST(request: Request) {
         registradoEn: data.registered_at || new Date().toISOString(),
         estadoAprobacion: data.approval_status || "pending_approval",
         empresa: empresaDe(data),
+        cedula: cedulaDe(data),
         // Luma guarda el `utm_source` de la URL con la que la persona llegó a
         // su página y lo devuelve acá. Es lo único que dice de quién vino el
         // registro.

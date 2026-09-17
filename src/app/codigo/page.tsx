@@ -177,6 +177,24 @@ export default async function Codigo({
           </span>
         </label>
 
+        <label className="flex flex-col gap-2.5">
+          <span className={etiqueta}>Número de cédula</span>
+          <input
+            name="cedula"
+            required
+            defaultValue={q.cedula ?? ""}
+            inputMode="numeric"
+            pattern="[0-9]{6,12}"
+            maxLength={12}
+            autoComplete="off"
+            placeholder="1020304050"
+            className={`${campo} tracking-wide`}
+          />
+          <span className="text-sm font-light text-white/40">
+            Solo números. Es lo que te van a pedir en la entrada.
+          </span>
+        </label>
+
         <div className="flex flex-col gap-2.5">
           <span className={etiqueta}>Celular</span>
           {/* El indicativo va fijo: el evento es en Bogotá y pedirle a alguien

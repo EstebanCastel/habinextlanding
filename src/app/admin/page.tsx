@@ -802,6 +802,9 @@ function Fila({ r }: { r: Registro }) {
         <p className="font-medium">{r.luma.nombre || "(sin nombre)"}</p>
         <p className="text-xs text-white/45">{r.luma.email}</p>
         <p className="text-xs text-white/45">{r.telefono ? `+${r.telefono}` : "sin celular ⚠"}</p>
+        {r.luma.cedula ? (
+          <p className="text-xs tabular-nums text-white/45">CC {r.luma.cedula}</p>
+        ) : null}
         {r.luma.empresa ? <p className="text-xs text-white/35">{r.luma.empresa}</p> : null}
         <Bitacora r={r} />
       </td>

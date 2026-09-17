@@ -59,6 +59,8 @@ export type Registro = {
     registradoEn: string;
     estadoAprobacion: string;
     empresa?: string;
+    /** Solo dígitos. Es lo que se coteja en la puerta contra el documento. */
+    cedula?: string;
     /**
      * `utm_source` con el que la persona llegó a Luma. Es lo que permite saber
      * a quién atribuirle el registro cuando alguien comparte su enlace; llega
@@ -171,6 +173,19 @@ export function diferenciaVip(ahora = new Date()): string {
   return `$${(vip - general).toLocaleString("es-CO")}`;
 }
 
+/**
+ * Deja la cédula en dígitos. Luma no tiene campo numérico, así que la pregunta
+ * es de texto libre y la gente la escribe como quiere: con puntos, con guiones,
+ * con un "CC" delante. En la puerta se coteja contra un documento, y ahí «1.234»
+ * y «1234» tienen que ser el mismo número.
+ */
+export function normalizarCedula(crudo: unknown): string | undefined {
+  const d = String(crudo ?? "").replace(/\D/g, "");
+  // Una cédula colombiana va de 6 a 10 dígitos; fuera de ahí es un dato malo
+  // y es mejor guardarlo vacío que guardarlo mal.
+  return d.length >= 6 && d.length <= 12 ? d : undefined;
+}
+
 export function primerNombre(nombre: string): string {
   const limpio = nombre.trim().replace(/\s+/g, " ");
   if (!limpio) return "";
@@ -227,6 +242,7 @@ export async function crearORecuperar(datos: {
   registradoEn: string;
   estadoAprobacion: string;
   empresa?: string;
+  cedula?: string;
   origen?: string;
 }): Promise<{ registro: Registro; nuevo: boolean }> {
   const ahora = new Date().toISOString();
@@ -284,6 +300,7 @@ export async function crearORecuperar(datos: {
       registradoEn: datos.registradoEn,
       estadoAprobacion: datos.estadoAprobacion,
       ...(datos.empresa ? { empresa: datos.empresa } : {}),
+      ...(datos.cedula ? { cedula: datos.cedula } : {}),
       ...(datos.origen ? { origen: datos.origen } : {}),
     },
     telefono,
@@ -337,6 +354,7 @@ export async function crearCortesia(datos: {
   email: string;
   nombre: string;
   telefonoCrudo: string | null;
+  cedula?: string;
   redimidoEn: string;
 }): Promise<Registro> {
   const telefono = normalizarTelefono(datos.telefonoCrudo);
@@ -353,6 +371,7 @@ export async function crearCortesia(datos: {
       telefonoCrudo: datos.telefonoCrudo,
       registradoEn: datos.redimidoEn,
       estadoAprobacion: "approved",
+      ...(datos.cedula ? { cedula: datos.cedula } : {}),
     },
     telefono,
     whatsapp: {},
