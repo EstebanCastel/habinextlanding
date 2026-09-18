@@ -38,9 +38,27 @@ un registro de boletería, se le vincula la entrada y la página se lo dice.
 
 Instagram no tiene inicio de sesión para cuentas personales (Meta cerró la API
 Basic Display en diciembre de 2024 y la de publicación es solo para cuentas de
-empresa). Por eso Instagram va por la hoja de compartir del sistema: el carnet
-o las fotos se pasan como archivos y el texto se copia al portapapeles, porque
-Instagram no acepta texto prellenado.
+empresa). Tampoco existe una dirección web que abra Instagram con una foto ya
+cargada: la única puerta es la hoja de compartir del celular. Por eso el botón
+«Publicar en Instagram» hace esto:
+
+- **En el celular**, copia el texto al portapapeles y abre la hoja de
+  compartir con la imagen puesta; la persona toca Instagram y la foto ya está
+  en su historia o publicación. Instagram no acepta texto prellenado, de ahí
+  la copia.
+- **En el computador**, descarga la imagen, copia el texto y ofrece «Abrir
+  Instagram» (instagram.com, o `/create/story` para la historia) para subirla
+  desde «Crear».
+
+Si algún día se quiere publicar por API, existe para cuentas profesionales
+(Business/Creator) con la «Instagram API with Instagram Login», que exige una
+app de Meta con revisión aprobada para `instagram_business_content_publish` y
+la imagen en una URL pública. Es un trámite de semanas con Meta y solo cubre a
+quienes tengan cuenta profesional.
+
+Todos los botones de red llevan el logo oficial y el color de la marca
+(`src/components/experiencia/Redes.tsx`): azul LinkedIn, degradado Instagram,
+verde WhatsApp. El botón de publicar va primero en cada misión.
 
 ## LinkedIn
 
