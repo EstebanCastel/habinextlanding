@@ -18,6 +18,7 @@ import {
 } from "@/config/experiencia";
 import { aBlob, cargarFuentes, cargarRecursos, dibujarFrase, familiaDeFuente } from "@/lib/carnet";
 import type { Vista } from "@/lib/experiencia";
+import { BotonRed, Chip } from "./Redes";
 import {
   blobDe,
   claseCampo,
@@ -46,6 +47,9 @@ type Props = {
   li?: string;
   alCambiar: (yo: Vista) => void;
   asegurar: () => Promise<Vista>;
+  /** Qué misión está desplegada. Vive arriba para que el carnet pueda abrir una. */
+  abierta: MisionId | null;
+  alAbrir: (m: MisionId | null) => void;
 };
 
 type Estado = "hecha" | "pendiente" | "cerrada";
@@ -158,18 +162,18 @@ function PanelLinkedIn({
   if (!conectado) {
     return (
       <div className="flex flex-col gap-5">
-        <p className="text-base font-light leading-relaxed text-white/70">
-          Conecta tu LinkedIn una sola vez. Nosotros preparamos el texto y las imágenes; tú solo revisas y
-          le das publicar. Nunca publicamos nada sin ese botón.
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <a href="/api/experiencia/linkedin?volver=misiones" className={clasesBoton.solido}>
-            Conectar LinkedIn
-          </a>
-          {yo?.linkedin && !yo.linkedin.vigente ? (
-            <span className="text-sm font-light text-white/45">Tu permiso anterior venció.</span>
-          ) : null}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+          <BotonRed red="linkedin" href="/api/experiencia/linkedin?volver=misiones">
+            Publicar en LinkedIn
+          </BotonRed>
+          <p className="text-sm font-light leading-relaxed text-white/55">
+            Entras a LinkedIn una sola vez y vuelves acá con el texto y las imágenes listas.
+            {yo?.linkedin && !yo.linkedin.vigente ? " Tu permiso anterior venció." : ""}
+          </p>
         </div>
+        <p className="text-sm font-light leading-relaxed text-white/45">
+          Nunca publicamos nada sin que tú le des el botón.
+        </p>
         {enlaceCarnet && mision === "linkedin_voy" ? (
           <p className="text-sm font-light leading-relaxed text-white/45">
             ¿Prefieres no conectar?{" "}
@@ -190,6 +194,20 @@ function PanelLinkedIn({
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <BotonRed red="linkedin" onClick={publicar} disabled={ocupado || texto.trim().length < 10}>
+          {ocupado ? "Publicando…" : "Publicar en LinkedIn"}
+        </BotonRed>
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer" className={clasesBoton.borde}>
+            Ver publicación
+          </a>
+        ) : null}
+        <span className="text-sm font-light text-white/45">Se publica como {yo?.linkedin?.nombre}.</span>
+      </div>
+
+      {aviso ? <Mensaje {...aviso} /> : null}
+
       {ultima?.url ? (
         <p className="text-sm font-light text-white/50">
           Ya publicaste esta misión el {fecha(ultima.en)}.{" "}
@@ -200,7 +218,7 @@ function PanelLinkedIn({
       ) : null}
 
       <label className="flex flex-col gap-2.5">
-        <span className="text-sm font-medium tracking-tight text-white/65">El texto (puedes cambiarlo)</span>
+        <span className="text-sm font-medium tracking-tight text-white/65">Esto es lo que se publica (puedes cambiarlo)</span>
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
@@ -238,19 +256,6 @@ function PanelLinkedIn({
         ) : null}
       </div>
 
-      {aviso ? <Mensaje {...aviso} /> : null}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={publicar} disabled={ocupado || texto.trim().length < 10} className={clasesBoton.solido}>
-          {ocupado ? "Publicando…" : "Publicar en LinkedIn"}
-        </button>
-        {url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer" className={clasesBoton.borde}>
-            Ver publicación
-          </a>
-        ) : null}
-        <span className="text-sm font-light text-white/45">Como {yo?.linkedin?.nombre}</span>
-      </div>
     </div>
   );
 }
@@ -272,11 +277,16 @@ function PanelInstagram({
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ texto: string; malo?: boolean } | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [abrir, setAbrir] = useState(false);
   const movil = useMovil();
 
   const texto = textoInstagram(fase);
   const fotos = (yo?.fotos ?? []).filter((f) => f.clase !== "perfil");
   const esVoy = mision === "instagram_voy";
+  // En el celular, la hoja de compartir abre Instagram con la imagen puesta.
+  // En el computador no existe esa puerta: se descarga la imagen, se copia el
+  // texto y se abre Instagram para que la suba desde «Crear».
+  const urlInstagram = esVoy ? "https://www.instagram.com/create/story" : "https://www.instagram.com/";
 
   async function copiarTexto() {
     setCopiado(await copiar(texto));
@@ -299,8 +309,9 @@ function PanelInstagram({
       const r = await compartirArchivos(archivos, texto);
       if (r === "no-soportado") {
         archivos.forEach((a) => descargar(a, a.name));
+        setAbrir(true);
         setAviso({
-          texto: "Tu navegador no abre Instagram directo: te descargamos la imagen y el texto ya está copiado. Súbela desde el celular.",
+          texto: `Te descargamos ${archivos.length === 1 ? "la imagen" : "las imágenes"} y el texto quedó copiado. Abre Instagram, dale a Crear y elige el archivo.`,
         });
         return;
       }
@@ -325,6 +336,22 @@ function PanelInstagram({
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <BotonRed red="instagram" onClick={compartir} disabled={ocupado}>
+          {ocupado ? "Abriendo…" : "Publicar en Instagram"}
+        </BotonRed>
+        {abrir ? (
+          <BotonRed red="instagram" href={urlInstagram} target="_blank" className="!bg-[#262626] hover:!brightness-125">
+            Abrir Instagram
+          </BotonRed>
+        ) : null}
+        <span className="text-sm font-light text-white/45">
+          {movil ? "Se abre Instagram con la imagen puesta y el texto copiado." : "Desde el celular se abre Instagram directo."}
+        </span>
+      </div>
+
+      {aviso ? <Mensaje {...aviso} /> : null}
+
       <div className="grid gap-5 sm:grid-cols-[minmax(0,11rem)_1fr]">
         {esVoy ? (
           <div className="overflow-hidden rounded-xl border border-white/10">
@@ -359,15 +386,6 @@ function PanelInstagram({
             Instagram no deja llenar el texto desde afuera. Lo copiamos por ti: al publicar, pégalo.
           </p>
         </div>
-      </div>
-
-      {aviso ? <Mensaje {...aviso} /> : null}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={compartir} disabled={ocupado} className={clasesBoton.solido}>
-          {ocupado ? "Abriendo…" : movil ? "Compartir en Instagram" : "Descargar para Instagram"}
-        </button>
-        {!movil ? <span className="text-sm font-light text-white/45">Desde el celular se abre Instagram directo.</span> : null}
       </div>
     </div>
   );
@@ -420,9 +438,9 @@ function PanelInvitar({ yo, sitio, alCambiar, asegurar }: { yo: Vista | null; si
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-4">
-        <a href={wa} target="_blank" rel="noopener noreferrer" onClick={marcar} className={clasesBoton.solido}>
+        <BotonRed red="whatsapp" href={wa} target="_blank" onClick={marcar}>
           Enviar por WhatsApp
-        </a>
+        </BotonRed>
         <span className="text-sm font-light text-white/50">
           {persona.invitacion.clics === 0
             ? "Todavía nadie la ha abierto."
@@ -595,9 +613,15 @@ function PanelFrase({ yo, sitio, alCambiar }: { yo: Vista | null; sitio: string;
             <button type="button" onClick={compartir} className={clasesBoton.borde + " self-start"}>
               {movil ? "Compartir" : "Descargar"}
             </button>
-            <button type="button" onClick={() => setPublicar((v) => !v)} className={clasesBoton.suave + " self-start"}>
-              {publicar ? "Ocultar LinkedIn" : "Publicar en LinkedIn"}
-            </button>
+            {publicar ? (
+              <button type="button" onClick={() => setPublicar(false)} className={clasesBoton.suave + " self-start"}>
+                Ocultar LinkedIn
+              </button>
+            ) : (
+              <BotonRed red="linkedin" onClick={() => setPublicar(true)} className="self-start">
+                Publicar en LinkedIn
+              </BotonRed>
+            )}
             {publicar ? (
               <PanelLinkedIn
                 yo={yo}
@@ -635,7 +659,6 @@ function Tarjeta({
   hechaEn?: string;
   children: React.ReactNode;
 }) {
-  const red = m.red === "linkedin" ? "LinkedIn" : m.red === "instagram" ? "Instagram" : m.red === "whatsapp" ? "WhatsApp" : null;
   return (
     <li
       className={`rounded-[26px] border transition-colors ${
@@ -665,11 +688,7 @@ function Tarjeta({
             <span className={`text-lg font-semibold tracking-tight md:text-xl ${estado === "cerrada" ? "text-white/45" : "text-white"}`}>
               {m.titulo}
             </span>
-            {red ? (
-              <span className="rounded-full border border-white/12 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-white/50">
-                {red}
-              </span>
-            ) : null}
+            {m.red ? <Chip red={m.red} className={estado === "cerrada" ? "opacity-40 grayscale" : ""} /> : null}
           </span>
           <span className={`mt-1 block text-sm font-light md:text-base ${estado === "cerrada" ? "text-white/35" : "text-white/60"}`}>
             {estado === "cerrada" ? "Se abre el 20 de octubre, el día del evento." : estado === "hecha" && hechaEn ? `Hecha el ${fecha(hechaEn)}.` : m.resumen}
@@ -687,7 +706,7 @@ function Tarjeta({
   );
 }
 
-export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar }: Props) {
+export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abierta, alAbrir }: Props) {
   const avisoLi = li ? AVISOS_LI[li] : undefined;
 
   const hechas = MISIONES.filter((m) => yo?.misiones[m.id]).length;
@@ -700,11 +719,6 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar }: P
     return "pendiente";
   };
 
-  // Quien vuelve con LinkedIn recién conectado encuentra abierta la misión
-  // que lo mandó a conectar.
-  const [abierta, setAbierta] = useState<MisionId | null>(() =>
-    li === "ok" ? (MISIONES.find((m) => m.red === "linkedin" && estadoDe(m) === "pendiente")?.id ?? null) : null
-  );
 
   const antes = useMemo(() => MISIONES.filter((m) => m.fase === "antes"), []);
   const evento = useMemo(() => MISIONES.filter((m) => m.fase === "evento"), []);
@@ -759,7 +773,7 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar }: P
           indice={desde + i}
           estado={estadoDe(m)}
           abierta={abierta === m.id}
-          alAbrir={() => setAbierta((a) => (a === m.id ? null : m.id))}
+          alAbrir={() => alAbrir(abierta === m.id ? null : m.id)}
           hechaEn={yo?.misiones[m.id]?.en}
         >
           {panel(m)}

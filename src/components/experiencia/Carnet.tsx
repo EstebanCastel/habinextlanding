@@ -15,7 +15,9 @@ import {
   type Recursos,
 } from "@/lib/carnet";
 import type { Vista } from "@/lib/experiencia";
+import type { MisionId } from "@/config/experiencia";
 import Dot from "@/components/Dot";
+import { BotonRed } from "./Redes";
 import {
   cargarImagenDeArchivo,
   claseCampo,
@@ -33,14 +35,14 @@ import {
  * en pantalla se descarga o se comparte.
  */
 
-type Props = { yo: Vista | null; alCambiar: (yo: Vista) => void };
+type Props = { yo: Vista | null; alCambiar: (yo: Vista) => void; alPublicar: (m: MisionId) => void };
 
 const FORMATOS: { id: Formato; texto: string; nota: string }[] = [
   { id: "feed", texto: "Publicación", nota: "4:5 · LinkedIn e Instagram" },
   { id: "story", texto: "Historia", nota: "9:16 · Instagram y WhatsApp" },
 ];
 
-export default function Carnet({ yo, alCambiar }: Props) {
+export default function Carnet({ yo, alCambiar, alPublicar }: Props) {
   const [nombre, setNombre] = useState(yo?.nombre ?? "");
   const [apellido, setApellido] = useState(yo?.apellido ?? "");
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);
@@ -329,6 +331,19 @@ export default function Carnet({ yo, alCambiar }: Props) {
               </button>
             ) : null}
           </div>
+          {yo?.carnet ? (
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-sm font-medium tracking-tight text-white/70">Tu carnet ya está listo. Publícalo:</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <BotonRed red="linkedin" onClick={() => alPublicar("linkedin_voy")}>
+                  Publicar en LinkedIn
+                </BotonRed>
+                <BotonRed red="instagram" onClick={() => alPublicar("instagram_voy")}>
+                  Publicar en Instagram
+                </BotonRed>
+              </div>
+            </div>
+          ) : null}
           <p className="text-sm font-light leading-relaxed text-white/45">
             Al guardar, el carnet queda en tu sesión y se usa en las misiones. Tu foto no se publica en
             ningún lado sin que tú le des el botón.
