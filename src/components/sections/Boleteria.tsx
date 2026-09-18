@@ -38,8 +38,12 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
       <p className="mt-3 text-base font-light text-white/60 md:text-lg">{ticket.claim}</p>
 
       <div className="mt-8 border-t border-white/15 pt-8">
+        {/* La etapa vigente se anuncia como «Tarifa actual» y las que vienen
+            como «Siguiente tarifa» y «Tarifa final»: es lo que la persona
+            necesita saber para decidir cuándo comprar. El nombre interno de
+            la etapa queda para el panel y los mensajes. */}
         <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">
-          {active.label} · {active.note}
+          {activeIdx === ticket.stages.length - 1 ? active.label : "Tarifa actual"} · {active.note}
         </p>
         <p className="mt-2 flex items-baseline gap-2">
           <span className="text-5xl font-bold tracking-tighter text-white md:text-6xl">
@@ -56,12 +60,18 @@ function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
               Después
             </p>
             <ul className="mt-3 flex flex-col gap-2">
-              {ticket.stages.slice(activeIdx + 1).map((stage) => (
+              {ticket.stages.slice(activeIdx + 1).map((stage, i, restantes) => (
                 <li
                   key={stage.id}
                   className="flex items-center justify-between gap-4 text-sm text-white/70 md:text-base"
                 >
-                  <span>{stage.note}</span>
+                  <span>
+                    <span className="font-semibold text-white/85">
+                      {i === restantes.length - 1 && stage.until === null ? "Tarifa final" : "Siguiente tarifa"}
+                    </span>
+                    {" · "}
+                    {stage.note}
+                  </span>
                   <span className="font-semibold">{stage.price}</span>
                 </li>
               ))}

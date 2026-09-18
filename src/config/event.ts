@@ -111,8 +111,17 @@ export const TICKETS: Ticket[] = [
         id: "etapa-2",
         label: "Etapa 2",
         price: "$290.000",
+        until: "2026-10-16T23:59:59-05:00",
+        note: "Hasta el 16 de octubre",
+      },
+      {
+        id: "final",
+        label: "Tarifa final",
+        // El precio del día del evento no está definido todavía: mientras
+        // tanto se anuncia como venta en taquilla. Cuando exista, va acá.
+        price: "En taquilla",
         until: null,
-        note: "Hasta agotar boletería",
+        note: "El día del evento",
       },
     ],
     includesTitle: "Incluye",
@@ -149,8 +158,15 @@ export const TICKETS: Ticket[] = [
         id: "etapa-2",
         label: "Etapa 2",
         price: "$450.000",
+        until: "2026-10-16T23:59:59-05:00",
+        note: "Hasta el 16 de octubre",
+      },
+      {
+        id: "final",
+        label: "Tarifa final",
+        price: "En taquilla",
         until: null,
-        note: "Hasta agotar boletería",
+        note: "El día del evento",
       },
     ],
     includesTitle: "Todo lo de General, más",
@@ -166,6 +182,15 @@ export const TICKETS: Ticket[] = [
     footnote: "Solo 250 cupos VIP. Es posible que se agoten antes de cerrar la etapa.",
   },
 ];
+
+/**
+ * Una etapa puede anunciarse sin precio ("En taquilla"). Esta función dice si
+ * el precio es una cifra con la que se puede calcular.
+ */
+export function precioNumerico(price: string): number | null {
+  const n = Number(price.replace(/[^\d]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 /** Índice de la etapa vigente según la fecha dada. */
 export function activeStageIndex(stages: Stage[], now: Date): number {

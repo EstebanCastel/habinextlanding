@@ -1,5 +1,5 @@
 import { crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
-import { activeStageIndex, TICKETS, type Ticket } from "@/config/event";
+import { activeStageIndex, precioNumerico, TICKETS, type Ticket } from "@/config/event";
 import { nuevoToken } from "./seguridad";
 
 /**
@@ -67,6 +67,8 @@ export type Registro = {
      * vacío en quien entró escribiendo la dirección a mano.
      */
     origen?: string;
+    /** `utm_content`: el id de quien invitó, si llegó por un link personal. */
+    contenido?: string;
   };
   /** Solo dígitos, con indicativo (57…). Es la llave del canal de WhatsApp. */
   telefono: string | null;
@@ -167,10 +169,21 @@ export function precioVigente(tier: Tier, ahora = new Date()) {
  * preventa la diferencia es de $100.000 y al final del calendario, de $160.000.
  */
 export function diferenciaVip(ahora = new Date()): string {
-  const aNumero = (precio: string) => Number(precio.replace(/[^\d]/g, ""));
-  const general = aNumero(precioVigente("general", ahora).precio);
-  const vip = aNumero(precioVigente("vip", ahora).precio);
-  return `$${(vip - general).toLocaleString("es-CO")}`;
+  const general = precioNumerico(precioVigente("general", ahora).precio);
+  const vip = precioNumerico(precioVigente("vip", ahora).precio);
+  if (general !== null && vip !== null) return `$${(vip - general).toLocaleString("es-CO")}`;
+
+  // La tarifa del día del evento se anuncia sin cifra ("En taquilla"). Para
+  // hablarle a la persona se usa la última etapa que sí tiene precio, en vez
+  // de mandarle un "$NaN" por WhatsApp.
+  const g = ticketDe("general").stages;
+  const v = ticketDe("vip").stages;
+  for (let i = Math.min(g.length, v.length) - 1; i >= 0; i -= 1) {
+    const pg = precioNumerico(g[i].price);
+    const pv = precioNumerico(v[i].price);
+    if (pg !== null && pv !== null) return `$${(pv - pg).toLocaleString("es-CO")}`;
+  }
+  return "la diferencia";
 }
 
 /**
@@ -244,6 +257,7 @@ export async function crearORecuperar(datos: {
   empresa?: string;
   cedula?: string;
   origen?: string;
+  contenido?: string;
 }): Promise<{ registro: Registro; nuevo: boolean }> {
   const ahora = new Date().toISOString();
   const token = nuevoToken();
@@ -302,6 +316,7 @@ export async function crearORecuperar(datos: {
       ...(datos.empresa ? { empresa: datos.empresa } : {}),
       ...(datos.cedula ? { cedula: datos.cedula } : {}),
       ...(datos.origen ? { origen: datos.origen } : {}),
+      ...(datos.contenido ? { contenido: datos.contenido } : {}),
     },
     telefono,
     whatsapp: {},

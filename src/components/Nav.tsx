@@ -11,6 +11,7 @@ const sections = [
   { href: "#experiencia", label: "La experiencia" },
   { href: "#escenarios", label: "Escenarios" },
   { href: "#boleteria", label: "Boletería" },
+  { href: "/experiencia", label: "Tu carnet" },
 ];
 
 /**

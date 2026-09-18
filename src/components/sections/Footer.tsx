@@ -43,6 +43,12 @@ export default function Footer() {
             Patrocinadores
           </a>
           <a
+            href="/experiencia"
+            className="py-3 text-sm font-medium text-white/60 transition-colors hover:text-white"
+          >
+            Tu carnet
+          </a>
+          <a
             href="https://habi.co/politica-de-tratamiento-de-datos"
             target="_blank"
             rel="noopener noreferrer"

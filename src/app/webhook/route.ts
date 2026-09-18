@@ -42,6 +42,7 @@ type CuerpoLuma = {
     registered_at?: string | null;
     registration_answers?: { question_id?: string; question_type?: string; value?: unknown }[] | null;
     utm_source?: string | null;
+    utm_content?: string | null;
     event?: { api_id?: string; id?: string } | null;
   };
 };
@@ -128,6 +129,9 @@ export async function POST(request: Request) {
         // su página y lo devuelve acá. Es lo único que dice de quién vino el
         // registro.
         origen: (data.utm_source ?? "").trim().toLowerCase() || undefined,
+        // Con `utm_content` viaja quién invitó, cuando el registro viene del
+        // link personal de la experiencia.
+        contenido: (data.utm_content ?? "").trim().slice(0, 80) || undefined,
       });
 
       // Solo la primera vez se escribe. El reintento de Luma cae acá y sale

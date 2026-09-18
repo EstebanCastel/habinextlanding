@@ -147,6 +147,7 @@ export default function Rastro() {
           destino.searchParams.set("utm_source", utm.source);
           if (utm.medium) destino.searchParams.set("utm_medium", utm.medium);
           if (utm.campaign) destino.searchParams.set("utm_campaign", utm.campaign);
+          if (utm.content) destino.searchParams.set("utm_content", utm.content);
           a.href = destino.toString();
         } catch {
           /* href relativo o raro: se deja como está */
@@ -205,7 +206,13 @@ export default function Rastro() {
       if (href.includes("luma.com/habinext-vip")) nombre = "boleteria:vip";
       else if (href.includes("luma.com/habinext-general")) nombre = "boleteria:general";
       else if (href.startsWith("/codigo")) nombre = "boleteria:codigo";
+      // La invitación de la experiencia también sale por WhatsApp, pero sin
+      // número: no es un mensaje a patrocinios.
+      else if (href.includes("wa.me/?")) nombre = "experiencia:invitar";
       else if (href.includes("wa.me/") || href.startsWith("mailto:")) nombre = "patrocinadores";
+      else if (href.startsWith("/experiencia")) nombre = "experiencia:entrar";
+      else if (href.includes("/api/experiencia/linkedin")) nombre = "experiencia:linkedin";
+      else if (href.includes("linkedin.com/sharing")) nombre = "experiencia:compartir-linkedin";
       else if (el.tagName === "A" && href.startsWith("http")) nombre = `externo:${texto}`;
       if (nombre) anotar("clic", nombre);
     };

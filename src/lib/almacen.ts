@@ -1,4 +1,4 @@
-import { get, list, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 
 /**
  * Persistencia del embudo de boletería sobre un store **privado** de Vercel
@@ -146,4 +146,48 @@ export async function listarRutas(prefijo: string, tope = 1000): Promise<string[
     cursor = pagina.hasMore ? pagina.cursor : undefined;
   } while (cursor && rutas.length < tope);
   return rutas;
+}
+
+/**
+ * Archivos binarios —las fotos y los carnets de la experiencia— en el mismo
+ * store privado. Privado también acá: una foto que alguien subió para armar
+ * su publicación no tiene por qué ser alcanzable por cualquiera que adivine
+ * la ruta; se sirve desde nuestra API, que comprueba de quién es.
+ */
+export async function guardarArchivo(
+  ruta: string,
+  bytes: ArrayBuffer | Uint8Array | Buffer,
+  contentType: string
+): Promise<void> {
+  await put(ruta, bytes as Buffer, {
+    ...OPCIONES,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType,
+    // Las fotos no cambian una vez subidas; que la CDN las guarde un día.
+    cacheControlMaxAge: 86_400,
+  });
+}
+
+export type Archivo = { stream: ReadableStream; contentType: string; tamano: number };
+
+export async function leerArchivo(ruta: string): Promise<Archivo | null> {
+  const res = await get(ruta, OPCIONES).catch(() => null);
+  if (!res || res.statusCode !== 200 || !res.stream) return null;
+  return {
+    stream: res.stream,
+    contentType: res.blob.contentType || "application/octet-stream",
+    tamano: res.blob.size,
+  };
+}
+
+/** El archivo entero en memoria: lo que hace falta para subirlo a LinkedIn. */
+export async function leerBytes(ruta: string): Promise<{ bytes: Buffer; contentType: string } | null> {
+  const a = await leerArchivo(ruta);
+  if (!a) return null;
+  return { bytes: Buffer.from(await new Response(a.stream).arrayBuffer()), contentType: a.contentType };
+}
+
+export async function borrar(ruta: string): Promise<void> {
+  await del(ruta).catch(() => null);
 }

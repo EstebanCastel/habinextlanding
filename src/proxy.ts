@@ -163,13 +163,13 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      // `webhook`, `p/` y `l/` quedan fuera junto a `api`: ninguno renderiza
+      // `webhook`, `p/`, `l/` e `i/` quedan fuera junto a `api`: ninguno renderiza
       // nada, así que la CSP no les aplica, y el límite por IP sí les haría
       // daño. Luma e Infobip entregan sus callbacks desde un puñado de
       // direcciones —una tanda de registros se vería como una sola IP
       // inundando el sitio—, y un enlace corto recién publicado recibe su pico
       // de clics justo cuando no puede fallar.
-      source: "/((?!api|webhook|p/|l/|_next/static|_next/image|favicon.ico|.well-known).*)",
+      source: "/((?!api|webhook|p/|l/|i/|_next/static|_next/image|favicon.ico|.well-known).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
