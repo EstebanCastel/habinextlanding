@@ -137,28 +137,34 @@ export async function tablero(): Promise<Tablero> {
 }
 
 /** Planilla para repartir: a cada quien su enlace y su meta. */
-export function aCsv(t: Tablero, sitio: string): string {
-  const celda = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const cabecera = [
-    "Nombre",
-    "Correo",
-    "Enlace para compartir",
-    "Meta General",
-    "Meta VIP",
-    "Registros traídos",
-    "Avance",
-    "General",
-    "VIP",
-    "Pagados",
-    "Clics al enlace",
-    "Visitas a la landing",
-    "Personas distintas",
-    "Clics a boletería",
-    "utm_source",
-    "Enlace largo",
-  ];
+export const CABECERA_HOJA = [
+  "Nombre",
+  "Correo",
+  "Enlace para compartir",
+  "Meta General",
+  "Meta VIP",
+  "Registros traídos",
+  "Avance",
+  "General",
+  "VIP",
+  "Pagados",
+  "Clics al enlace",
+  "Visitas a la landing",
+  "Personas distintas",
+  "Clics a boletería",
+  "utm_source",
+  "Enlace largo",
+] as const;
 
-  const filas = t.marcadores.map((m) => {
+export type FilaHoja = (string | number)[];
+
+/**
+ * Una fila por enlace, en el orden de la planilla del equipo. Es la misma
+ * tabla que baja el panel en CSV y la que la hoja de Google refresca sola;
+ * si cambia una columna acá, cambia en las dos.
+ */
+export function aFilas(t: Tablero, sitio: string): FilaHoja[] {
+  return t.marcadores.map((m) => {
     const e = m.enlace;
     const largo = new URL(e.destino, sitio);
     largo.searchParams.set("utm_source", e.utm.source);
@@ -182,10 +188,14 @@ export function aCsv(t: Tablero, sitio: string): string {
       m.clicsBoleteria,
       e.utm.source,
       largo.toString(),
-    ].map(celda).join(";");
+    ];
   });
+}
 
+export function aCsv(t: Tablero, sitio: string): string {
+  const celda = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const filas = aFilas(t, sitio).map((f) => f.map(celda).join(";"));
   // Punto y coma y BOM: es lo que hace que Excel en español lo abra en
   // columnas y con los acentos derechos.
-  return "﻿" + [cabecera.map(celda).join(";"), ...filas].join("\r\n");
+  return "\ufeff" + [CABECERA_HOJA.map(celda).join(";"), ...filas].join("\r\n");
 }

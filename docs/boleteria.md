@@ -201,3 +201,19 @@ quien entró en preventa paga preventa aunque lo apruebes en octubre.
   referencia. Se cruza a mano.
 - **Alguien aparece dos veces.** No debería: la creación reserva el invitado de
   forma atómica. Si pasa, mirar la bitácora de los dos registros.
+
+## La hoja de Google del equipo
+
+La planilla de enlaces (Nombre, Correo, Enlace, Metas, Registros traídos,
+Avance, Clics, Visitas…) no se mantiene a mano: un Apps Script en la hoja
+llama a `GET /api/hoja/embajadores` cada 5 minutos y reescribe la pestaña.
+
+- El endpoint entrega la misma tabla que «Bajar el marcador» del panel, en
+  JSON (`cabecera`, `filas`, `resumen`). Entra con `HOJA_TOKEN` en la cabecera
+  `Authorization: Bearer …`; solo lee.
+- El script está en `docs/hoja-embajadores.gs`. Se pega una vez en
+  Extensiones → Apps Script; el token se guarda desde el menú «Habi Next →
+  Guardar token» en las propiedades del script, nunca en una celda ni en el
+  repo.
+- Si cambia una columna en `CABECERA_HOJA` / `aFilas` (`src/lib/embajadores.ts`),
+  cambia en el CSV y en la hoja a la vez.
