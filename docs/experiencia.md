@@ -15,10 +15,13 @@ entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
   LinkedIn. La cédula se guarda como hash con sal en `credencial`; la primera
   vez queda fijada, y si el registro de Luma no tenía cédula, se le completa.
   Límite: 12 intentos por IP y 6 por correo cada 15 minutos.
-- **1 · Tu carnet** (`/experiencia/carnet`): el editor del carnet y la misión
-  «Cuéntalo en LinkedIn». 30 puntos.
-- **2 · El mapa del tesoro** (`/experiencia/mapa`): el plano del recinto con
-  dos rutas y ocho paradas (`PARADAS` y `RUTAS` en `src/config/experiencia.ts`).
+- **1 · Tu carnet** (`/experiencia/carnet`): el editor del carnet y las
+  misiones «Cuéntalo en LinkedIn» y «Súbelo a tus historias». 45 puntos.
+- **2 · El mapa del tesoro** (`/experiencia/mapa`): el plano ilustrado del
+  recinto (escenarios con tarima y sillas, hall con los stands y sus logos,
+  acreditación, entrada, zona VIP, café) con dos rutas, la morada y la dorada,
+  y ocho paradas (`PARADAS` y `RUTAS` en `src/config/experiencia.ts`; el
+  dibujo vive en `src/components/experiencia/Mapa.tsx`).
   Check-in = foto del stand (`POST /api/experiencia/parada`) y, si el celular
   la da, la ubicación comparada con `RECINTO` (radio generoso, GPS bajo techo).
   `EXPERIENCIA_GEO=off` apaga la comprobación de distancia para probar. 10
@@ -26,7 +29,7 @@ entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
 - **3 · Cuéntalo en tus redes** (`/experiencia/redes`): las misiones de
   Instagram, WhatsApp y las del día del evento. Cada una se puede cerrar
   publicando desde la página o **subiendo una captura como prueba**
-  (`clase=prueba&mision=` en `/api/experiencia/fotos`). 95 puntos.
+  (`clase=prueba&mision=` en `/api/experiencia/fotos`). 80 puntos.
 - **Ranking**: un solo documento `experiencia/ranking.json` con una fila por
   persona, que se toca solo cuando cambian sus puntos o su nombre. Nombre de
   pila e inicial del apellido; desempata quien llegó primero a ese puntaje.

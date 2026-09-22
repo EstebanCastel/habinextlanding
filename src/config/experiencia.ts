@@ -53,7 +53,7 @@ export const EXPERIENCIAS: {
     id: "carnet",
     numero: 1,
     nombre: "Tu carnet",
-    resumen: "Arma tu carnet oficial y publícalo en LinkedIn.",
+    resumen: "Arma tu carnet oficial y publícalo en LinkedIn e Instagram.",
     imagen: "/img/experiencia/tarjeta-carnet.jpg",
     ruta: "/experiencia/carnet",
   },
@@ -96,7 +96,7 @@ export const MISIONES: Mision[] = [
   {
     id: "instagram_voy",
     fase: "antes",
-    experiencia: "redes",
+    experiencia: "carnet",
     titulo: "Súbelo a tus historias",
     resumen: "Tu carnet en formato vertical, directo a Instagram.",
     puntos: 15,
@@ -149,7 +149,7 @@ export const MISIONES: Mision[] = [
 
 // ---------- el mapa del tesoro ----------
 
-export type RutaId = "morada" | "lavanda";
+export type RutaId = "morada" | "dorada";
 
 export type Parada = {
   id: string;
@@ -163,7 +163,7 @@ export type Parada = {
   sitio?: string;
   ruta: RutaId;
   orden: number;
-  /** Posición del pin sobre el plano (viewBox 1000×700). */
+  /** Posición sobre el plano (viewBox 1200×900): el frente del stand o el centro del escenario. */
   x: number;
   y: number;
   /** Qué tiene que hacer ahí. */
@@ -180,9 +180,9 @@ export const RUTAS: { id: RutaId; nombre: string; color: string; resumen: string
     bono: 25,
   },
   {
-    id: "lavanda",
-    nombre: "Ruta lavanda",
-    color: "#ba9dfa",
+    id: "dorada",
+    nombre: "Ruta dorada",
+    color: "#f2b134",
     resumen: "Inspiración y herramientas: la ruta de lo que viene.",
     bono: 25,
   },
@@ -191,14 +191,14 @@ export const RUTAS: { id: RutaId; nombre: string; color: string; resumen: string
 const RETO_STAND = "Tómale una foto al stand con el logo visible y súbela desde aquí.";
 
 export const PARADAS: Parada[] = [
-  { id: "caja-social", nombre: "Banco Caja Social", marca: "Banco Caja Social", tipo: "stand", logo: "/img/marcas/caja-social.svg", sitio: "https://www.bancocajasocial.com", ruta: "morada", orden: 1, x: 250, y: 435, reto: RETO_STAND, puntos: 10 },
-  { id: "taller", nombre: "Escenario Taller", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 2, x: 745, y: 175, reto: "Entra al Escenario Taller y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
-  { id: "auco", nombre: "Auco", marca: "Auco", tipo: "stand", logo: "/img/marcas/auco.png", sitio: "https://auco.ai", ruta: "morada", orden: 3, x: 750, y: 435, reto: RETO_STAND, puntos: 10 },
-  { id: "inspira", nombre: "Escenario Inspira", marca: "Habi Next", tipo: "escenario", ruta: "lavanda", orden: 1, x: 255, y: 175, reto: "Entra al Escenario Inspira y tómale una foto a la tarima.", puntos: 10 },
-  { id: "wekall", nombre: "Wekall", marca: "Wekall", tipo: "stand", logo: "/img/marcas/wekall.svg", sitio: "https://wekall.co", ruta: "lavanda", orden: 2, x: 500, y: 435, reto: RETO_STAND, puntos: 10 },
-  { id: "palomma", nombre: "Palomma", marca: "Palomma", tipo: "stand", logo: "/img/marcas/palomma.png", sitio: "https://palomma.com", ruta: "lavanda", orden: 3, x: 250, y: 565, reto: RETO_STAND, puntos: 10 },
-  { id: "banco-bogota", nombre: "Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", sitio: "https://www.bancodebogota.com", ruta: "lavanda", orden: 4, x: 500, y: 565, reto: RETO_STAND, puntos: 10 },
-  { id: "grapez", nombre: "Grapez Studio", marca: "Grapez Studio", tipo: "stand", logo: "/img/marcas/grapez.png", fondo: "#161616", sitio: "https://www.grapezstudio.com", ruta: "lavanda", orden: 5, x: 750, y: 565, reto: RETO_STAND, puntos: 10 },
+  { id: "caja-social", nombre: "Banco Caja Social", marca: "Banco Caja Social", tipo: "stand", logo: "/img/marcas/caja-social.svg", sitio: "https://www.bancocajasocial.com", ruta: "morada", orden: 1, x: 200, y: 445, reto: RETO_STAND, puntos: 10 },
+  { id: "taller", nombre: "Escenario Taller", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 2, x: 890, y: 165, reto: "Entra al Escenario Taller y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
+  { id: "auco", nombre: "Auco", marca: "Auco", tipo: "stand", logo: "/img/marcas/auco.png", sitio: "https://auco.ai", ruta: "morada", orden: 3, x: 800, y: 445, reto: RETO_STAND, puntos: 10 },
+  { id: "inspira", nombre: "Escenario Inspira", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 1, x: 310, y: 165, reto: "Entra al Escenario Inspira y tómale una foto a la tarima.", puntos: 10 },
+  { id: "wekall", nombre: "Wekall", marca: "Wekall", tipo: "stand", logo: "/img/marcas/wekall.svg", sitio: "https://wekall.co", ruta: "dorada", orden: 2, x: 500, y: 445, reto: RETO_STAND, puntos: 10 },
+  { id: "palomma", nombre: "Palomma", marca: "Palomma", tipo: "stand", logo: "/img/marcas/palomma.png", sitio: "https://palomma.com", ruta: "dorada", orden: 3, x: 200, y: 612, reto: RETO_STAND, puntos: 10 },
+  { id: "banco-bogota", nombre: "Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", sitio: "https://www.bancodebogota.com", ruta: "dorada", orden: 4, x: 500, y: 612, reto: RETO_STAND, puntos: 10 },
+  { id: "grapez", nombre: "Grapez Studio", marca: "Grapez Studio", tipo: "stand", logo: "/img/marcas/grapez.png", fondo: "#161616", sitio: "https://www.grapezstudio.com", ruta: "dorada", orden: 5, x: 800, y: 612, reto: RETO_STAND, puntos: 10 },
 ];
 
 export const paradasDe = (ruta: RutaId) => PARADAS.filter((p) => p.ruta === ruta).sort((a, b) => a.orden - b.orden);
