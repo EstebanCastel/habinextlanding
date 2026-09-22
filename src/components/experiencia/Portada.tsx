@@ -37,44 +37,67 @@ export default function Portada({
 
   return (
     <>
-      {/* Puntaje y podio */}
+      {/* Avance y podio */}
       <section className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
         <div className="rounded-[28px] border border-white/12 bg-gradient-to-b from-violet-shade to-night p-6 md:p-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Tu puntaje</p>
-          {yo ? (
-            <>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Tu avance</p>
               <p className="mt-2 flex items-baseline gap-2">
-                <span className="text-6xl font-bold tabular-nums tracking-tighter md:text-7xl">{yo.puntos}</span>
+                <span className="text-6xl font-bold tabular-nums tracking-tighter md:text-7xl">{yo?.puntos ?? 0}</span>
                 <span className="text-lg font-light text-white/50">/ {PUNTOS_TOTALES} puntos</span>
               </p>
               <p className="mt-1 text-base font-light text-white/60">
-                Nivel <span className="font-semibold text-white">{yo.nivel}</span>
-                {puesto ? (
+                {yo ? (
                   <>
-                    {" · "}puesto <span className="font-semibold text-white">{puesto.puesto}</span> de {puesto.total}
+                    Nivel <span className="font-semibold text-white">{yo.nivel}</span>
+                    {puesto ? (
+                      <>
+                        {" · "}puesto <span className="font-semibold text-white">{puesto.puesto}</span> de {puesto.total}
+                      </>
+                    ) : (
+                      <> · completa tu primera misión para entrar al ranking</>
+                    )}
                   </>
                 ) : (
-                  <> · todavía no estás en el ranking: completa tu primera misión</>
+                  <>Tu avance se guarda cuando entras: correo y cédula, o LinkedIn.</>
                 )}
               </p>
-              <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-violet transition-[width] duration-700" style={{ width: `${Math.round((yo.puntos / PUNTOS_TOTALES) * 100)}%` }} />
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="mt-2 text-3xl font-semibold leading-tight tracking-tight md:text-4xl">
-                Tres experiencias, <span className="text-violet-soft">{PUNTOS_TOTALES} puntos</span> en juego.
-              </p>
-              <p className="mt-3 text-base font-light leading-relaxed text-white/60">
-                Entra con tu correo y tu cédula, o con LinkedIn, para que tu avance quede guardado y aparezcas en el
-                ranking.
-              </p>
-              <button type="button" onClick={() => pedirEntrada("/experiencia")} className="mt-6 rounded-full bg-violet px-7 py-3.5 text-base font-semibold tracking-tight text-white shadow-[0_18px_44px_-14px_rgba(128,46,246,0.9)] transition-colors hover:bg-violet-press">
+            </div>
+            {!yo ? (
+              <button type="button" onClick={() => pedirEntrada("/experiencia")} className="rounded-full bg-violet px-7 py-3.5 text-base font-semibold tracking-tight text-white shadow-[0_18px_44px_-14px_rgba(128,46,246,0.9)] transition-colors hover:bg-violet-press">
                 Entrar
               </button>
-            </>
-          )}
+            ) : null}
+          </div>
+
+          {/* La barra global, partida en las tres experiencias a proporción de
+              sus puntos: se ve de un golpe cuánto falta y dónde. */}
+          <div className="mt-6 flex h-3 gap-1 overflow-hidden rounded-full">
+            {EXPERIENCIAS.map((e) => {
+              const { hechos, posibles } = puntosEn(yo, e.id);
+              return (
+                <div key={e.id} className="h-full bg-white/10" style={{ flex: `${posibles} 0 0` }} title={`${e.nombre}: ${hechos} de ${posibles}`}>
+                  <div className="h-full rounded-full bg-violet transition-[width] duration-700" style={{ width: `${posibles ? Math.round((hechos / posibles) * 100) : 0}%` }} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex gap-1">
+            {EXPERIENCIAS.map((e) => {
+              const { hechos, posibles } = puntosEn(yo, e.id);
+              return (
+                <div key={e.id} className="min-w-0 text-[11px] leading-tight text-white/50" style={{ flex: `${posibles} 0 0` }}>
+                  <span className="block truncate font-semibold uppercase tracking-[0.12em] text-white/60">
+                    {e.numero} · {e.nombre}
+                  </span>
+                  <span className="tabular-nums">
+                    {hechos}/{posibles}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="rounded-[28px] border border-white/12 bg-white/[0.03] p-6 md:p-8">

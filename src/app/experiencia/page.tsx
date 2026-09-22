@@ -3,7 +3,6 @@ import Asterisk from "@/components/Asterisk";
 import Marco from "@/components/experiencia/Marco";
 import Portada from "@/components/experiencia/Portada";
 import { EVENT } from "@/config/event";
-import { PUNTOS_TOTALES } from "@/config/experiencia";
 import { puestoDe, ranking, vistaDe } from "@/lib/experiencia";
 import { participanteActual } from "@/lib/experiencia-http";
 
@@ -61,8 +60,8 @@ export default async function Pagina({
       }
       bajada={
         <>
-          Tres experiencias que suman {PUNTOS_TOTALES} puntos: tu carnet, el mapa del tesoro del recinto el día del evento y
-          lo que cuentes en tus redes. Los que más sumen se llevan una sorpresa el 20 de octubre.
+          Tu carnet, el mapa del tesoro del recinto y lo que cuentes en tus redes. Todo suma puntos, y los que más sumen se
+          llevan una sorpresa el 20 de octubre.
         </>
       }
     >
