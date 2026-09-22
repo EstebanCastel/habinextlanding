@@ -5,6 +5,33 @@ carnet oficial con su foto y su nombre, y completa una serie de misiones que
 la llevan a contar el evento en sus redes. Todo lo que pasa ahí queda en el
 panel (`/admin`, sección **La experiencia**) con el enlace a cada publicación.
 
+## Las tres experiencias (desde el 22 de septiembre)
+
+La portada (`/experiencia`) muestra el puntaje, el podio de los tres
+primeros y tres tarjetas. Tocar una tarjeta sin sesión abre la ventana de
+entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
+
+- **Entrar** (`POST /api/experiencia/entrar`): correo y cédula como clave, o
+  LinkedIn. La cédula se guarda como hash con sal en `credencial`; la primera
+  vez queda fijada, y si el registro de Luma no tenía cédula, se le completa.
+  Límite: 12 intentos por IP y 6 por correo cada 15 minutos.
+- **1 · Tu carnet** (`/experiencia/carnet`): el editor del carnet y la misión
+  «Cuéntalo en LinkedIn». 30 puntos.
+- **2 · El mapa del tesoro** (`/experiencia/mapa`): el plano del recinto con
+  dos rutas y ocho paradas (`PARADAS` y `RUTAS` en `src/config/experiencia.ts`).
+  Check-in = foto del stand (`POST /api/experiencia/parada`) y, si el celular
+  la da, la ubicación comparada con `RECINTO` (radio generoso, GPS bajo techo).
+  `EXPERIENCIA_GEO=off` apaga la comprobación de distancia para probar. 10
+  puntos por parada y 25 por ruta completa: 130.
+- **3 · Cuéntalo en tus redes** (`/experiencia/redes`): las misiones de
+  Instagram, WhatsApp y las del día del evento. Cada una se puede cerrar
+  publicando desde la página o **subiendo una captura como prueba**
+  (`clase=prueba&mision=` en `/api/experiencia/fotos`). 95 puntos.
+- **Ranking**: un solo documento `experiencia/ranking.json` con una fila por
+  persona, que se toca solo cuando cambian sus puntos o su nombre. Nombre de
+  pila e inicial del apellido; desempata quien llegó primero a ese puntaje.
+- Las fotos de paradas y pruebas se ven en el panel (`/api/admin/experiencia/foto`).
+
 ## Qué hace, en orden
 
 1. **El carnet.** Nombre, apellido y foto. Se dibuja en el navegador (canvas)

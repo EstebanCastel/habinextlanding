@@ -27,10 +27,12 @@ import { COOKIE_ESTADO } from "../route";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const EXPERIENCIAS = new Set(["carnet", "mapa", "redes"]);
+
 function volverCon(base: string, params: Record<string, string>, ancla = "") {
-  const url = new URL(`${base}/experiencia`);
+  const url = new URL(EXPERIENCIAS.has(ancla) ? `${base}/experiencia/${ancla}` : `${base}/experiencia`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  url.hash = ancla;
+  if (!EXPERIENCIAS.has(ancla)) url.hash = ancla;
   const res = NextResponse.redirect(url.toString(), { status: 303 });
   res.cookies.set(COOKIE_ESTADO, "", { path: "/api/experiencia/linkedin", maxAge: 0 });
   return res;
@@ -86,7 +88,7 @@ export async function GET(request: Request) {
       vincularRegistro(p.id, quien.email).catch(() => null),
     ]);
 
-    const res = volverCon(base, { li: "ok" }, volver || "misiones");
+    const res = volverCon(base, { li: "ok" }, volver || "");
     res.cookies.set(COOKIE_SESION, firmarSesion(p.id), opcionesDeCookie());
     return res;
   } catch (error) {

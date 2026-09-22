@@ -23,20 +23,63 @@ export type MisionId =
   | "instagram_fotos"
   | "frase";
 
+export type ExperienciaId = "carnet" | "mapa" | "redes";
+
 export type Mision = {
   id: MisionId;
   /** Antes del evento se promueve la asistencia; el día del evento, lo vivido. */
   fase: Fase;
+  /** A cuál de las tres experiencias pertenece. */
+  experiencia: ExperienciaId;
   titulo: string;
   resumen: string;
   puntos: number;
   red?: Red;
 };
 
+/**
+ * Las tres experiencias. Son las tres tarjetas de la portada; cada una tiene
+ * su propia pantalla y suma al mismo puntaje.
+ */
+export const EXPERIENCIAS: {
+  id: ExperienciaId;
+  numero: number;
+  nombre: string;
+  resumen: string;
+  imagen: string;
+  ruta: string;
+}[] = [
+  {
+    id: "carnet",
+    numero: 1,
+    nombre: "Tu carnet",
+    resumen: "Arma tu carnet oficial y publícalo en LinkedIn.",
+    imagen: "/img/experiencia/tarjeta-carnet.jpg",
+    ruta: "/experiencia/carnet",
+  },
+  {
+    id: "mapa",
+    numero: 2,
+    nombre: "El mapa del tesoro",
+    resumen: "Dos rutas por el recinto: visita cada parada y súbenos la foto.",
+    imagen: "/img/experiencia/tarjeta-mapa.jpg",
+    ruta: "/experiencia/mapa",
+  },
+  {
+    id: "redes",
+    numero: 3,
+    nombre: "Cuéntalo en tus redes",
+    resumen: "Publica en LinkedIn, Instagram y WhatsApp, y sube la prueba.",
+    imagen: "/img/experiencia/tarjeta-redes.jpg",
+    ruta: "/experiencia/redes",
+  },
+];
+
 export const MISIONES: Mision[] = [
   {
     id: "carnet",
     fase: "antes",
+    experiencia: "carnet",
     titulo: "Crea tu carnet",
     resumen: "Tu foto, tu nombre y el sello de Habi Next Colombia.",
     puntos: 10,
@@ -44,6 +87,7 @@ export const MISIONES: Mision[] = [
   {
     id: "linkedin_voy",
     fase: "antes",
+    experiencia: "carnet",
     titulo: "Cuéntalo en LinkedIn",
     resumen: "Publica que vas, con tu carnet y el texto listo. Un clic.",
     puntos: 20,
@@ -52,6 +96,7 @@ export const MISIONES: Mision[] = [
   {
     id: "instagram_voy",
     fase: "antes",
+    experiencia: "redes",
     titulo: "Súbelo a tus historias",
     resumen: "Tu carnet en formato vertical, directo a Instagram.",
     puntos: 15,
@@ -60,6 +105,7 @@ export const MISIONES: Mision[] = [
   {
     id: "invitar",
     fase: "antes",
+    experiencia: "redes",
     titulo: "Invita a un colega",
     resumen: "Tu link personal por WhatsApp. Te contamos cuántos lo abren.",
     puntos: 10,
@@ -68,6 +114,7 @@ export const MISIONES: Mision[] = [
   {
     id: "fotos",
     fase: "evento",
+    experiencia: "redes",
     titulo: "Sube tus fotos del evento",
     resumen: "Todas las que te tomaste en Habi Next. Quedan listas para publicar.",
     puntos: 10,
@@ -75,6 +122,7 @@ export const MISIONES: Mision[] = [
   {
     id: "linkedin_fotos",
     fase: "evento",
+    experiencia: "redes",
     titulo: "Tu Habi Next en LinkedIn",
     resumen: "Hasta nueve fotos con un texto ya escrito. Solo publicar.",
     puntos: 25,
@@ -83,6 +131,7 @@ export const MISIONES: Mision[] = [
   {
     id: "instagram_fotos",
     fase: "evento",
+    experiencia: "redes",
     titulo: "Tus fotos en Instagram",
     resumen: "Elige las mejores y compártelas con el texto copiado.",
     puntos: 20,
@@ -91,18 +140,95 @@ export const MISIONES: Mision[] = [
   {
     id: "frase",
     fase: "evento",
+    experiencia: "redes",
     titulo: "Lo que te llevas",
     resumen: "Una frase tuya, convertida en una pieza para compartir.",
     puntos: 15,
   },
 ];
 
-export const PUNTOS_TOTALES = MISIONES.reduce((s, m) => s + m.puntos, 0);
+// ---------- el mapa del tesoro ----------
+
+export type RutaId = "morada" | "lavanda";
+
+export type Parada = {
+  id: string;
+  nombre: string;
+  /** Marca del stand, o el escenario si no es un stand. */
+  marca: string;
+  tipo: "stand" | "escenario";
+  logo?: string;
+  /** Fondo del stand en el plano cuando el logo no se lee sobre blanco. */
+  fondo?: string;
+  sitio?: string;
+  ruta: RutaId;
+  orden: number;
+  /** Posición del pin sobre el plano (viewBox 1000×700). */
+  x: number;
+  y: number;
+  /** Qué tiene que hacer ahí. */
+  reto: string;
+  puntos: number;
+};
+
+export const RUTAS: { id: RutaId; nombre: string; color: string; resumen: string; bono: number }[] = [
+  {
+    id: "morada",
+    nombre: "Ruta morada",
+    color: "#802ef6",
+    resumen: "Financiación, taller y firma digital: la ruta del negocio que cierra.",
+    bono: 25,
+  },
+  {
+    id: "lavanda",
+    nombre: "Ruta lavanda",
+    color: "#ba9dfa",
+    resumen: "Inspiración y herramientas: la ruta de lo que viene.",
+    bono: 25,
+  },
+];
+
+const RETO_STAND = "Tómale una foto al stand con el logo visible y súbela desde aquí.";
+
+export const PARADAS: Parada[] = [
+  { id: "caja-social", nombre: "Banco Caja Social", marca: "Banco Caja Social", tipo: "stand", logo: "/img/marcas/caja-social.svg", sitio: "https://www.bancocajasocial.com", ruta: "morada", orden: 1, x: 250, y: 435, reto: RETO_STAND, puntos: 10 },
+  { id: "taller", nombre: "Escenario Taller", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 2, x: 745, y: 175, reto: "Entra al Escenario Taller y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
+  { id: "auco", nombre: "Auco", marca: "Auco", tipo: "stand", logo: "/img/marcas/auco.png", sitio: "https://auco.ai", ruta: "morada", orden: 3, x: 750, y: 435, reto: RETO_STAND, puntos: 10 },
+  { id: "inspira", nombre: "Escenario Inspira", marca: "Habi Next", tipo: "escenario", ruta: "lavanda", orden: 1, x: 255, y: 175, reto: "Entra al Escenario Inspira y tómale una foto a la tarima.", puntos: 10 },
+  { id: "wekall", nombre: "Wekall", marca: "Wekall", tipo: "stand", logo: "/img/marcas/wekall.svg", sitio: "https://wekall.co", ruta: "lavanda", orden: 2, x: 500, y: 435, reto: RETO_STAND, puntos: 10 },
+  { id: "palomma", nombre: "Palomma", marca: "Palomma", tipo: "stand", logo: "/img/marcas/palomma.png", sitio: "https://palomma.com", ruta: "lavanda", orden: 3, x: 250, y: 565, reto: RETO_STAND, puntos: 10 },
+  { id: "banco-bogota", nombre: "Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", sitio: "https://www.bancodebogota.com", ruta: "lavanda", orden: 4, x: 500, y: 565, reto: RETO_STAND, puntos: 10 },
+  { id: "grapez", nombre: "Grapez Studio", marca: "Grapez Studio", tipo: "stand", logo: "/img/marcas/grapez.png", fondo: "#161616", sitio: "https://www.grapezstudio.com", ruta: "lavanda", orden: 5, x: 750, y: 565, reto: RETO_STAND, puntos: 10 },
+];
+
+export const paradasDe = (ruta: RutaId) => PARADAS.filter((p) => p.ruta === ruta).sort((a, b) => a.orden - b.orden);
+
+/**
+ * El recinto. El check-in de cada parada pide la ubicación del celular y la
+ * compara con este punto; `radioM` es generoso porque el GPS bajo techo se
+ * equivoca por decenas de metros.
+ */
+export const RECINTO = {
+  nombre: "Centro de Convenciones Compensar Av. 68",
+  direccion: "Av. Carrera 68 #49A-47, Bogotá",
+  // Entrada sobre la Avenida 68 (Apple Maps / OpenStreetMap). El complejo mide
+  // unos 200 m de lado; el radio cubre todo y algo más para el GPS bajo techo.
+  lat: 4.66016,
+  lng: -74.09930,
+  radioM: 700,
+};
+
+export const PUNTOS_MAPA = PARADAS.reduce((s, p) => s + p.puntos, 0) + RUTAS.reduce((s, r) => s + r.bono, 0);
+export const PUNTOS_TOTALES = MISIONES.reduce((s, m) => s + m.puntos, 0) + PUNTOS_MAPA;
+
+export const puntosDeExperiencia = (id: ExperienciaId) =>
+  id === "mapa" ? PUNTOS_MAPA : MISIONES.filter((m) => m.experiencia === id).reduce((s, m) => s + m.puntos, 0);
 
 /** Los niveles se alcanzan por puntos; el último exige completar todo. */
 export const NIVELES = [
   { desde: 0, nombre: "Asistente" },
-  { desde: 40, nombre: "Embajador" },
+  { desde: 30, nombre: "Explorador" },
+  { desde: 120, nombre: "Embajador" },
   { desde: PUNTOS_TOTALES, nombre: "Voz de Habi Next" },
 ];
 

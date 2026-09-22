@@ -963,9 +963,9 @@ function ExperienciaPanel({ lista, sitio }: { lista: Participante[]; sitio: stri
           { n: r.participantes, t: "Participantes" },
           { n: r.carnets, t: "Carnets" },
           { n: r.publicacionesLinkedIn, t: "Publicaciones LinkedIn", acento: true },
-          { n: r.compartidosInstagram, t: "Compartidos Instagram" },
-          { n: r.invitacionesAbiertas, t: "Invitaciones abiertas" },
-          { n: r.completaron, t: "Completaron todo" },
+          { n: r.compartidosInstagram + r.pruebas, t: "Instagram y pruebas" },
+          { n: r.paradas, t: "Paradas del mapa" },
+          { n: r.rutasCompletas, t: "Rutas completas" },
         ].map((c) => (
           <div key={c.t} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <p className={`text-3xl font-semibold tabular-nums tracking-tight ${c.acento ? "text-violet-soft" : ""}`}>{c.n}</p>
@@ -1007,6 +1007,7 @@ function ExperienciaPanel({ lista, sitio }: { lista: Participante[]; sitio: stri
                   <th className="px-4 py-3 font-medium">Misiones</th>
                   <th className="px-4 py-3 font-medium">Puntos</th>
                   <th className="px-4 py-3 font-medium">Publicó</th>
+                  <th className="px-4 py-3 font-medium">Mapa</th>
                   <th className="px-4 py-3 font-medium">Fotos</th>
                   <th className="px-4 py-3 font-medium">Invitación</th>
                   <th className="px-4 py-3 font-medium">Último movimiento</th>
@@ -1065,6 +1066,31 @@ function ExperienciaPanel({ lista, sitio }: { lista: Participante[]; sitio: stri
                         ) : null}
                         {ig ? <p className="text-white/60">Instagram ×{ig}</p> : null}
                         {!li.length && !ig ? <span className="text-white/25">—</span> : null}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {Object.keys(p.mapa?.paradas ?? {}).length ? (
+                          <>
+                            <p className="tabular-nums text-white/70">{Object.keys(p.mapa?.paradas ?? {}).length} paradas</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {Object.entries(p.mapa?.paradas ?? {}).map(([id, h]) => (
+                                <a key={id} href={`/api/admin/experiencia/foto?id=${p.id}&f=${encodeURIComponent(h.fotoId)}`} target="_blank" rel="noreferrer noopener" title={`${id} · ${h.distanciaM !== undefined ? `${h.distanciaM} m` : "sin ubicación"}`} className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70 underline">
+                                  {id}
+                                </a>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-white/25">—</span>
+                        )}
+                        {p.fotos.filter((f) => f.clase === "prueba").length ? (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {p.fotos.filter((f) => f.clase === "prueba").map((f) => (
+                              <a key={f.id} href={`/api/admin/experiencia/foto?id=${p.id}&f=${encodeURIComponent(f.id)}`} target="_blank" rel="noreferrer noopener" className="rounded bg-violet/30 px-1.5 py-0.5 text-[10px] text-violet-soft underline">
+                                prueba · {f.de}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3 tabular-nums text-white/60">{p.fotos.filter((f) => f.clase === "foto").length}</td>
                       <td className="px-4 py-3 tabular-nums text-white/60">

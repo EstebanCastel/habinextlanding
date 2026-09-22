@@ -2,10 +2,21 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { cookies } from "next/headers";
 import { borrar, crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
 import { hmacHex, igualSeguro } from "./seguridad";
-import { todos as todosLosRegistros, type Etapa, type Tier } from "./registros";
+import { anotar as anotarRegistro, todos as todosLosRegistros, type Etapa, type Tier } from "./registros";
 import type { Perfil } from "./linkedin";
 import { EVENT } from "@/config/event";
-import { MISIONES, NIVELES, type Fase, type MisionId, type Red } from "@/config/experiencia";
+import {
+  MISIONES,
+  NIVELES,
+  PARADAS,
+  paradasDe,
+  RECINTO,
+  RUTAS,
+  type Fase,
+  type MisionId,
+  type Red,
+  type RutaId,
+} from "@/config/experiencia";
 
 /**
  * La experiencia del asistente: su carnet, sus fotos, sus misiones y lo que
@@ -28,8 +39,23 @@ export type Foto = {
   tipo: string;
   bytes: number;
   subidaEn: string;
-  /** `foto` es del evento; `perfil` vino de LinkedIn; `frase` es la pieza generada. */
-  clase: "foto" | "perfil" | "frase";
+  /**
+   * `foto` es del evento; `perfil` vino de LinkedIn; `frase` es la pieza
+   * generada; `parada` es la foto de un stand del mapa; `prueba` es la
+   * captura que demuestra una publicación.
+   */
+  clase: "foto" | "perfil" | "frase" | "parada" | "prueba";
+  /** Para `parada` y `prueba`: de qué parada o misión es. */
+  de?: string;
+};
+
+export type ParadaHecha = {
+  en: string;
+  fotoId: string;
+  lat?: number;
+  lng?: number;
+  /** Metros al punto del recinto, si el celular dio la ubicación. */
+  distanciaM?: number;
 };
 
 export type Publicacion = {
@@ -58,6 +84,13 @@ export type Participante = {
   };
   /** Su entrada, si su correo coincide con un registro de boletería. */
   registro?: { token: string; tier: Tier; etapa: Etapa; vinculadoEn: string };
+  /**
+   * La entrada con correo y cédula. La cédula se guarda como hash con sal:
+   * es la clave de la persona y no tiene por qué leerse desde el almacén.
+   */
+  credencial?: { email: string; cedulaHash: string; creadaEn: string; ultimaEntrada?: string };
+  /** El mapa del tesoro: qué paradas hizo y qué rutas completó. */
+  mapa?: { paradas: Record<string, ParadaHecha>; rutas: Partial<Record<RutaId, string>> };
   fotos: Foto[];
   misiones: Partial<Record<MisionId, { en: string; detalle?: string }>>;
   publicaciones: Publicacion[];
@@ -72,6 +105,10 @@ export type Participante = {
 
 const rutaPersona = (id: string) => `experiencia/personas/${id}.json`;
 const rutaIndiceLinkedIn = (sub: string) => `experiencia/indice/linkedin/${sub.replace(/[^A-Za-z0-9_-]/g, "_")}.json`;
+const rutaIndiceCorreo = (email: string) => `experiencia/indice/correo/${normalizarCorreo(email).replace(/[^a-z0-9]/g, "_")}.json`;
+const RUTA_RANKING = "experiencia/ranking.json";
+
+export const normalizarCorreo = (e: string) => e.trim().toLowerCase();
 export const rutaDeArchivo = (id: string, fotoId: string, ext: string) => `experiencia/archivos/${id}/${fotoId}.${ext}`;
 export const rutaDeCarnet = (id: string, formato: Formato) => `experiencia/carnets/${id}/${formato}.jpg`;
 
@@ -206,12 +243,169 @@ export async function cambiar(
   transformar: (p: Participante) => Participante
 ): Promise<Participante | null> {
   if (!esId(id)) return null;
-  return modificar<Participante>(rutaPersona(id), (actual) => {
+  const antes: { puntos: number; nombre: string }[] = [];
+  const nuevo = await modificar<Participante>(rutaPersona(id), (actual) => {
     if (!actual) return null;
-    const nuevo = transformar(actual);
-    nuevo.actualizadoEn = new Date().toISOString();
-    return nuevo;
+    antes[0] = { puntos: puntos(actual), nombre: nombrePublico(actual) };
+    const n = transformar(actual);
+    n.actualizadoEn = new Date().toISOString();
+    return n;
   });
+  // El ranking es un solo documento con una fila por persona; se toca solo
+  // cuando cambia algo que se ve en él.
+  const previo = antes[0];
+  if (nuevo && previo && (puntos(nuevo) !== previo.puntos || nombrePublico(nuevo) !== previo.nombre)) {
+    await actualizarRanking(nuevo).catch(() => null);
+  }
+  return nuevo;
+}
+
+// ---------- ranking ----------
+
+export type Ranking = { actualizadoEn: string; filas: Record<string, { nombre: string; puntos: number; en: string }> };
+
+async function actualizarRanking(p: Participante): Promise<void> {
+  const pts = puntos(p);
+  await modificar<Ranking>(RUTA_RANKING, (actual) => {
+    const filas = { ...(actual?.filas ?? {}) };
+    const previa = filas[p.id];
+    filas[p.id] = {
+      nombre: nombrePublico(p),
+      puntos: pts,
+      // La hora en que alcanzó ese puntaje: quien llegó primero desempata.
+      en: previa && previa.puntos === pts ? previa.en : new Date().toISOString(),
+    };
+    return { actualizadoEn: new Date().toISOString(), filas };
+  });
+}
+
+export type Podio = { id: string; nombre: string; puntos: number; puesto: number }[];
+
+export async function ranking(): Promise<{ podio: Podio; total: number; filas: Ranking["filas"] }> {
+  const r = await leer<Ranking>(RUTA_RANKING);
+  const filas = r?.filas ?? {};
+  const orden = Object.entries(filas)
+    .filter(([, f]) => f.puntos > 0)
+    .sort((a, b) => b[1].puntos - a[1].puntos || a[1].en.localeCompare(b[1].en));
+  return {
+    podio: orden.slice(0, 3).map(([id, f], i) => ({ id, nombre: f.nombre, puntos: f.puntos, puesto: i + 1 })),
+    total: orden.length,
+    filas,
+  };
+}
+
+export function puestoDe(id: string, filas: Ranking["filas"]): { puesto: number; total: number } | null {
+  const orden = Object.entries(filas)
+    .filter(([, f]) => f.puntos > 0)
+    .sort((a, b) => b[1].puntos - a[1].puntos || a[1].en.localeCompare(b[1].en));
+  const i = orden.findIndex(([x]) => x === id);
+  return i < 0 ? null : { puesto: i + 1, total: orden.length };
+}
+
+// ---------- entrar con correo y cédula ----------
+
+function hashCedula(email: string, cedula: string): string {
+  return createHash("sha256").update(`${secreto()}|cedula|${normalizarCorreo(email)}|${cedula}`).digest("hex");
+}
+
+export async function porCorreo(email: string): Promise<Participante | null> {
+  const idx = await leer<{ id: string }>(rutaIndiceCorreo(email));
+  return idx?.id ? porId(idx.id) : null;
+}
+
+export type Entrada =
+  | { ok: true; participante: Participante; nuevo: boolean }
+  | { ok: false; motivo: "cedula" | "linkedin" | "datos" };
+
+/**
+ * Entra con correo y cédula.
+ *
+ * El correo dice quién es; la cédula es la clave. La primera vez que alguien
+ * entra, la cédula que escribe queda fijada (con hash) y, si su registro de
+ * Luma no tenía cédula, se le completa: es el mismo dato que se coteja en la
+ * puerta. Si el correo pertenece a alguien que entró con LinkedIn y nunca
+ * fijó cédula, se le pide entrar con LinkedIn: no se deja que un tercero
+ * «reclame» esa cuenta con un número inventado.
+ */
+export async function entrar(datos: { email: string; cedula: string }): Promise<Entrada> {
+  const email = normalizarCorreo(datos.email);
+  const cedula = datos.cedula.replace(/\D/g, "");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || cedula.length < 6 || cedula.length > 12) {
+    return { ok: false, motivo: "datos" };
+  }
+  const hash = hashCedula(email, cedula);
+  const ahora = new Date().toISOString();
+
+  const existente = await porCorreo(email);
+  if (existente) {
+    if (existente.credencial) {
+      if (!igualSeguro(existente.credencial.cedulaHash, hash)) return { ok: false, motivo: "cedula" };
+      const p = await cambiar(existente.id, (q) => ({ ...q, credencial: { ...q.credencial!, ultimaEntrada: ahora } }));
+      return { ok: true, participante: p ?? existente, nuevo: false };
+    }
+    if (existente.linkedin) return { ok: false, motivo: "linkedin" };
+    const p = await cambiar(existente.id, (q) =>
+      anotar({ ...q, credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora } }, "fijó su cédula como clave")
+    );
+    return { ok: true, participante: p ?? existente, nuevo: false };
+  }
+
+  // Sin participante todavía: se busca su registro de boletería por correo.
+  const registros = await todosLosRegistros().catch(() => []);
+  const mio = registros
+    .filter((r) => normalizarCorreo(r.luma.email) === email && r.etapa !== "rechazado")
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))[0];
+  if (mio?.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
+
+  const base = await crear();
+  await escribir(rutaIndiceCorreo(email), { id: base.id, en: ahora });
+  const partes = (mio?.luma.nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  const p = await cambiar(base.id, (q) =>
+    anotar(
+      {
+        ...q,
+        email,
+        nombre: partes[0] ?? q.nombre,
+        apellido: partes.length > 1 ? partes.slice(partes.length > 2 ? 2 : 1).join(" ") || partes[1] : q.apellido,
+        credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora },
+        ...(mio ? { registro: { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: ahora } } : {}),
+      },
+      "entró con correo y cédula",
+      mio ? `${mio.tier} · ${mio.etapa}` : "sin registro de boletería"
+    )
+  );
+  // Si Luma no tenía su cédula, la que fijó acá sirve para la puerta.
+  if (mio && !mio.luma.cedula) {
+    await anotarRegistro(mio.token, "cédula fijada desde la experiencia", (r) => ({ luma: { ...r.luma, cedula } })).catch(() => null);
+  }
+  return { ok: true, participante: p ?? base, nuevo: true };
+}
+
+// ---------- el mapa ----------
+
+/** Distancia en metros entre dos puntos (haversine). */
+export function distanciaM(lat: number, lng: number, aLat = RECINTO.lat, aLng = RECINTO.lng): number {
+  const R = 6371000;
+  const dLat = ((aLat - lat) * Math.PI) / 180;
+  const dLng = ((aLng - lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos((lat * Math.PI) / 180) * Math.cos((aLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+}
+
+/** Marca una parada hecha y, si con ella se cierra la ruta, anota el bono. */
+export function marcarParada(p: Participante, paradaId: string, hecha: ParadaHecha): Participante {
+  const parada = PARADAS.find((x) => x.id === paradaId);
+  if (!parada) return p;
+  const paradas = { ...(p.mapa?.paradas ?? {}), [paradaId]: p.mapa?.paradas?.[paradaId] ?? hecha };
+  const rutas = { ...(p.mapa?.rutas ?? {}) };
+  let q = anotar({ ...p, mapa: { paradas, rutas } }, `parada: ${parada.nombre}`, hecha.distanciaM !== undefined ? `${hecha.distanciaM} m del recinto` : "sin ubicación");
+  const ruta = RUTAS.find((r) => r.id === parada.ruta)!;
+  if (!rutas[ruta.id] && paradasDe(ruta.id).every((x) => paradas[x.id])) {
+    rutas[ruta.id] = new Date().toISOString();
+    q = anotar({ ...q, mapa: { paradas, rutas } }, `completó la ${ruta.nombre}`, `+${ruta.bono}`);
+  }
+  return q;
 }
 
 /** Bitácora append-only, con techo para que el documento no crezca sin fin. */
@@ -228,8 +422,23 @@ export function marcar(p: Participante, mision: MisionId, detalle?: string): Par
   return anotar(con, `misión: ${m?.titulo ?? mision}`, detalle);
 }
 
+export function puntosDelMapa(p: Participante): number {
+  const hechas = p.mapa?.paradas ?? {};
+  const deParadas = PARADAS.reduce((s, x) => s + (hechas[x.id] ? x.puntos : 0), 0);
+  const deRutas = RUTAS.reduce((s, r) => s + (p.mapa?.rutas?.[r.id] ? r.bono : 0), 0);
+  return deParadas + deRutas;
+}
+
 export function puntos(p: Participante): number {
-  return MISIONES.reduce((s, m) => s + (p.misiones[m.id] ? m.puntos : 0), 0);
+  return MISIONES.reduce((s, m) => s + (p.misiones[m.id] ? m.puntos : 0), 0) + puntosDelMapa(p);
+}
+
+/** Cómo se ve la persona en el ranking: nombre de pila e inicial del apellido. */
+export function nombrePublico(p: Participante): string {
+  const nombre = (p.nombre || p.linkedin?.nombre?.split(" ")[0] || "").trim();
+  const apellido = (p.apellido || p.linkedin?.nombre?.split(" ").slice(1).join(" ") || "").trim();
+  if (!nombre) return "Asistente";
+  return apellido ? `${nombre} ${apellido[0].toUpperCase()}.` : nombre;
 }
 
 export function nivel(p: Participante): string {
@@ -264,6 +473,11 @@ export async function conectarLinkedIn(datos: {
 
   let destino = previo ?? actual ?? (await crear());
   if (!previo) await escribir(rutaIndiceLinkedIn(perfil.sub), { id: destino.id, en: ahora });
+  // El correo de LinkedIn también apunta a esta persona, para que después
+  // pueda entrar con correo y cédula desde otro aparato.
+  if (perfil.email && !(await leer(rutaIndiceCorreo(perfil.email)))) {
+    await escribir(rutaIndiceCorreo(perfil.email), { id: destino.id, en: ahora }).catch(() => null);
+  }
 
   const fusionar = previo && actual && previo.id !== actual.id ? actual : null;
 
@@ -399,7 +613,9 @@ export type Vista = {
   carnet?: Participante["carnet"];
   linkedin?: { nombre: string; venceEn: string; vigente: boolean; fotoId?: string };
   registro?: { tier: Tier; etapa: Etapa };
-  fotos: Pick<Foto, "id" | "tipo" | "subidaEn" | "clase">[];
+  conClave: boolean;
+  mapa: { paradas: Record<string, ParadaHecha>; rutas: Partial<Record<RutaId, string>> };
+  fotos: Pick<Foto, "id" | "tipo" | "subidaEn" | "clase" | "de">[];
   misiones: Participante["misiones"];
   publicaciones: Publicacion[];
   frase?: string;
@@ -425,7 +641,9 @@ export function vistaDe(p: Participante): Vista {
         }
       : undefined,
     registro: p.registro ? { tier: p.registro.tier, etapa: p.registro.etapa } : undefined,
-    fotos: p.fotos.map((f) => ({ id: f.id, tipo: f.tipo, subidaEn: f.subidaEn, clase: f.clase })),
+    conClave: Boolean(p.credencial),
+    mapa: { paradas: p.mapa?.paradas ?? {}, rutas: p.mapa?.rutas ?? {} },
+    fotos: p.fotos.map((f) => ({ id: f.id, tipo: f.tipo, subidaEn: f.subidaEn, clase: f.clase, ...(f.de ? { de: f.de } : {}) })),
     misiones: p.misiones,
     publicaciones: p.publicaciones,
     frase: p.frase,
@@ -461,6 +679,9 @@ export type ResumenExperiencia = {
   vistasPreviasLinkedIn: number;
   porMision: Record<MisionId, number>;
   completaron: number;
+  paradas: number;
+  rutasCompletas: number;
+  pruebas: number;
 };
 
 export function resumir(lista: Participante[]): ResumenExperiencia {
@@ -478,6 +699,9 @@ export function resumir(lista: Participante[]): ResumenExperiencia {
     vistasPreviasLinkedIn: lista.filter((p) => p.vistasPrevias.linkedin).length,
     porMision,
     completaron: lista.filter((p) => MISIONES.every((m) => p.misiones[m.id])).length,
+    paradas: lista.reduce((s, p) => s + Object.keys(p.mapa?.paradas ?? {}).length, 0),
+    rutasCompletas: lista.reduce((s, p) => s + Object.keys(p.mapa?.rutas ?? {}).length, 0),
+    pruebas: lista.reduce((s, p) => s + p.fotos.filter((f) => f.clase === "prueba").length, 0),
   };
 }
 
@@ -492,6 +716,9 @@ export function aCsv(lista: Participante[], sitio: string): string {
     "Puntos",
     "Nivel",
     ...MISIONES.map((m) => m.titulo),
+    "Paradas del mapa",
+    "Rutas completas",
+    "Pruebas subidas",
     "Fotos",
     "Publicaciones LinkedIn",
     "Enlaces LinkedIn",
@@ -512,6 +739,9 @@ export function aCsv(lista: Participante[], sitio: string): string {
       puntos(p),
       nivel(p),
       ...MISIONES.map((m) => p.misiones[m.id]?.en ?? ""),
+      Object.keys(p.mapa?.paradas ?? {}).length,
+      Object.keys(p.mapa?.rutas ?? {}).length,
+      p.fotos.filter((f) => f.clase === "prueba").length,
       p.fotos.filter((f) => f.clase === "foto").length,
       p.publicaciones.filter((x) => x.red === "linkedin").length,
       p.publicaciones

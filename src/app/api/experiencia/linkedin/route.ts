@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   }
 
   const volver = new URL(request.url).searchParams.get("volver") ?? "";
+  // `carnet`, `mapa` o `redes` vuelven a esa experiencia; cualquier otra cosa, a la portada.
   const destino = /^[a-z_-]{0,40}$/.test(volver) ? volver : "";
 
   const state = randomBytes(16).toString("hex");

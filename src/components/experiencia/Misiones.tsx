@@ -50,6 +50,10 @@ type Props = {
   /** Qué misión está desplegada. Vive arriba para que el carnet pueda abrir una. */
   abierta: MisionId | null;
   alAbrir: (m: MisionId | null) => void;
+  /** Solo estas misiones, en una lista sin los grupos por fase. */
+  solo?: MisionId[];
+  /** Sin el marcador grande de arriba: la página ya muestra los puntos. */
+  compacto?: boolean;
 };
 
 type Estado = "hecha" | "pendiente" | "cerrada";
@@ -93,6 +97,58 @@ function Mensaje({ texto, malo }: { texto: string; malo?: boolean }) {
       <Dot color={malo ? "rgb(252 165 165)" : "var(--violet-soft)"} className="mt-2.5 h-1.5 w-1.5" />
       <span>{texto}</span>
     </p>
+  );
+}
+
+// ---------- la prueba ----------
+
+/**
+ * Una captura de pantalla como prueba de que se publicó. Es el camino de
+ * quien publica por su cuenta: Instagram no deja comprobarlo desde afuera,
+ * y en LinkedIn no todos quieren conectar la cuenta.
+ */
+function SubirPrueba({ yo, mision, texto, alCambiar }: { yo: Vista | null; mision: MisionId; texto: string; alCambiar: (yo: Vista) => void }) {
+  const entrada = useRef<HTMLInputElement>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; malo?: boolean } | null>(null);
+  const pruebas = (yo?.fotos ?? []).filter((f) => f.clase === "prueba" && f.de === mision);
+
+  async function subir(f: File | undefined) {
+    if (!f) return;
+    setOcupado(true);
+    setAviso(null);
+    try {
+      const reducida = await reducirImagen(f, 1600, 0.84);
+      const fd = new FormData();
+      fd.append("foto", reducida, "prueba.jpg");
+      fd.append("clase", "prueba");
+      fd.append("mision", mision);
+      const r = await pedir<{ ok: boolean; yo: Vista }>("/api/experiencia/fotos", { method: "POST", body: fd });
+      alCambiar(r.yo);
+      setAviso({ texto: "Prueba recibida. Misión cumplida." });
+    } catch (e) {
+      setAviso({ texto: (e as Error).message, malo: true });
+    } finally {
+      setOcupado(false);
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-3 rounded-2xl border border-dashed border-white/15 p-4">
+      <p className="text-sm font-light leading-relaxed text-white/60">{texto}</p>
+      <input ref={entrada} type="file" accept="image/*" hidden onChange={(e) => subir(e.target.files?.[0])} />
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" disabled={ocupado} onClick={() => entrada.current?.click()} className={clasesBoton.borde}>
+          {ocupado ? "Subiendo…" : pruebas.length ? "Subir otra captura" : "Subir captura como prueba"}
+        </button>
+        {pruebas.map((f) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={f.id} src={`/api/experiencia/archivo?f=${encodeURIComponent(f.id)}`} alt="Prueba" className="h-14 w-14 rounded-lg border border-white/10 object-cover" />
+        ))}
+      </div>
+      {aviso ? <Mensaje {...aviso} /> : null}
+    </div>
   );
 }
 
@@ -174,6 +230,7 @@ function PanelLinkedIn({
         <p className="text-sm font-light leading-relaxed text-white/45">
           Nunca publicamos nada sin que tú le des el botón.
         </p>
+        <SubirPrueba yo={yo} mision={mision} texto="¿Ya publicaste por tu cuenta? Sube una captura de tu publicación y la misión queda hecha." alCambiar={alCambiar} />
         {enlaceCarnet && mision === "linkedin_voy" ? (
           <p className="text-sm font-light leading-relaxed text-white/45">
             ¿Prefieres no conectar?{" "}
@@ -207,6 +264,8 @@ function PanelLinkedIn({
       </div>
 
       {aviso ? <Mensaje {...aviso} /> : null}
+
+      <SubirPrueba yo={yo} mision={mision} texto="Si prefieres publicar tú desde LinkedIn, sube después una captura como prueba." alCambiar={alCambiar} />
 
       {ultima?.url ? (
         <p className="text-sm font-light text-white/50">
@@ -387,6 +446,8 @@ function PanelInstagram({
           </p>
         </div>
       </div>
+
+      <SubirPrueba yo={yo} mision={mision} texto="Cuando lo publiques, sube una captura de tu historia o publicación como prueba." alCambiar={alCambiar} />
     </div>
   );
 }
@@ -449,6 +510,7 @@ function PanelInvitar({ yo, sitio, alCambiar, asegurar }: { yo: Vista | null; si
               : `Ya la abrieron ${persona.invitacion.clics} personas.`}
         </span>
       </div>
+      <SubirPrueba yo={yo} mision="invitar" texto="También puedes subir una captura del chat donde la enviaste." alCambiar={alCambiar} />
     </div>
   );
 }
@@ -706,7 +768,7 @@ function Tarjeta({
   );
 }
 
-export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abierta, alAbrir }: Props) {
+export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abierta, alAbrir, solo, compacto }: Props) {
   const avisoLi = li ? AVISOS_LI[li] : undefined;
 
   const hechas = MISIONES.filter((m) => yo?.misiones[m.id]).length;
@@ -720,8 +782,8 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abi
   };
 
 
-  const antes = useMemo(() => MISIONES.filter((m) => m.fase === "antes"), []);
-  const evento = useMemo(() => MISIONES.filter((m) => m.fase === "evento"), []);
+  const antes = useMemo(() => MISIONES.filter((m) => m.fase === "antes" && (!solo || solo.includes(m.id))), [solo]);
+  const evento = useMemo(() => MISIONES.filter((m) => m.fase === "evento" && (!solo || solo.includes(m.id))), [solo]);
 
   const panel = (m: Mision) => {
     switch (m.id) {
@@ -785,6 +847,7 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abi
   return (
     <section id="misiones" className="scroll-mt-24">
       {/* Marcador */}
+      {compacto ? null : (
       <div className="rounded-[28px] border border-white/12 bg-gradient-to-b from-violet-shade to-night p-6 md:p-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
@@ -826,6 +889,7 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abi
           <span className="font-semibold text-white">{PREMIO.titulo}.</span> {PREMIO.detalle}
         </p>
       </div>
+      )}
 
       {avisoLi ? (
         <div className="mt-6">
@@ -833,21 +897,29 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abi
         </div>
       ) : null}
 
-      <div className="mt-10 flex flex-col gap-10">
-        <div>
-          <p className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
-            <Dot className="h-1.5 w-1.5" />
-            Antes del evento
-          </p>
-          {lista(antes, 1)}
-        </div>
-        <div>
-          <p className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
-            <Dot className="h-1.5 w-1.5" />
-            El día del evento
-          </p>
-          {lista(evento, antes.length + 1)}
-        </div>
+      <div className={`flex flex-col gap-10 ${compacto ? "" : "mt-10"}`}>
+        {antes.length ? (
+          <div>
+            {evento.length ? (
+              <p className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
+                <Dot className="h-1.5 w-1.5" />
+                Antes del evento
+              </p>
+            ) : null}
+            {lista(antes, 1)}
+          </div>
+        ) : null}
+        {evento.length ? (
+          <div>
+            {antes.length ? (
+              <p className="mb-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
+                <Dot className="h-1.5 w-1.5" />
+                El día del evento
+              </p>
+            ) : null}
+            {lista(evento, antes.length + 1)}
+          </div>
+        ) : null}
       </div>
     </section>
   );
