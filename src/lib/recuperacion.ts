@@ -28,6 +28,7 @@ export const CANALES: Canal[] = ["whatsapp", "sms", "correo"];
 export const NOMBRE_CANAL: Record<Canal, string> = { whatsapp: "WhatsApp", sms: "SMS", correo: "Correo" };
 
 const ETAPAS_PENDIENTES = new Set<Etapa>([
+  "por_pagar",
   "registrado",
   "mensaje_enviado",
   "mensaje_entregado",

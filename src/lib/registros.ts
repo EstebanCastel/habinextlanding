@@ -15,6 +15,7 @@ import { nuevoToken } from "./seguridad";
 export type Tier = "general" | "vip";
 
 export type Etapa =
+  | "por_pagar"
   | "registrado"
   | "mensaje_enviado"
   | "mensaje_entregado"
@@ -27,6 +28,7 @@ export type Etapa =
 
 /** Orden del embudo. Solo se avanza; un DLR viejo nunca retrocede la etapa. */
 const ORDEN: Etapa[] = [
+  "por_pagar",
   "registrado",
   "mensaje_enviado",
   "mensaje_entregado",
@@ -60,6 +62,12 @@ export type Registro = {
   token: string;
   tier: Tier;
   etapa: Etapa;
+  /**
+   * Por dónde nació el registro. `luma`: se inscribió en Luma y le mandamos
+   * el link de pago. `compra`: pagó primero desde la landing y se da de alta
+   * en Luma después, ya aprobado.
+   */
+  via?: "luma" | "compra";
   luma: {
     guestId: string;
     eventId: string;
@@ -134,6 +142,13 @@ export type Registro = {
     correo?: EstadoEnvio;
     ultimoEn?: string;
     veces?: number;
+  };
+  /** La confirmación de la entrada (correo, SMS y WhatsApp) cuando quedó en Luma. */
+  confirmacion?: {
+    whatsapp?: EstadoEnvio;
+    sms?: EstadoEnvio;
+    correo?: EstadoEnvio;
+    enviadaEn?: string;
   };
   /** Bitácora append-only: es lo que permite auditar qué pasó y cuándo. */
   bitacora: { en: string; que: string; detalle?: string }[];
@@ -427,6 +442,57 @@ export async function crearCortesia(datos: {
   await escribir(rutaRegistro(datos.token), registro);
   if (datos.guestId) await escribir(rutaIndiceGuest(datos.guestId), { token: datos.token, en: datos.redimidoEn });
   if (telefono) await escribir(rutaIndiceTelefono(telefono), { token: datos.token, en: datos.redimidoEn });
+  return registro;
+}
+
+/**
+ * Registro de alguien que compra desde la landing: paga primero y se da de
+ * alta en Luma después. Nace en `por_pagar`, sin invitado de Luma; el correo
+ * queda reservado para que, cuando se le dé de alta, el webhook de Luma
+ * reconozca el registro en vez de abrirle otro.
+ */
+export async function crearCompra(datos: {
+  tier: Tier;
+  email: string;
+  nombre: string;
+  telefonoCrudo: string | null;
+  cedula?: string;
+  origen?: string;
+  contenido?: string;
+}): Promise<Registro> {
+  const ahora = new Date().toISOString();
+  const token = nuevoToken();
+  const telefono = normalizarTelefono(datos.telefonoCrudo);
+  const { etiqueta, precio } = precioVigente(datos.tier);
+  const registro: Registro = {
+    token,
+    tier: datos.tier,
+    etapa: "por_pagar",
+    via: "compra",
+    luma: {
+      guestId: "",
+      eventId: "",
+      email: datos.email.trim().toLowerCase(),
+      nombre: datos.nombre,
+      nombreCorto: primerNombre(datos.nombre),
+      telefonoCrudo: datos.telefonoCrudo,
+      registradoEn: ahora,
+      estadoAprobacion: "sin_luma",
+      ...(datos.cedula ? { cedula: datos.cedula } : {}),
+      ...(datos.origen ? { origen: datos.origen } : {}),
+      ...(datos.contenido ? { contenido: datos.contenido } : {}),
+    },
+    telefono,
+    whatsapp: {},
+    pago: { etiquetaEtapa: etiqueta, precio, comprobantes: [] },
+    aprobacion: {},
+    bitacora: [{ en: ahora, que: "empezó su compra desde la landing", detalle: datos.tier }],
+    creadoEn: ahora,
+    actualizadoEn: ahora,
+  };
+  await escribir(rutaRegistro(token), registro);
+  await reservarCorreo(registro.luma.email, token);
+  if (telefono) await escribir(rutaIndiceTelefono(telefono), { token, en: ahora });
   return registro;
 }
 

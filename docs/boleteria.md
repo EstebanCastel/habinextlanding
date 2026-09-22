@@ -247,3 +247,29 @@ sube en una fecha concreta. Vive en `src/lib/recuperacion.ts` y en la sección
   `after()` de a tres personas, guardando el avance; si se corta, «Continuar».
   Antes, «Mandarme la prueba» manda los tres mensajes al operador con los
   datos de un pendiente real.
+
+## Pagar primero (desde el 22 de septiembre)
+
+El orden se invirtió: la persona **paga primero** y se da de alta en Luma
+después, ya aprobada.
+
+1. Los botones de la landing van a `/comprar?tier=general|vip`: nombre,
+   correo, cédula y celular. Se crea el registro en etapa `por_pagar` con
+   `via: "compra"`, sin invitado de Luma, se reserva su correo, y se la manda a
+   su link personal `/p/<token>`, que abre Wompi.
+2. Wompi avisa el pago por `/api/wompi` (exige `WOMPI_EVENTS_SECRET`) y el
+   registro pasa a `pago_confirmado`. Si el webhook no está conectado, el pago
+   se ve en el tablero de Wompi y el operador lo marca a mano.
+3. **Cada día**, en el panel: el aviso de arriba dice cuántos pagaron y esperan
+   alta. «Dar de alta y confirmarles» los crea en Luma **aprobados**
+   (`guests/add` con `approval_status: approved`, Luma manda el QR) y les envía
+   la confirmación por correo (Infobip, desde notifications.habi.co), SMS y
+   WhatsApp (plantilla UTILITY `INFOBIP_TPL_CONFIRMACION`). Cada fila tiene
+   también «Dar de alta en Luma» con la casilla «Vi el pago en Wompi» para los
+   que Wompi no confirmó por webhook.
+4. La confirmación queda en `registro.confirmacion.<canal>` con sus reportes de
+   entrega; el webhook `guest.updated` de Luma reconoce el registro por el
+   correo reservado y no repite el aviso.
+
+Los eventos de Luma siguen abiertos: quien llegue directo a luma.com sigue el
+flujo viejo (registro → WhatsApp con link de pago → aprobación en Luma).

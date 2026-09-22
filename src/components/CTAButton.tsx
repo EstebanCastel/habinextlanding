@@ -65,12 +65,14 @@ export default function CTAButton({
     { scope: ref },
   );
 
+  // Los enlaces internos (la compra, el carnet) se quedan en la misma
+  // pestaña; solo lo que sale del sitio se abre aparte.
+  const externo = /^https?:\/\//.test(href);
   return (
     <a
       ref={ref}
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(externo ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={`${base} ${variants[variant]} ${className}`}
     >
       {children}

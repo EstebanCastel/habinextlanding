@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { confirmarEntrada, darDeAltaEnLuma } from "@/lib/altas";
 import { darLaBienvenida, pasarAVip } from "@/lib/bot";
 import {
   CANALES,
@@ -186,9 +187,47 @@ export async function POST(request: Request) {
     );
   }
 
+  // ---------- altas en Luma de quienes pagaron desde la landing ----------
+  if (accion === "alta-luma-pagados") {
+    if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+    const lista = (await todosLosRegistros()).filter((r) => !r.luma.guestId && r.etapa === "pago_confirmado");
+    if (!lista.length) return volver("No hay pagos pendientes de alta");
+    const notas: string[] = [];
+    for (const r of lista) {
+      const alta = await darDeAltaEnLuma(r, "panel · pago confirmado por Wompi");
+      if (alta.ok) {
+        const c = await confirmarEntrada(r.token);
+        notas.push(`${alta.nota} · ${c.nota}`);
+      } else notas.push(alta.nota);
+    }
+    return volver(`${lista.length} ${lista.length === 1 ? "alta" : "altas"}: ${notas.join(" | ")}`.slice(0, 900));
+  }
+
   const token = String(form.get("token") ?? "");
   const registro = token ? await porToken(token) : null;
   if (!registro) return volver("No encontramos ese registro");
+
+  if (accion === "alta-luma") {
+    if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+    const verificado = registro.etapa === "pago_confirmado" || String(form.get("verificado") ?? "") === "1";
+    if (!verificado) return volver("Marca que viste el pago en Wompi antes de dar de alta");
+    if (registro.etapa !== "pago_confirmado") {
+      await anotar(registro.token, "pago verificado a mano en Wompi", (r) => ({
+        etapa: "pago_confirmado" as const,
+        pago: { ...r.pago, confirmadoEn: r.pago.confirmadoEn ?? new Date().toISOString() },
+      }));
+    }
+    const alta = await darDeAltaEnLuma((await porToken(registro.token)) ?? registro, "panel · alta manual");
+    if (!alta.ok) return volver(alta.nota);
+    const c = await confirmarEntrada(registro.token);
+    return volver(`${alta.nota} · ${c.nota}`);
+  }
+
+  if (accion === "confirmar-entrada") {
+    if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+    const c = await confirmarEntrada(registro.token);
+    return volver(c.nota);
+  }
 
   // ---------- reenviar el mensaje ----------
   if (accion === "reenviar") {

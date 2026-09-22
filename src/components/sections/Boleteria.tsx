@@ -6,9 +6,9 @@ import { TICKETS, activeStageIndex, type Ticket } from "@/config/event";
 const datosLuma = [
   "Nombre y apellidos",
   "Correo electrónico",
-  "Teléfono",
-  "Tipo de broker: inmobiliario, financiero o ambos",
-  "Aceptación de términos y tratamiento de datos Habi",
+  "Celular",
+  "Número de cédula",
+  "Tarjeta, PSE o Nequi para pagar en Wompi",
 ];
 
 function TicketCard({ ticket, now }: { ticket: Ticket; now: Date }) {
@@ -160,8 +160,8 @@ export default function Boleteria() {
                 y asegura el mejor precio.
               </p>
               <p className="mt-4 text-base font-light leading-relaxed text-white/55 md:text-lg">
-                Los precios aumentan a medida que se agotan las etapas de boletería. La compra se
-                realiza a través de Luma y la confirmación llega a tu correo.
+                Los precios aumentan a medida que avanzan las etapas de boletería. El pago se hace en
+                Wompi y tu entrada con el código QR te llega al correo, con la confirmación por WhatsApp.
               </p>
             </div>
             <div>

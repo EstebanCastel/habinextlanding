@@ -80,8 +80,10 @@ export async function GET(_request: Request, contexto: { params: Promise<{ token
   const destino = new URL(destinoBase);
   // UTM propia por persona: `utm_content` lleva el token, así que una visita al
   // checkout se puede rastrear hasta el registro exacto que la originó.
-  destino.searchParams.set("utm_source", "whatsapp");
-  destino.searchParams.set("utm_medium", "infobip");
+  // Quien compra desde la landing llega desde la página; el resto, desde el
+  // WhatsApp con su link.
+  destino.searchParams.set("utm_source", registro.via === "compra" ? "landing" : "whatsapp");
+  destino.searchParams.set("utm_medium", registro.via === "compra" ? "comprar" : "infobip");
   destino.searchParams.set("utm_campaign", `habinext-2026-${registro.tier}`);
   destino.searchParams.set("utm_content", registro.token);
   destino.searchParams.set("utm_term", registro.pago.etiquetaEtapa.toLowerCase().replace(/\s+/g, "-"));

@@ -57,8 +57,16 @@ function whatsappPatrocinios(): string {
  * valores por defecto son los eventos reales de octubre de 2026.
  */
 export const LINKS = {
-  general: process.env.NEXT_PUBLIC_LUMA_GENERAL || "https://luma.com/habinext-general",
-  vip: process.env.NEXT_PUBLIC_LUMA_VIP || "https://luma.com/habinext-vip",
+  /**
+   * Desde el 22 de septiembre la compra empieza acá: la persona deja sus
+   * datos, paga en Wompi y se le da de alta en Luma después, ya aprobada.
+   * Los eventos de Luma siguen existiendo para quien llegue directo a ellos.
+   */
+  general: "/comprar?tier=general",
+  vip: "/comprar?tier=vip",
+  /** Las páginas de Luma, para el panel y para quien pregunte. */
+  lumaGeneral: process.env.NEXT_PUBLIC_LUMA_GENERAL || "https://luma.com/habinext-general",
+  lumaVip: process.env.NEXT_PUBLIC_LUMA_VIP || "https://luma.com/habinext-vip",
   sponsors: process.env.NEXT_PUBLIC_SPONSOR_URL || whatsappPatrocinios(),
 } as const;
 

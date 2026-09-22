@@ -84,7 +84,7 @@ function leerMensaje(r: Resultado): {
   };
 }
 
-type Callback = { token?: string; canal?: "whatsapp" | "sms" | "correo"; recordatorio?: boolean; prueba?: boolean };
+type Callback = { token?: string; canal?: "whatsapp" | "sms" | "correo"; recordatorio?: boolean; confirmacion?: boolean; prueba?: boolean };
 
 function callbackDe(r: Resultado): Callback | null {
   try {
@@ -123,24 +123,26 @@ async function anotarRecordatorio(registro: Registro, cb: Callback, r: Resultado
   if (!abierto && !clic && !leido && !entregado && !fallo) return;
 
   const ahora = new Date().toISOString();
+  const cajon = cb.confirmacion ? "confirmacion" : "recordatorio";
+  const nombre = cb.confirmacion ? "confirmación" : "recordatorio";
   const que = fallo
-    ? `recordatorio por ${canal} no se pudo entregar`
+    ? `${nombre} por ${canal} no se pudo entregar`
     : clic
-      ? `abrió el link del recordatorio (${canal})`
+      ? `abrió el link de la ${nombre} (${canal})`
       : abierto
-        ? `abrió el recordatorio (${canal})`
+        ? `abrió la ${nombre} (${canal})`
         : leido
-          ? `recordatorio leído (${canal})`
-          : `recordatorio entregado (${canal})`;
+          ? `${nombre} leída (${canal})`
+          : `${nombre} entregada (${canal})`;
 
   await anotar(
     registro.token,
     que,
     (reg) => {
-      const previo = reg.recordatorio?.[canal] ?? {};
+      const previo = reg[cajon]?.[canal] ?? {};
       return {
-        recordatorio: {
-          ...reg.recordatorio,
+        [cajon]: {
+          ...reg[cajon],
           [canal]: {
             ...previo,
             ...(entregado || leido || abierto || clic ? { entregadoEn: previo.entregadoEn ?? ahora } : {}),
@@ -167,7 +169,7 @@ async function procesarDlr(resultados: Resultado[]): Promise<number> {
     const registro = await registroDe(r);
     if (!registro) continue;
 
-    if (cb?.canal && (cb.recordatorio || cb.canal !== "whatsapp")) {
+    if (cb?.canal && (cb.recordatorio || cb.confirmacion || cb.canal !== "whatsapp")) {
       await anotarRecordatorio(registro, cb, r);
       vistos += 1;
       continue;

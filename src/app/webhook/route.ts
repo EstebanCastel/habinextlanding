@@ -173,7 +173,9 @@ export async function POST(request: Request) {
       // El aviso sale una sola vez: Luma manda `guest.updated` por cualquier
       // cambio, y sin esta guarda alguien recibiría el mismo "¡Listo!" cada
       // vez que se le tocara algo del registro.
-      if (estado === "approved" && !yaEstabaAprobado && actualizado?.telefono) {
+      // Quien fue dado de alta desde el panel ya recibió su confirmación por
+      // los tres canales; este aviso es para quien se aprueba desde Luma.
+      if (estado === "approved" && !yaEstabaAprobado && actualizado?.telefono && !actualizado.confirmacion?.enviadaEn) {
         after(() =>
           enviarTexto({
             a: actualizado.telefono!,

@@ -18,20 +18,10 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
-          <a
-            href={LINKS.general}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="py-3 text-sm font-medium text-white/60 transition-colors hover:text-white"
-          >
+          <a href={LINKS.general} className="py-3 text-sm font-medium text-white/60 transition-colors hover:text-white">
             Entrada General
           </a>
-          <a
-            href={LINKS.vip}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="py-3 text-sm font-medium text-white/60 transition-colors hover:text-white"
-          >
+          <a href={LINKS.vip} className="py-3 text-sm font-medium text-white/60 transition-colors hover:text-white">
             Entrada VIP
           </a>
           <a
@@ -60,7 +50,7 @@ export default function Footer() {
       </div>
 
       <p className="mx-auto mt-10 max-w-[1400px] text-xs font-light text-white/55">
-        © {new Date().getFullYear()} Habi. La compra de entradas se procesa en Luma. Los precios
+        © {new Date().getFullYear()} Habi. El pago se procesa en Wompi y la entrada llega por Luma. Los precios
         aumentan por etapas y los cupos VIP son limitados.
       </p>
     </footer>

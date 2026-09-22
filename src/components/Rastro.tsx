@@ -140,7 +140,7 @@ export default function Rastro() {
      */
     const marcarEnlacesDeLuma = () => {
       if (!utm.source) return;
-      for (const a of document.querySelectorAll<HTMLAnchorElement>('a[href*="luma.com/habinext"]')) {
+      for (const a of document.querySelectorAll<HTMLAnchorElement>('a[href*="luma.com/habinext"], a[href^="/comprar"]')) {
         try {
           const destino = new URL(a.href);
           if (destino.searchParams.get("utm_source")) continue;
@@ -203,8 +203,8 @@ export default function Rastro() {
       const texto = (el.textContent ?? "").trim().slice(0, 60);
 
       let nombre: string | null = null;
-      if (href.includes("luma.com/habinext-vip")) nombre = "boleteria:vip";
-      else if (href.includes("luma.com/habinext-general")) nombre = "boleteria:general";
+      if (href.includes("luma.com/habinext-vip") || href.startsWith("/comprar?tier=vip")) nombre = "boleteria:vip";
+      else if (href.includes("luma.com/habinext-general") || href.startsWith("/comprar?tier=general")) nombre = "boleteria:general";
       else if (href.startsWith("/codigo")) nombre = "boleteria:codigo";
       // La invitación de la experiencia también sale por WhatsApp, pero sin
       // número: no es un mensaje a patrocinios.

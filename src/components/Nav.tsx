@@ -92,8 +92,6 @@ export default function Nav() {
           <div className="flex shrink-0 items-center gap-2 md:gap-3">
             <a
               href={LINKS.general}
-              target="_blank"
-              rel="noopener noreferrer"
               className="rounded-full bg-violet px-4 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-violet-press sm:px-6 sm:text-sm md:px-7 md:text-base"
             >
               Quiero mi entrada

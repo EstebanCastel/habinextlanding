@@ -51,6 +51,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const ETAPAS: { id: Etapa; texto: string }[] = [
+  { id: "por_pagar", texto: "Fue a pagar" },
   { id: "registrado", texto: "Registrado" },
   { id: "mensaje_enviado", texto: "WhatsApp enviado" },
   { id: "mensaje_entregado", texto: "Entregado" },
@@ -128,7 +129,7 @@ function Embudo({ registros }: { registros: Registro[] }) {
   }));
 
   return (
-    <section className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="mb-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {conteo.map((e) => (
         <div key={e.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <p className="text-3xl font-semibold tabular-nums tracking-tight">{e.n}</p>
@@ -1326,6 +1327,7 @@ function Fila({ r }: { r: Registro }) {
           <p className="text-xs tabular-nums text-white/45">CC {r.luma.cedula}</p>
         ) : null}
         {r.luma.empresa ? <p className="text-xs text-white/35">{r.luma.empresa}</p> : null}
+        {r.via === "compra" ? <p className="text-xs text-violet-soft">Compró desde la landing{r.luma.guestId ? "" : " · sin Luma todavía"}</p> : null}
         <Bitacora r={r} />
       </td>
       <td className="px-3 py-3">
@@ -1420,7 +1422,55 @@ function Fila({ r }: { r: Registro }) {
             <p className="text-xs text-white/50">
               {r.etapa === "aprobado" ? "Entrada enviada" : "Rechazado"}
               <span className="block text-white/35">{hora(r.aprobacion.decididoEn)}</span>
+              {r.confirmacion?.enviadaEn ? (
+                <span className="mt-1 block text-violet-soft">
+                  Confirmación {hora(r.confirmacion.enviadaEn)}
+                  {CANALES.filter((c) => r.confirmacion?.[c]).map((c) => {
+                    const e = r.confirmacion![c]!;
+                    return (
+                      <span key={c} className={`block ${e.error ? "text-red-400" : "text-white/40"}`}>
+                        {NOMBRE_CANAL[c]} {e.error ? `falló: ${e.error}` : e.clicEn ? "abrió el link" : e.leidoEn ? "leído" : e.abiertoEn ? "abierto" : e.entregadoEn ? "entregado" : "enviado"}
+                      </span>
+                    );
+                  })}
+                </span>
+              ) : r.etapa === "aprobado" && r.via === "compra" ? (
+                <form method="post" action="/api/admin" className="mt-2">
+                  <input type="hidden" name="accion" value="confirmar-entrada" />
+                  <input type="hidden" name="token" value={r.token} />
+                  <button type="submit" className="w-full rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white">
+                    Mandar confirmación
+                  </button>
+                </form>
+              ) : null}
             </p>
+          ) : !r.luma.guestId ? (
+            <>
+              {/* Compró desde la landing y todavía no está en Luma: el alta se hace desde acá, ya aprobada. */}
+              <form method="post" action="/api/admin" className="flex flex-col gap-1.5">
+                <input type="hidden" name="accion" value="alta-luma" />
+                <input type="hidden" name="token" value={r.token} />
+                {r.etapa !== "pago_confirmado" ? (
+                  <label className="flex items-start gap-2 text-[11px] leading-snug text-white/55">
+                    <input type="checkbox" name="verificado" value="1" required className="mt-0.5 accent-violet" />
+                    Vi el pago en Wompi
+                  </label>
+                ) : null}
+                <button
+                  type="submit"
+                  className={`w-full rounded-full px-3 py-2 text-xs font-semibold ${r.etapa === "pago_confirmado" ? "bg-violet text-white" : "border border-violet/40 text-violet-soft hover:bg-violet/15"}`}
+                >
+                  Dar de alta en Luma
+                </button>
+              </form>
+              <form method="post" action="/api/admin">
+                <input type="hidden" name="accion" value="reenviar" />
+                <input type="hidden" name="token" value={r.token} />
+                <button type="submit" className="w-full rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white">
+                  Reenviar link de pago
+                </button>
+              </form>
+            </>
           ) : (
             <>
               <a
@@ -1488,8 +1538,11 @@ export default async function Panel({
   const trafico = resumir(rastro);
   const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
   const pendientes = registros.filter(
-    (r) => r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado"
+    (r) => (r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado") && r.luma.guestId
   );
+  // Pagaron desde la landing y esperan su alta en Luma: el trabajo diario.
+  const porDarDeAlta = registros.filter((r) => !r.luma.guestId && r.etapa === "pago_confirmado");
+  const fueronAPagar = registros.filter((r) => !r.luma.guestId && r.etapa === "por_pagar");
 
   return (
     <main className="s-night mx-auto min-h-dvh max-w-[92rem] px-5 py-12 md:px-8">
@@ -1521,6 +1574,32 @@ export default async function Panel({
           <Dot color="var(--violet-soft)" className="mt-2.5 h-1.5 w-1.5" />
           {aviso}
         </p>
+      ) : null}
+
+      {porDarDeAlta.length > 0 || fueronAPagar.length > 0 ? (
+        <div className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-violet/40 bg-violet/10 px-5 py-4">
+          <p className="text-base font-light">
+            {porDarDeAlta.length > 0 ? (
+              <>
+                <strong className="font-semibold">{porDarDeAlta.length}</strong> {porDarDeAlta.length === 1 ? "persona pagó" : "personas pagaron"} desde la landing y{" "}
+                {porDarDeAlta.length === 1 ? "espera" : "esperan"} su alta en Luma.{" "}
+              </>
+            ) : null}
+            {fueronAPagar.length > 0 ? (
+              <span className="text-white/60">
+                {fueronAPagar.length} {fueronAPagar.length === 1 ? "fue" : "fueron"} a pagar y Wompi no ha confirmado: si el pago aparece en Wompi, dales de alta desde su fila.
+              </span>
+            ) : null}
+          </p>
+          {porDarDeAlta.length > 0 ? (
+            <form method="post" action="/api/admin">
+              <input type="hidden" name="accion" value="alta-luma-pagados" />
+              <button type="submit" className="rounded-full bg-violet px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-press">
+                Dar de alta a {porDarDeAlta.length === 1 ? "esa persona" : `las ${porDarDeAlta.length}`} y confirmarles
+              </button>
+            </form>
+          ) : null}
+        </div>
       ) : null}
 
       {pendientes.length > 0 ? (
