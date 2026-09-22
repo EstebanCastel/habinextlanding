@@ -47,7 +47,7 @@ export type Salida = {
  * «enviado» para siempre. Es el tipo de fallo que no se nota hasta que alguien
  * pregunta por qué nadie parece haber leído nada.
  */
-function urlDeReportes(): string | undefined {
+export function urlDeReportes(): string | undefined {
   const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
   const token = process.env.INFOBIP_WEBHOOK_TOKEN;
   if (!token) return undefined;
@@ -99,6 +99,12 @@ export async function enviarPlantilla(opciones: {
    * porque el cuerpo y el botón comparten numeración y el encabezado no.
    */
   encabezado?: string;
+  /**
+   * URL pública de la imagen del encabezado, para plantillas registradas con
+   * cabecera de imagen. La pieza viaja en cada envío, no está horneada en la
+   * plantilla: se puede cambiar sin volver a pasar por la revisión de Meta.
+   */
+  encabezadoImagen?: string;
   /** Valores de `{{1}}`, `{{2}}`… en el orden en que aparecen en el cuerpo. */
   placeholders?: string[];
   botones?: Boton[];
@@ -114,9 +120,11 @@ export async function enviarPlantilla(opciones: {
       language: "es_CO",
       templateData: {
         body: { placeholders: (opciones.placeholders ?? []).map(String) },
-        ...(opciones.encabezado !== undefined
-          ? { header: { type: "TEXT", placeholder: opciones.encabezado } }
-          : {}),
+        ...(opciones.encabezadoImagen
+          ? { header: { type: "IMAGE", mediaUrl: opciones.encabezadoImagen } }
+          : opciones.encabezado !== undefined
+            ? { header: { type: "TEXT", placeholder: opciones.encabezado } }
+            : {}),
         // Sin esto Infobip acepta el POST (PENDING_ENROUTE) y Meta lo descarta
         // después con "Failed to match template parameters": el mensaje nunca
         // llega y el único rastro está en el reporte de entrega.

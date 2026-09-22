@@ -1,8 +1,16 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { darLaBienvenida, pasarAVip } from "@/lib/bot";
+import {
+  CANALES,
+  correrCampana,
+  crearCampana,
+  enviarRecordatorio,
+  pendientesDePago,
+  type Canal,
+} from "@/lib/recuperacion";
 import { cambiarEstado, crear as crearCodigo } from "@/lib/codigos";
 import { crear as crearEnlace } from "@/lib/enlaces";
-import { anotar, porToken } from "@/lib/registros";
+import { anotar, porToken, todos as todosLosRegistros } from "@/lib/registros";
 import { igualSeguro } from "@/lib/seguridad";
 import { cabecerasDeCookie, claveAdmin, haySesion } from "@/lib/sesion";
 
@@ -20,6 +28,8 @@ import { cabecerasDeCookie, claveAdmin, haySesion } from "@/lib/sesion";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** La campaña de recordatorios corre en `after()` y necesita más que el tiempo por defecto. */
+export const maxDuration = 300;
 
 function sitio(): string {
   return process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
@@ -117,6 +127,47 @@ export async function POST(request: Request) {
         : {}),
     });
     return volver(res.nota);
+  }
+
+  // ---------- recuperación de pago ----------
+  if (accion === "recuperar-probar" || accion === "recuperar-enviar" || accion === "recuperar-continuar") {
+    if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+    const canales = form.getAll("canal").map(String).filter((c): c is Canal => (CANALES as string[]).includes(c));
+    const ancla = "#recuperacion";
+
+    if (accion === "recuperar-continuar") {
+      const id = String(form.get("campana") ?? "");
+      if (!id) return volver("No sé qué campaña continuar" + ancla);
+      after(() => correrCampana(id).catch((e: Error) => console.error("[recuperacion] continuar:", e.message)));
+      return volver("Continuando la campaña. Recarga en un minuto para ver el avance." + ancla);
+    }
+
+    if (!canales.length) return volver("Elige al menos un canal" + ancla);
+    const registros = await todosLosRegistros();
+    const pendientes = pendientesDePago(registros);
+
+    if (accion === "recuperar-probar") {
+      const tier = String(form.get("tier") ?? "general") === "vip" ? "vip" : "general";
+      const muestra = pendientes.find((r) => r.tier === tier) ?? pendientes[0];
+      if (!muestra) return volver("No hay ningún pendiente con el que armar la prueba" + ancla);
+      const telefono = (process.env.WHATSAPP_ESCALAMIENTO || "").replace(/\D/g, "") || undefined;
+      const email = process.env.CAMPANA_REPLY_TO || undefined;
+      const res = await enviarRecordatorio(muestra, canales, { telefono, email });
+      const partes = canales.map((c) => {
+        const x = res[c];
+        return `${c}: ${x?.ok ? "enviado" : x?.omitido || x?.error || "sin resultado"}`;
+      });
+      return volver(`Prueba con los datos de ${muestra.luma.nombreCorto} (${tier}) → ${partes.join(" · ")}` + ancla);
+    }
+
+    // recuperar-enviar
+    if (String(form.get("seguro") ?? "") !== "1") return volver("Marca la casilla de confirmación para enviar" + ancla);
+    if (!pendientes.length) return volver("No hay pendientes a quienes recordarles" + ancla);
+    const campana = await crearCampana(canales, pendientes.map((r) => r.token));
+    after(() => correrCampana(campana.id).catch((e: Error) => console.error("[recuperacion] campaña:", e.message)));
+    return volver(
+      `Campaña en marcha: ${pendientes.length} personas por ${canales.join(", ")}. Recarga en un par de minutos para ver el avance.` + ancla
+    );
   }
 
   const token = String(form.get("token") ?? "");

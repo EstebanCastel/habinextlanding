@@ -1,11 +1,13 @@
 import { after, NextResponse } from "next/server";
 import {
+  BOTON_PAGUE,
   BOTON_VIP,
   escalarAUnaPersona,
   pasarAVip,
   RESPUESTA_COMPROBANTE,
   RESPUESTA_DUDA,
   RESPUESTA_ESCALADA,
+  RESPUESTA_PAGUE,
 } from "@/lib/bot";
 import { tokenValido } from "@/lib/seguridad";
 import { anotar, normalizarTelefono, porTelefono, porToken, type Registro } from "@/lib/registros";
@@ -41,6 +43,9 @@ type Resultado = {
   seenAt?: string;
   doneAt?: string;
   receivedAt?: string;
+  /** Eventos de seguimiento del correo: OPENED, CLICKED… */
+  type?: string;
+  event?: string;
   cleanText?: string;
   message?: Mensaje;
   content?: Mensaje;
@@ -79,27 +84,94 @@ function leerMensaje(r: Resultado): {
   };
 }
 
+type Callback = { token?: string; canal?: "whatsapp" | "sms" | "correo"; recordatorio?: boolean; prueba?: boolean };
+
+function callbackDe(r: Resultado): Callback | null {
+  try {
+    return r.callbackData ? (JSON.parse(r.callbackData) as Callback) : null;
+  } catch {
+    // callbackData de otro sistema: se ignora.
+    return null;
+  }
+}
+
 /** El token del registro viaja en `callbackData`; si no, se busca por número. */
 async function registroDe(r: Resultado): Promise<Registro | null> {
-  try {
-    const cb = r.callbackData ? (JSON.parse(r.callbackData) as { token?: string }) : null;
-    if (cb?.token) {
-      const porCb = await porToken(cb.token);
-      if (porCb) return porCb;
-    }
-  } catch {
-    // callbackData de otro sistema: se ignora y se cae a la búsqueda por número.
+  const cb = callbackDe(r);
+  if (cb?.token) {
+    const porCb = await porToken(cb.token);
+    if (porCb) return porCb;
   }
   const numero = normalizarTelefono(r.from || r.to);
   return numero ? porTelefono(numero) : null;
+}
+
+/**
+ * Reporte de un recordatorio de pago (WhatsApp, SMS o correo). Se anota en su
+ * propio cajón del registro y no toca la etapa del embudo: que le llegue el
+ * recordatorio no es lo mismo que haber leído el primer mensaje.
+ */
+async function anotarRecordatorio(registro: Registro, cb: Callback, r: Resultado): Promise<void> {
+  const canal = cb.canal!;
+  const grupo = String(r.status?.groupName || r.status?.name || "").toUpperCase();
+  const evento = String(r.type || r.event || "").toUpperCase();
+  const abierto = /OPEN/.test(evento);
+  const clic = /CLICK/.test(evento);
+  const leido = !abierto && !clic && (Boolean(r.seenAt) || grupo === "SEEN" || grupo === "READ");
+  const entregado = !abierto && !clic && grupo === "DELIVERED";
+  const fallo = ["UNDELIVERABLE", "EXPIRED", "REJECTED", "FAILED", "BOUNCED"].includes(grupo);
+  if (!abierto && !clic && !leido && !entregado && !fallo) return;
+
+  const ahora = new Date().toISOString();
+  const que = fallo
+    ? `recordatorio por ${canal} no se pudo entregar`
+    : clic
+      ? `abrió el link del recordatorio (${canal})`
+      : abierto
+        ? `abrió el recordatorio (${canal})`
+        : leido
+          ? `recordatorio leído (${canal})`
+          : `recordatorio entregado (${canal})`;
+
+  await anotar(
+    registro.token,
+    que,
+    (reg) => {
+      const previo = reg.recordatorio?.[canal] ?? {};
+      return {
+        recordatorio: {
+          ...reg.recordatorio,
+          [canal]: {
+            ...previo,
+            ...(entregado || leido || abierto || clic ? { entregadoEn: previo.entregadoEn ?? ahora } : {}),
+            ...(leido ? { leidoEn: previo.leidoEn ?? ahora } : {}),
+            ...(abierto ? { abiertoEn: previo.abiertoEn ?? ahora } : {}),
+            ...(clic ? { clicEn: previo.clicEn ?? ahora } : {}),
+            ...(fallo ? { error: r.error?.description || r.status?.description || grupo } : {}),
+          },
+        },
+      };
+    },
+    fallo ? r.error?.description || grupo : undefined
+  );
 }
 
 /** ---------- reportes de entrega ---------- */
 async function procesarDlr(resultados: Resultado[]): Promise<number> {
   let vistos = 0;
   for (const r of resultados) {
+    const cb = callbackDe(r);
+    // Los envíos de prueba al operador no son de nadie: no se anotan.
+    if (cb?.prueba) continue;
+
     const registro = await registroDe(r);
     if (!registro) continue;
+
+    if (cb?.canal && (cb.recordatorio || cb.canal !== "whatsapp")) {
+      await anotarRecordatorio(registro, cb, r);
+      vistos += 1;
+      continue;
+    }
 
     const grupo = String(r.status?.groupName || r.status?.name || "").toUpperCase();
     const leido = Boolean(r.seenAt) || grupo === "SEEN" || grupo === "READ";
@@ -156,6 +228,12 @@ function quiereVip(payload: string, texto: string): boolean {
   return /^(prefiero el vip|quiero el vip|quiero ser vip|me paso a vip|vip)$/.test(t);
 }
 
+/** «Ya pagué», del recordatorio: no trae comprobante todavía, se le pide. */
+function diceQuePago(payload: string, texto: string): boolean {
+  if (payload.startsWith(`${BOTON_PAGUE}_`)) return true;
+  return /^(ya pague|ya pagué|pague|listo ya pague)$/.test(sinAcentos(texto));
+}
+
 function pideAyuda(payload: string, texto: string): boolean {
   if (payload.startsWith("DUDA")) return true;
   return /^(tengo una duda|una duda|ayuda|tengo una pregunta)$/.test(sinAcentos(texto));
@@ -172,6 +250,16 @@ async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
     const esBotonVip = quiereVip(m.payload, m.texto);
     const esBotonDuda = pideAyuda(m.payload, m.texto);
     const ahora = r.receivedAt || new Date().toISOString();
+
+    // Va antes que el comprobante: «Ya pagué» solo dice que pagó, y el texto
+    // del botón contiene «pagué», que si no se leería como un comprobante.
+    if (!["IMAGE", "DOCUMENT", "VIDEO"].includes(m.tipo) && diceQuePago(m.payload, m.texto)) {
+      await anotar(registro.token, "dice que ya pagó (botón del recordatorio)", () => ({}));
+      if (registro.telefono) {
+        after(() => enviarTexto({ a: registro.telefono!, texto: RESPUESTA_PAGUE }).catch(() => null));
+      }
+      continue;
+    }
 
     if (pareceComprobante(m.tipo, m.texto)) {
       await anotar(

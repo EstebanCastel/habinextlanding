@@ -219,3 +219,31 @@ llama a `GET /api/hoja/embajadores` cada 5 minutos y reescribe la pestaña.
   actualización desde afuera.
 - Si cambia una columna en `CABECERA_HOJA` / `aFilas` (`src/lib/embajadores.ts`),
   cambia en el CSV y en la hoja a la vez.
+
+## Recuperación de pago
+
+A quien se registró y no ha pagado se le vuelve a poner el link de pago
+delante por **WhatsApp, SMS y correo**, con el argumento que mueve: el precio
+sube en una fecha concreta. Vive en `src/lib/recuperacion.ts` y en la sección
+«Recuperación de pago» del panel.
+
+- **A quién:** etapa entre `registrado` y `pago_abierto`, sin cortesía y sin
+  decisión en Luma (ni aprobado ni rechazado). Nunca dos veces en 48 horas.
+- **WhatsApp:** plantillas MARKETING con cabecera de imagen
+  (`INFOBIP_TPL_RECUPERA_GENERAL` / `_VIP`, se crean con
+  `scripts/plantillas-recuperacion.mjs`). Marcadores: nombre y token; el link
+  va en el cuerpo. Botones: «Ya pagué» (pide el comprobante), «Quiero pasar a
+  VIP» (solo General) y «Tengo una duda».
+- **SMS:** Infobip `/sms/2/text/advanced`, remitente `INFOBIP_SMS_FROM`; el
+  operador lo cambia por un número local. Texto sin tildes para que quepa en
+  un segmento GSM.
+- **Correo:** Infobip Email v3 desde `notifications.habi.co`, dominio que Habi
+  ya tiene verificado en la cuenta (`INFOBIP_EMAIL_FROM`, respuestas a
+  `CAMPANA_REPLY_TO`). HTML propio con el mismo link personal.
+- **Reportes:** los tres canales avisan a `/api/infobip?dlr=1` con
+  `callbackData = {token, canal}`; se anotan en `registro.recordatorio.<canal>`
+  (entregado, leído, abierto, clic, fallo) sin tocar la etapa del embudo.
+- **Campaña:** «Enviar recordatorio» crea `campanas/<id>.json` y corre en
+  `after()` de a tres personas, guardando el avance; si se corta, «Continuar».
+  Antes, «Mandarme la prueba» manda los tres mensajes al operador con los
+  datos de un pendiente real.

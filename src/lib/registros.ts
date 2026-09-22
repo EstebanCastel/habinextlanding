@@ -37,6 +37,17 @@ const ORDEN: Etapa[] = [
   "aprobado",
 ];
 
+export type EstadoEnvio = {
+  enviadoEn?: string;
+  messageId?: string;
+  entregadoEn?: string;
+  leidoEn?: string;
+  abiertoEn?: string;
+  clicEn?: string;
+  error?: string;
+  plantilla?: string;
+};
+
 export type Comprobante = {
   en: string;
   tipo: string;
@@ -112,6 +123,18 @@ export type Registro = {
    * por acá no pasa por el embudo de pago: nace aprobado.
    */
   cortesia?: { codigo: string; redimidoEn: string };
+  /**
+   * Los recordatorios de pago: qué se le mandó por cada canal y qué pasó con
+   * cada envío. Separado del WhatsApp de bienvenida para no confundir «le
+   * llegó el primer mensaje» con «le llegó el recordatorio».
+   */
+  recordatorio?: {
+    whatsapp?: EstadoEnvio;
+    sms?: EstadoEnvio;
+    correo?: EstadoEnvio;
+    ultimoEn?: string;
+    veces?: number;
+  };
   /** Bitácora append-only: es lo que permite auditar qué pasó y cuándo. */
   bitacora: { en: string; que: string; detalle?: string }[];
   creadoEn: string;

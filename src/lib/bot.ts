@@ -37,6 +37,8 @@ import { enviarPlantilla, enviarTexto } from "./whatsapp";
 /** Payloads de los botones. Llevan el token para saber de quién es la respuesta. */
 export const BOTON_VIP = "VIP";
 export const BOTON_DUDA = "DUDA";
+/** «Ya pagué», del recordatorio de pago: se le pide el comprobante. */
+export const BOTON_PAGUE = "PAGUE";
 const payload = (prefijo: string, token: string) => `${prefijo}_${token}`;
 
 /**
@@ -249,6 +251,10 @@ export const RESPUESTA_COMPROBANTE =
   "¡Gracias! 🙌 Ya recibimos tu comprobante y lo estamos revisando. " +
   "Apenas quede confirmado te llega tu entrada de Habi Next al correo, con tu código QR. " +
   "Te avisamos por acá mismo cuando esté lista.";
+
+export const RESPUESTA_PAGUE =
+  "¡Genial! 🙌 Mándanos por acá la foto o el PDF del comprobante y te aprobamos en el momento. " +
+  "Apenas quede confirmado te llega tu entrada de Habi Next al correo, con tu código QR.";
 
 export const RESPUESTA_DUDA =
   "¡Hola! 👋 Con gusto te ayudamos. Cuéntanos por acá qué necesitas saber de Habi Next " +
