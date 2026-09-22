@@ -83,18 +83,17 @@ export default function Portada({
               );
             })}
           </div>
-          <div className="mt-2 flex gap-1">
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
             {EXPERIENCIAS.map((e) => {
               const { hechos, posibles } = puntosEn(yo, e.id);
               return (
-                <div key={e.id} className="min-w-0 text-[11px] leading-tight text-white/50" style={{ flex: `${posibles} 0 0` }}>
-                  <span className="block truncate font-semibold uppercase tracking-[0.12em] text-white/60">
-                    {e.numero} · {e.nombre}
-                  </span>
+                <span key={e.id} className="flex items-center gap-2 text-xs text-white/55">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-white/10 text-[10px] font-bold text-white/80">{e.numero}</span>
+                  <span className="font-medium text-white/75">{e.nombre}</span>
                   <span className="tabular-nums">
                     {hechos}/{posibles}
                   </span>
-                </div>
+                </span>
               );
             })}
           </div>
