@@ -1025,6 +1025,15 @@ function ExperienciaPanel({ lista, sitio }: { lista: Participante[]; sitio: stri
                         </p>
                         <p className="text-xs text-white/40">{p.email ?? "—"}</p>
                         {p.linkedin ? <p className="text-xs text-violet-soft">LinkedIn conectado</p> : null}
+                        {p.credencial ? (
+                          <form method="post" action="/api/admin" className="mt-1">
+                            <input type="hidden" name="accion" value="experiencia-reset-clave" />
+                            <input type="hidden" name="id" value={p.id} />
+                            <button type="submit" className="text-xs text-white/40 underline hover:text-white">
+                              Restablecer cédula
+                            </button>
+                          </form>
+                        ) : null}
                         {p.carnet ? (
                           <a href={`${sitio}/c/${p.id}`} target="_blank" rel="noreferrer noopener" className="text-xs text-white/40 underline">
                             Ver carnet

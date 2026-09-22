@@ -11,6 +11,7 @@ import {
 import { cambiarEstado, crear as crearCodigo } from "@/lib/codigos";
 import { crear as crearEnlace } from "@/lib/enlaces";
 import { anotar, porToken, todos as todosLosRegistros } from "@/lib/registros";
+import { anotar as anotarParticipante, cambiar as cambiarParticipante, esId } from "@/lib/experiencia";
 import { igualSeguro } from "@/lib/seguridad";
 import { cabecerasDeCookie, claveAdmin, haySesion } from "@/lib/sesion";
 
@@ -127,6 +128,21 @@ export async function POST(request: Request) {
         : {}),
     });
     return volver(res.nota);
+  }
+
+  // ---------- experiencia: restablecer la clave de alguien ----------
+  // Quien fijó mal su cédula la primera vez queda afuera. Esto borra la clave
+  // y la próxima entrada con su correo la fija de nuevo.
+  if (accion === "experiencia-reset-clave") {
+    if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
+    const id = String(form.get("id") ?? "");
+    if (!esId(id)) return volver("Participante inválido#experiencia");
+    const p = await cambiarParticipante(id, (q) => {
+      const { credencial: _quitada, ...resto } = q;
+      void _quitada;
+      return anotarParticipante(resto as typeof q, "clave restablecida desde el panel");
+    });
+    return volver(p ? `Clave borrada para ${p.email ?? p.nombre ?? id}: al volver a entrar fija su cédula de nuevo.#experiencia` : "No encontramos ese participante#experiencia");
   }
 
   // ---------- recuperación de pago ----------
