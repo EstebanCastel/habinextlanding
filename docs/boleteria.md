@@ -211,9 +211,11 @@ llama a `GET /api/hoja/embajadores` cada 5 minutos y reescribe la pestaña.
 - El endpoint entrega la misma tabla que «Bajar el marcador» del panel, en
   JSON (`cabecera`, `filas`, `resumen`). Entra con `HOJA_TOKEN` en la cabecera
   `Authorization: Bearer …`; solo lee.
-- El script está en `docs/hoja-embajadores.gs`. Se pega una vez en
-  Extensiones → Apps Script; el token se guarda desde el menú «Habi Next →
-  Guardar token» en las propiedades del script, nunca en una celda ni en el
-  repo.
+- El script está en `docs/hoja-embajadores.gs` y vive ligado a la hoja
+  (subido con clasp desde `~/habinext-hoja`, donde también está `secreto.gs`
+  con el token y la clave web, fuera del repo). Está desplegado además como
+  dirección web: abrirla con `?k=<CLAVE_WEB>` autoriza el script, refresca la
+  pestaña e instala el disparador de 5 minutos, y sirve para forzar una
+  actualización desde afuera.
 - Si cambia una columna en `CABECERA_HOJA` / `aFilas` (`src/lib/embajadores.ts`),
   cambia en el CSV y en la hoja a la vez.
