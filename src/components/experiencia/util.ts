@@ -14,7 +14,11 @@ export class ErrorDePeticion extends Error {
 }
 
 export async function pedir<T = { ok: boolean; yo?: Vista }>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "same-origin", ...init });
+  // Siempre se pide JSON: sin esta cabecera, un endpoint que también atiende
+  // formularios sin JavaScript responde con una redirección a la página.
+  const cabeceras = new Headers(init?.headers);
+  if (!cabeceras.has("Accept")) cabeceras.set("Accept", "application/json");
+  const res = await fetch(url, { credentials: "same-origin", ...init, headers: cabeceras });
   const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!res.ok || !data) {
     throw new ErrorDePeticion(data?.error || `Algo falló (${res.status}).`, res.status);

@@ -28,9 +28,9 @@ function destinoSeguro(v: unknown): string {
 export async function POST(request: Request) {
   if (!mismoOrigen(request)) return error("origen no permitido", 403);
   const base = sitio(request);
-  const quiereJson = (request.headers.get("accept") ?? "").includes("application/json");
-
   const tipo = request.headers.get("content-type") ?? "";
+  // Quien manda JSON quiere JSON de vuelta, pida lo que pida en Accept.
+  const quiereJson = (request.headers.get("accept") ?? "").includes("application/json") || tipo.includes("application/json");
   let email = "";
   let cedula = "";
   let destino = "/experiencia";
