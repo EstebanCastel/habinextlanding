@@ -256,6 +256,10 @@ export const RESPUESTA_PAGUE =
   "¡Genial! 🙌 Mándanos por acá la foto o el PDF del comprobante y te aprobamos en el momento. " +
   "Apenas quede confirmado te llega tu entrada de Habi Next al correo, con tu código QR.";
 
+/** Confirmación de baja: corta, sin insistir. */
+export const RESPUESTA_BAJA =
+  "Listo, no te volveremos a escribir por este canal. Si más adelante quieres saber del evento, toda la información está en habinext.com.";
+
 export const RESPUESTA_DUDA =
   "¡Hola! 👋 Con gusto te ayudamos. Cuéntanos por acá qué necesitas saber de Habi Next " +
   "y una persona del equipo te responde por este mismo chat.";

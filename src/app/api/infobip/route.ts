@@ -8,10 +8,12 @@ import {
   RESPUESTA_DUDA,
   RESPUESTA_ESCALADA,
   RESPUESTA_PAGUE,
+  RESPUESTA_BAJA,
 } from "@/lib/bot";
 import { tokenValido } from "@/lib/seguridad";
 import { anotar, normalizarTelefono, porTelefono, porToken, type Registro } from "@/lib/registros";
 import { enviarTexto } from "@/lib/whatsapp";
+import { escribir } from "@/lib/almacen";
 
 /**
  * Webhook de Infobip. Una sola URL para las dos cosas que WhatsApp devuelve:
@@ -236,6 +238,20 @@ function diceQuePago(payload: string, texto: string): boolean {
   return /^(ya pague|ya pagué|pague|listo ya pague)$/.test(sinAcentos(texto));
 }
 
+/**
+ * Pide que no le escriban más. Por esta misma línea salen las campañas frías
+ * de la base de brokers (con el pie «Responde BAJA»), así que acá llegan
+ * también las bajas de gente que no tiene registro en el evento: se guardan
+ * en `bajas/<telefono>.json` para que ninguna campaña les vuelva a escribir, y
+ * se les confirma en una línea.
+ */
+function pideBaja(texto: string): boolean {
+  const t = sinAcentos(texto).replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (!t) return false;
+  if (/^(baja|stop|cancelar|salir|no gracias|no mas|no mas mensajes|no me interesa|no quiero)$/.test(t)) return true;
+  return /(dar(me|nos)? de baja|quiero la baja|no me interesa|no estoy interesad|no molest|dejen de escribir|no (me |nos )?escriban|no quiero (recibir|mas)|quitame|quitenme|eliminar mis datos|dejar de recibir|no mas mensajes)/.test(t);
+}
+
 function pideAyuda(payload: string, texto: string): boolean {
   if (payload.startsWith("DUDA")) return true;
   return /^(tengo una duda|una duda|ayuda|tengo una pregunta)$/.test(sinAcentos(texto));
@@ -244,11 +260,30 @@ function pideAyuda(payload: string, texto: string): boolean {
 async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
   let vistos = 0;
   for (const r of resultados) {
+    const m = leerMensaje(r);
+
+    if (!["IMAGE", "DOCUMENT", "VIDEO", "AUDIO"].includes(m.tipo) && pideBaja(m.texto)) {
+      const numero = normalizarTelefono(r.from);
+      if (numero) {
+        vistos += 1;
+        await escribir(`bajas/${numero}.json`, {
+          telefono: numero,
+          texto: m.texto.slice(0, 200),
+          en: r.receivedAt || new Date().toISOString(),
+        }).catch(() => null);
+        const conRegistro = await registroDe(r);
+        if (conRegistro) {
+          await anotar(conRegistro.token, "pidió no recibir más mensajes", () => ({}), m.texto.slice(0, 200) || undefined);
+        }
+        after(() => enviarTexto({ a: numero, texto: RESPUESTA_BAJA }).catch(() => null));
+      }
+      continue;
+    }
+
     const registro = await registroDe(r);
     if (!registro) continue;
     vistos += 1;
 
-    const m = leerMensaje(r);
     const esBotonVip = quiereVip(m.payload, m.texto);
     const esBotonDuda = pideAyuda(m.payload, m.texto);
     const ahora = r.receivedAt || new Date().toISOString();
