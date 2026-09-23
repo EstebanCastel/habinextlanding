@@ -18,6 +18,8 @@ export type Enlace = {
   destino: string;
   utm: { source: string; medium: string; campaign: string; content?: string; term?: string };
   clics: number;
+  /** Clics por variante (`/l/<slug>?c=a`), cuando la pieza se prueba en dos versiones. */
+  clicsPor?: Record<string, number>;
   ultimoClic?: string;
   nota?: string;
   /** Quién reparte este enlace, cuando es de una persona y no de un canal. */
@@ -103,10 +105,12 @@ export function destinoDe(enlace: Enlace, base: string): string {
   return url.toString();
 }
 
-export async function contarClic(slug: string): Promise<void> {
-  await modificar<Enlace>(ruta(slug), (e) =>
-    e ? { ...e, clics: e.clics + 1, ultimoClic: new Date().toISOString() } : null
-  );
+export async function contarClic(slug: string, variante?: string): Promise<void> {
+  await modificar<Enlace>(ruta(slug), (e) => {
+    if (!e) return null;
+    const clicsPor = variante ? { ...(e.clicsPor ?? {}), [variante]: (e.clicsPor?.[variante] ?? 0) + 1 } : e.clicsPor;
+    return { ...e, clics: e.clics + 1, ...(clicsPor ? { clicsPor } : {}), ultimoClic: new Date().toISOString() };
+  });
 }
 
 export async function todos(): Promise<Enlace[]> {

@@ -10,6 +10,11 @@ import { contarClic, destinoDe, traer } from "@/lib/enlaces";
  */
 
 export const runtime = "nodejs";
+
+function varianteDe(valor: string | null): string | undefined {
+  const v = String(valor ?? "").trim().toLowerCase();
+  return /^[a-z0-9-]{1,30}$/.test(v) ? v : undefined;
+}
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, contexto: { params: Promise<{ slug: string }> }) {
@@ -24,9 +29,14 @@ export async function GET(request: Request, contexto: { params: Promise<{ slug: 
     return NextResponse.redirect(base, { status: 302, headers: { "Cache-Control": "no-store" } });
   }
 
-  after(() => contarClic(slug).catch(() => null));
+  // `?c=a` distingue variantes de una misma pieza (dos copys de WhatsApp, dos
+  // historias) sin abrir un enlace por cada una: el clic se cuenta por variante
+  // y la variante viaja como utm_content hasta el registro de la compra.
+  const variante = varianteDe(new URL(request.url).searchParams.get("c"));
+  after(() => contarClic(slug, variante).catch(() => null));
 
-  return NextResponse.redirect(destinoDe(enlace, base), {
+  const conVariante = variante ? { ...enlace, utm: { ...enlace.utm, content: variante } } : enlace;
+  return NextResponse.redirect(destinoDe(conVariante, base), {
     status: 302,
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
