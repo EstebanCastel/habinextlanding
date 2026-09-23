@@ -168,6 +168,29 @@ se apuntan `INFOBIP_TPL_VIP` e `INFOBIP_TPL_GENERAL_UPSELL` a ellas; en
 Mientras tanto el link va escrito en el cuerpo, que WhatsApp autoenlaza igual y
 no pasa por esa validación.
 
+## Campañas frías a la base externa (desde el 23 de septiembre)
+
+La boletería también se ofrece por WhatsApp a la base de brokers de growth
+(Postgres del droplet, `market_brokers` de Colombia) desde el motor de goteo de
+`~/envios-habinext-externa`, con plantillas `habinext_externa_*` en la línea CO.
+Tres cosas de este repo las sostienen:
+
+- **Variantes en el enlace corto.** `/l/<slug>?c=a` cuenta el clic por variante
+  (`clicsPor` en el documento del enlace) y manda `utm_content=a` a la landing,
+  que lo lleva hasta el registro de compra (`luma.contenido`). Sirve para probar
+  dos copys con un solo enlace y una sola fila en la hoja del equipo. Ojo: los
+  robots de revisión de Meta abren los links de cada plantilla nueva, así que
+  los clics se inflan al registrarla; la señal buena son visitas, registros y
+  pagados.
+- **«BAJA» en el webhook.** Los mensajes entrantes de la línea CO llegan a
+  `/api/infobip` (no al webhook de growth), así que las bajas de cualquier
+  campaña que salga por esa línea caen acá. `pideBaja()` las reconoce, las
+  guarda en Blob `bajas/<telefono>.json`, anota el registro si lo hay y responde
+  `RESPUESTA_BAJA`. El script `sincronizar-bajas.mjs` del motor las pasa a
+  `optouts` de growth para que ninguna campaña les vuelva a escribir.
+- **Sin botón URL**, por la misma razón de la sección anterior: el link va en el
+  cuerpo.
+
 ## Cuando el bot no sabe qué hacer
 
 Escala a una persona por WhatsApp (`WHATSAPP_ESCALAMIENTO`), con quién es y qué
