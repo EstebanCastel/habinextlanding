@@ -179,11 +179,9 @@ function Experimento({ r }: { r: Resumen }) {
   return (
     <section className="mb-10">
       <h2 className="mb-1 text-xl font-semibold tracking-tight">Las tres versiones de la página</h2>
-      <p className="mb-5 max-w-3xl text-sm font-light text-white/50">
-        A es la página completa, B la corta con la boletería arriba, C solo hero y precio. El
-        reparto es al azar, un tercio cada una, y se guarda por visitante. Para verlas:{" "}
-        <code className="text-violet-soft">?v=a</code>, <code className="text-violet-soft">?v=b</code>{" "}
-        o <code className="text-violet-soft">?v=c</code> al final de la dirección.
+      <p className="mb-5 text-sm font-light leading-relaxed text-white/50">
+        A era la página completa, B la corta con la boletería arriba y C solo hero y precio. Desde el 23 de
+        septiembre todos ven la A; ?v=b y ?v=c siguen abriendo las otras dos para revisarlas.
       </p>
 
       {totalVisitas === 0 ? (
