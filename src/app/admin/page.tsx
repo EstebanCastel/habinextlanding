@@ -242,13 +242,10 @@ function Experimento({ r }: { r: Resumen }) {
           })}
         </div>
       )}
-      {totalVisitas > 0 && totalVisitas < 300 ? (
-        <p className="mt-3 text-xs text-white/40">
-          Con {totalVisitas} visitas repartidas entre tres versiones todavía no hay con qué
-          decidir: una diferencia de pocos puntos a esta escala es ruido. Conviene esperar a
-          tener unas cien visitas por versión antes de apagar ninguna.
-        </p>
-      ) : null}
+      <p className="mt-3 text-xs text-white/40">
+        Prueba cerrada el 23 de septiembre: todo el mundo ve la A, la completa, que fue la que más visitas
+        llevó a boletería. Las cifras quedan como historia; ?v=b y ?v=c siguen mostrando las otras dos.
+      </p>
     </section>
   );
 }

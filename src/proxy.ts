@@ -39,8 +39,7 @@ const WINDOW_MS = 60_000;
  * Se guarda en cookie para que la misma persona vea siempre lo mismo. Un
  * experimento en el que alguien ve A el lunes y C el martes no mide nada.
  */
-const VARIANTES = ["a", "b", "c"] as const;
-type Variante = (typeof VARIANTES)[number];
+type Variante = "a" | "b" | "c";
 const COOKIE_VARIANTE = "hn_ab";
 const DIAS_VARIANTE = 60 * 60 * 24 * 45;
 
@@ -57,10 +56,11 @@ function asignarVariante(request: NextRequest): { variante: Variante; nueva: boo
   const forzada = request.nextUrl.searchParams.get("v")?.toLowerCase();
   if (esVariante(forzada)) return { variante: forzada, nueva: true };
 
+  // La prueba se cerró el 23 de septiembre con la A adelante (37 % frente a
+  // 32 % y 15 % de visitas que tocaron boletería): todo el mundo ve la
+  // completa. `?v=b` y `?v=c` siguen sirviendo para revisarlas.
   const guardada = request.cookies.get(COOKIE_VARIANTE)?.value;
-  if (esVariante(guardada)) return { variante: guardada, nueva: false };
-
-  return { variante: VARIANTES[Math.floor(Math.random() * VARIANTES.length)], nueva: true };
+  return { variante: "a", nueva: guardada !== "a" };
 }
 
 const hits = new Map<string, { count: number; resetAt: number }>();
@@ -126,8 +126,10 @@ export function proxy(request: NextRequest) {
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'none'",
-    // Los formularios de compra viven en Luma, no aquí.
-    "form-action 'self'",
+    // El formulario de compra sale de aquí y termina en Wompi: Chrome aplica
+    // `form-action` a toda la cadena de redirecciones del envío, así que la
+    // pasarela tiene que estar permitida o el pago se bloquea en el navegador.
+    "form-action 'self' https://checkout.wompi.co",
     "frame-src 'none'",
     "frame-ancestors 'none'",
     "upgrade-insecure-requests",
