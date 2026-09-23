@@ -20,6 +20,14 @@ export type Enlace = {
   clics: number;
   /** Clics por variante (`/l/<slug>?c=a`), cuando la pieza se prueba en dos versiones. */
   clicsPor?: Record<string, number>;
+  /**
+   * Clics que parecen de una persona (celular o escritorio real), total y por
+   * variante. Los robots de revisión de Meta y los escáneres de enlaces de los
+   * celulares abren el link sin que nadie lo haya tocado, y en una campaña de
+   * WhatsApp pueden ser la mitad del conteo bruto.
+   */
+  clicsHumanos?: number;
+  clicsHumanosPor?: Record<string, number>;
   ultimoClic?: string;
   nota?: string;
   /** Quién reparte este enlace, cuando es de una persona y no de un canal. */
@@ -105,11 +113,28 @@ export function destinoDe(enlace: Enlace, base: string): string {
   return url.toString();
 }
 
-export async function contarClic(slug: string, variante?: string): Promise<void> {
+export async function contarClic(
+  slug: string,
+  variante?: string,
+  clase: "movil" | "escritorio" | "robot" = "movil"
+): Promise<void> {
   await modificar<Enlace>(ruta(slug), (e) => {
     if (!e) return null;
     const clicsPor = variante ? { ...(e.clicsPor ?? {}), [variante]: (e.clicsPor?.[variante] ?? 0) + 1 } : e.clicsPor;
-    return { ...e, clics: e.clics + 1, ...(clicsPor ? { clicsPor } : {}), ultimoClic: new Date().toISOString() };
+    const humano = clase !== "robot";
+    const clicsHumanos = (e.clicsHumanos ?? 0) + (humano ? 1 : 0);
+    const clicsHumanosPor =
+      humano && variante
+        ? { ...(e.clicsHumanosPor ?? {}), [variante]: (e.clicsHumanosPor?.[variante] ?? 0) + 1 }
+        : e.clicsHumanosPor;
+    return {
+      ...e,
+      clics: e.clics + 1,
+      ...(clicsPor ? { clicsPor } : {}),
+      clicsHumanos,
+      ...(clicsHumanosPor ? { clicsHumanosPor } : {}),
+      ultimoClic: new Date().toISOString(),
+    };
   });
 }
 

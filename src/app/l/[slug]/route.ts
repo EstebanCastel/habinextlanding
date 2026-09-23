@@ -11,6 +11,20 @@ import { contarClic, destinoDe, traer } from "@/lib/enlaces";
 
 export const runtime = "nodejs";
 
+/**
+ * Robots (revisores de Meta, vistas previas, escáneres) frente a personas. Un
+ * celular real trae «Mobile» con Android o iPhone; un escritorio real, Windows
+ * o Mac. Lo demás (curl, Linux pelado, headless, «bot») se cuenta aparte.
+ */
+export function claseDeAgente(ua: string): "movil" | "escritorio" | "robot" {
+  if (!ua || /bot|crawl|spider|facebookexternalhit|facebot|whatsapp|preview|headless|curl|python|go-http|okhttp|java\/|wget|scan|validator|monitor/i.test(ua)) {
+    return "robot";
+  }
+  if (/(Android.*Mobile|iPhone|iPad|Mobile Safari)/i.test(ua)) return "movil";
+  if (/(Windows NT|Macintosh|CrOS)/i.test(ua) && /(Chrome|Safari|Firefox|Edg)\//.test(ua)) return "escritorio";
+  return "robot";
+}
+
 function varianteDe(valor: string | null): string | undefined {
   const v = String(valor ?? "").trim().toLowerCase();
   return /^[a-z0-9-]{1,30}$/.test(v) ? v : undefined;
@@ -33,7 +47,12 @@ export async function GET(request: Request, contexto: { params: Promise<{ slug: 
   // historias) sin abrir un enlace por cada una: el clic se cuenta por variante
   // y la variante viaja como utm_content hasta el registro de la compra.
   const variante = varianteDe(new URL(request.url).searchParams.get("c"));
-  after(() => contarClic(slug, variante).catch(() => null));
+  const ua = request.headers.get("user-agent") ?? "";
+  const clase = claseDeAgente(ua);
+  // Queda en los logs de Vercel: es la única forma de ver quién toca el link
+  // (los robots de revisión de Meta y los escáneres de los celulares también cuentan).
+  console.log(JSON.stringify({ enlace: slug, variante: variante ?? null, clase, ua: ua.slice(0, 140) }));
+  after(() => contarClic(slug, variante, clase).catch(() => null));
 
   const conVariante = variante ? { ...enlace, utm: { ...enlace.utm, content: variante } } : enlace;
   return NextResponse.redirect(destinoDe(conVariante, base), {
