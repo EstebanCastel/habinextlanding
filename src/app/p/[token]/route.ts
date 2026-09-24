@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { claseDeAgente } from "@/lib/agentes";
 import { anotar, guardarReferencia, porToken } from "@/lib/registros";
 
 /**
@@ -46,7 +47,7 @@ function paginaSimple(titulo: string, cuerpo: string, status: number) {
   );
 }
 
-export async function GET(_request: Request, contexto: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, contexto: { params: Promise<{ token: string }> }) {
   const { token } = await contexto.params;
 
   const registro = await porToken(token).catch(() => null);
@@ -92,9 +93,17 @@ export async function GET(_request: Request, contexto: { params: Promise<{ token
   // La anotación va después de armar el destino: si el almacén falla, la
   // persona igual llega a pagar. Perder una marca de seguimiento es mucho
   // menos grave que perder una venta.
+  // WhatsApp y los clientes de correo piden el link apenas llega el mensaje,
+  // para armar la vista previa. Si eso contara como «abrió el link de pago»,
+  // el panel mostraría medio envío convertido en el mismo minuto del despacho:
+  // el 23 de septiembre, 43 de 46 aperturas eran precargas. La referencia sí se
+  // guarda siempre, porque es lo que amarra el pago de Wompi con la persona.
+  const robot = claseDeAgente(request.headers.get("user-agent") ?? "") === "robot";
+
   after(async () => {
     try {
       await guardarReferencia(referencia, registro.token);
+      if (robot) return;
       await anotar(
         registro.token,
         "abrió el link de pago",

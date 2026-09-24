@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { claseDeAgente } from "@/lib/agentes";
 import { contarClic, destinoDe, traer } from "@/lib/enlaces";
 
 /**
@@ -10,20 +11,6 @@ import { contarClic, destinoDe, traer } from "@/lib/enlaces";
  */
 
 export const runtime = "nodejs";
-
-/**
- * Robots (revisores de Meta, vistas previas, escáneres) frente a personas. Un
- * celular real trae «Mobile» con Android o iPhone; un escritorio real, Windows
- * o Mac. Lo demás (curl, Linux pelado, headless, «bot») se cuenta aparte.
- */
-export function claseDeAgente(ua: string): "movil" | "escritorio" | "robot" {
-  if (!ua || /bot|crawl|spider|facebookexternalhit|facebot|whatsapp|preview|headless|curl|python|go-http|okhttp|java\/|wget|scan|validator|monitor/i.test(ua)) {
-    return "robot";
-  }
-  if (/(Android.*Mobile|iPhone|iPad|Mobile Safari)/i.test(ua)) return "movil";
-  if (/(Windows NT|Macintosh|CrOS)/i.test(ua) && /(Chrome|Safari|Firefox|Edg)\//.test(ua)) return "escritorio";
-  return "robot";
-}
 
 function varianteDe(valor: string | null): string | undefined {
   const v = String(valor ?? "").trim().toLowerCase();
