@@ -8,6 +8,7 @@ import {
   idDeSesion,
   opcionesDeCookie,
   porId,
+  vincularRegistro,
   type Participante,
 } from "./experiencia";
 
@@ -71,6 +72,19 @@ export async function participanteActual(): Promise<Participante | null> {
   if (!configurada()) return null;
   const id = idDeSesion((await cookies()).get(COOKIE_SESION)?.value);
   return id ? porId(id) : null;
+}
+
+/**
+ * Enlaza la entrada comprada con el participante, si todavía no lo estaba.
+ *
+ * Hace falta porque el orden real no es el que uno esperaría: mucha gente arma
+ * su carnet antes de comprar, y en ese momento no hay registro que enlazar.
+ * Se reintenta cuando la pantalla pide la entrada, que es cuando importa.
+ */
+export async function vincularRegistroSiFalta(p: Participante): Promise<Participante> {
+  if (p.registro || !p.email) return p;
+  await vincularRegistro(p.id, p.email);
+  return (await porId(p.id)) ?? p;
 }
 
 /** El participante de la cookie, o uno nuevo si todavía no tiene. */

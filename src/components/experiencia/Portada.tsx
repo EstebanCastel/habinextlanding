@@ -183,6 +183,44 @@ export default function Portada({
         </div>
       </section>
 
+      {/* La agenda: no da puntos y por eso no es una de las tres tarjetas,
+          pero es lo que más se consulta en los días previos. Va abierta a
+          todos, con sesión o sin ella. */}
+      <section className="mt-12">
+        <Link
+          href="/experiencia/agenda"
+          className="group grid overflow-hidden rounded-[26px] border border-white/12 bg-ink transition-colors hover:border-violet/60 md:grid-cols-[1.2fr_1fr]"
+        >
+          <div className="flex flex-col justify-center gap-3 p-6 md:p-8">
+            <p className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">
+              <Dot className="h-1.5 w-1.5" />
+              La agenda del día
+            </p>
+            <h3 className="text-3xl font-bold tracking-tighter md:text-4xl">Dos salones, nueve horas.</h3>
+            <p className="max-w-lg text-base font-light leading-relaxed text-white/60">
+              Mira qué pasa a cada hora en Inspira y en el Salón Taller, con lo que te llevas de cada sesión y cómo se
+              ve el escenario por dentro.
+            </p>
+            <span className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-white">
+              Ver la agenda
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </span>
+          </div>
+          <div className="relative min-h-[200px] overflow-hidden">
+            <Image
+              src="/img/evento/senalizacion.jpg"
+              alt="Señalización de los escenarios de Habi Next Colombia"
+              fill
+              sizes="(min-width: 768px) 40vw, 100vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/30 to-transparent" />
+          </div>
+        </Link>
+      </section>
+
       <Entrar
         abierta={modal.abierta}
         destino={modal.destino}

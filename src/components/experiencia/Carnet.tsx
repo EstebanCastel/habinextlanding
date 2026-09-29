@@ -35,14 +35,24 @@ import {
  * en pantalla se descarga o se comparte.
  */
 
-type Props = { yo: Vista | null; alCambiar: (yo: Vista) => void; alPublicar: (m: MisionId) => void };
+type Props = {
+  yo: Vista | null;
+  alCambiar: (yo: Vista) => void;
+  alPublicar: (m: MisionId) => void;
+  /**
+   * Avisa hacia arriba qué hay dibujado ahora mismo. Lo usa la credencial del
+   * evento, que es la misma foto y el mismo nombre en otra pieza: sin esto
+   * habría que pedirle a la persona que los escriba dos veces.
+   */
+  alPreparar?: (d: { nombre: string; apellido: string; foto: HTMLImageElement | null; encuadre: Encuadre }) => void;
+};
 
 const FORMATOS: { id: Formato; texto: string; nota: string }[] = [
   { id: "feed", texto: "Publicación", nota: "4:5 · LinkedIn e Instagram" },
   { id: "story", texto: "Historia", nota: "9:16 · Instagram y WhatsApp" },
 ];
 
-export default function Carnet({ yo, alCambiar, alPublicar }: Props) {
+export default function Carnet({ yo, alCambiar, alPublicar, alPreparar }: Props) {
   const [nombre, setNombre] = useState(yo?.nombre ?? "");
   const [apellido, setApellido] = useState(yo?.apellido ?? "");
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);
@@ -60,6 +70,10 @@ export default function Carnet({ yo, alCambiar, alPublicar }: Props) {
   const cuadro = useRef(0);
   const arrastre = useRef<{ x: number; y: number; dx: number; dy: number } | null>(null);
   const fotoInicialCargada = useRef(false);
+
+  useEffect(() => {
+    alPreparar?.({ nombre, apellido, foto, encuadre });
+  }, [alPreparar, nombre, apellido, foto, encuadre]);
 
   // Recursos y tipografía se cargan una vez.
   useEffect(() => {

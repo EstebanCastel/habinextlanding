@@ -131,7 +131,7 @@ const ASTERISCO = [
   142.98, 81.96, 142.98, 81.96, 90.16, 119.3, 127.51, 127.45, 119.36, 90.11, 82, 142.91, 82,
 ];
 
-function trazarAsterisco(ctx: CanvasRenderingContext2D, cx: number, cy: number, tam: number) {
+export function trazarAsterisco(ctx: CanvasRenderingContext2D, cx: number, cy: number, tam: number) {
   const k = tam / 152.4;
   ctx.beginPath();
   for (let i = 0; i < ASTERISCO.length; i += 2) {
@@ -143,7 +143,7 @@ function trazarAsterisco(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   ctx.closePath();
 }
 
-function redondeado(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+export function redondeado(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -154,13 +154,13 @@ function redondeado(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
 }
 
 /** Texto con espaciado entre letras, dibujado letra a letra (Safari no tiene letterSpacing en canvas). */
-function anchoEspaciado(ctx: CanvasRenderingContext2D, texto: string, espacio: number): number {
+export function anchoEspaciado(ctx: CanvasRenderingContext2D, texto: string, espacio: number): number {
   let w = 0;
   for (const c of texto) w += ctx.measureText(c).width + espacio;
   return w - espacio;
 }
 
-function dibujarEspaciado(ctx: CanvasRenderingContext2D, texto: string, x: number, y: number, espacio: number) {
+export function dibujarEspaciado(ctx: CanvasRenderingContext2D, texto: string, x: number, y: number, espacio: number) {
   let cx = x;
   for (const c of texto) {
     ctx.fillText(c, cx, y);
@@ -169,7 +169,7 @@ function dibujarEspaciado(ctx: CanvasRenderingContext2D, texto: string, x: numbe
 }
 
 /** Baja el tamaño hasta que el texto quepa en el ancho dado. */
-function ajustar(ctx: CanvasRenderingContext2D, texto: string, peso: number, tam: number, familia: string, maximo: number, tracking: number) {
+export function ajustar(ctx: CanvasRenderingContext2D, texto: string, peso: number, tam: number, familia: string, maximo: number, tracking: number) {
   let t = tam;
   for (; t > 22; t -= 2) {
     ctx.font = `${peso} ${t}px ${familia}`;
@@ -179,7 +179,7 @@ function ajustar(ctx: CanvasRenderingContext2D, texto: string, peso: number, tam
 }
 
 /** La foto, recortada a cubrir el marco según el encuadre, y pasada a blanco y negro. */
-function fotoEnGris(foto: HTMLImageElement, w: number, h: number, encuadre: Encuadre): HTMLCanvasElement {
+export function fotoEnGris(foto: HTMLImageElement, w: number, h: number, encuadre: Encuadre): HTMLCanvasElement {
   const lienzo = document.createElement("canvas");
   lienzo.width = w;
   lienzo.height = h;

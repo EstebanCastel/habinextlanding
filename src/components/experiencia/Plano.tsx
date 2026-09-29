@@ -167,6 +167,68 @@ function camino(a: Parada, b: Parada, ruta: RutaId): string {
   return "M " + lista.map(([x, y]) => { const p = iso(x, y, 0.2); return `${p.sx.toFixed(1)} ${p.sy.toFixed(1)}`; }).join(" L ");
 }
 
+
+/**
+ * El tótem de marca: el panel negro iluminado que en el montaje separa un
+ * stand del siguiente. Es lo que da el aire del recinto en los renders, y acá
+ * cumple la misma función que allá: marcar dónde empieza cada zona.
+ */
+function Totem({ x, y, h = 9 }: { x: number; y: number; h?: number }) {
+  return (
+    <g>
+      <Caja x={x} y={y} w={1.2} d={1.2} h={h} color="#141020" tapa="#221a38" />
+      {/* El filo de luz del canto, que es lo que más se ve de lejos. */}
+      <polyline
+        points={pts([[x, y, 0], [x, y, h]])}
+        stroke="rgba(186,157,250,0.85)"
+        strokeWidth={2}
+        fill="none"
+      />
+    </g>
+  );
+}
+
+/**
+ * La señal de escenario: el poste con el número en un círculo, tal como está
+ * en la señalización del evento. Alterna morado y blanco como las piezas
+ * reales, para que quien llegue reconozca el mapa en el piso.
+ */
+function Senal({ x, y, numero, texto, invertida = false }: { x: number; y: number; numero: string; texto: string; invertida?: boolean }) {
+  const base = iso(x, y, 0);
+  const alto = 13;
+  const arriba = iso(x, y, alto);
+  const fondo = invertida ? "#ffffff" : "#141020";
+  const tinta = invertida ? "#141020" : "#ffffff";
+  return (
+    <g>
+      <ellipse cx={base.sx} cy={base.sy} rx={9} ry={4} fill="rgba(20,10,40,0.25)" />
+      <line x1={base.sx} y1={base.sy} x2={arriba.sx} y2={arriba.sy + 26} stroke="#802ef6" strokeWidth={3} />
+      <rect x={arriba.sx - 26} y={arriba.sy + 2} width={52} height={26} rx={5} fill={fondo} stroke="rgba(255,255,255,0.18)" />
+      <text x={arriba.sx} y={arriba.sy + 13} textAnchor="middle" fontSize={6} fontWeight={700} fill={invertida ? "#6d25d1" : "#ba9dfa"} style={{ letterSpacing: "0.18em" }}>
+        ESCENARIO
+      </text>
+      <text x={arriba.sx} y={arriba.sy + 23} textAnchor="middle" fontSize={9} fontWeight={800} fill={tinta}>
+        {texto}
+      </text>
+      <circle cx={arriba.sx} cy={arriba.sy - 12} r={14} fill={invertida ? "#ffffff" : "#802ef6"} stroke="rgba(255,255,255,0.22)" />
+      <text x={arriba.sx} y={arriba.sy - 7} textAnchor="middle" fontSize={13} fontWeight={800} fill={invertida ? "#141020" : "#ffffff"}>
+        {numero}
+      </text>
+    </g>
+  );
+}
+
+/** El asterisco de la marca, tumbado en el piso como una calcomanía. */
+function AsteriscoPiso({ x, y, r = 5, color = "rgba(128,46,246,0.5)" }: { x: number; y: number; r?: number; color?: string }) {
+  const brazos = [0, 45, 90, 135].map((g) => {
+    const rad = (g * Math.PI) / 180;
+    const a = iso(x - Math.cos(rad) * r, y - Math.sin(rad) * r, 0.05);
+    const b = iso(x + Math.cos(rad) * r, y + Math.sin(rad) * r, 0.05);
+    return `M ${a.sx} ${a.sy} L ${b.sx} ${b.sy}`;
+  });
+  return <path d={brazos.join(" ")} stroke={color} strokeWidth={5} strokeLinecap="round" fill="none" />;
+}
+
 /** Un stand: pared del fondo, mostrador con portátil, dos butacos, alguien atendiendo y el logo flotando. */
 function Stand({ p, color, seleccionado, onClick }: { p: Parada; color: string; seleccionado: boolean; onClick: () => void }) {
   const m = MUNDO[p.id];
@@ -174,6 +236,9 @@ function Stand({ p, color, seleccionado, onClick }: { p: Parada; color: string; 
     <g onClick={onClick} className="cursor-pointer">
       <Losa x={m.x - 1} y={m.y - 1} w={ANCHO_STAND + 2} d={10} color="#e6ddfa" />
       <Caja x={m.x} y={m.y} w={ANCHO_STAND} d={1.1} h={4.6} color="#efe8fb" tapa="#ffffff" />
+      {/* Los tótems que enmarcan cada stand: es lo que se ve primero al entrar. */}
+      <Totem x={m.x - 1.3} y={m.y} h={6.2} />
+      <Totem x={m.x + ANCHO_STAND + 0.1} y={m.y} h={6.2} />
       <polygon points={pts([[m.x + 0.4, m.y + 1.1, 0.6], [m.x + ANCHO_STAND - 0.4, m.y + 1.1, 0.6], [m.x + ANCHO_STAND - 0.4, m.y + 1.1, 4.2], [m.x + 0.4, m.y + 1.1, 4.2]])} fill={color} opacity={0.18} />
       <Caja x={m.x + 2} y={m.y + 4} w={10} d={1.8} h={1.9} color="#f6f1ff" tapa="#ffffff" />
       <Portatil x={m.x + 4.2} y={m.y + 4.9} z={1.95} />
@@ -406,6 +471,11 @@ export default function Plano({ hechas, seleccion, visible, proximas, juegoAbier
         </g>
       ))}
 
+      {/* Calcomanías de la marca en el piso, como en el montaje. */}
+      <AsteriscoPiso x={52} y={66} r={4.5} />
+      <AsteriscoPiso x={95} y={62} r={3.6} color="rgba(255,255,255,0.28)" />
+      <AsteriscoPiso x={30} y={62} r={3.6} color="rgba(255,255,255,0.28)" />
+
       {/* ---- pines ---- */}
       {PARADAS.map((p) => {
         const hecha = Boolean(hechas[p.id]);
@@ -423,8 +493,8 @@ export default function Plano({ hechas, seleccion, visible, proximas, juegoAbier
       })}
 
       {/* ---- rótulos ---- */}
-      <Placa x={34} y={8} z={11.5} texto="Escenario Inspira" />
-      <Placa x={82} y={8} z={11.5} texto="Escenario Taller" />
+      <Senal x={30} y={14} numero="01" texto="Inspira" />
+      <Senal x={78} y={14} numero="02" texto="Taller" invertida />
       <Placa x={100} y={43} z={5} texto="Zona VIP" tam={10} />
       <Placa x={100} y={55} z={5.5} texto="Café" tam={10} />
       <Placa x={24} y={69.5} z={5} texto="Acreditación" tam={10} />
