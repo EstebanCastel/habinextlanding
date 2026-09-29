@@ -83,6 +83,21 @@ export type Sesion = {
 export const SESIONES: Sesion[] = [
   // ---------- Salón Principal · Inspira ----------
   {
+    id: "agente-futuro",
+    salon: "inspira",
+    desde: "9:00",
+    hasta: "10:00",
+    titulo: "El agente inmobiliario del futuro",
+    ponente: "Pipe Restrepo",
+    porConfirmar: true,
+    resumen: "Cómo se ve el oficio dentro de cinco años.",
+    contenido: [
+      "Qué partes del trabajo de un asesor van a desaparecer y cuáles se vuelven más valiosas.",
+      "Lo que ya está pasando en otros mercados y todavía no llega a Colombia.",
+      "Qué hacer este año para no quedar del lado equivocado del cambio.",
+    ],
+  },
+  {
     id: "marca-personal",
     salon: "inspira",
     desde: "10:00",
@@ -170,6 +185,7 @@ export const SESIONES: Sesion[] = [
     desde: "12:15",
     hasta: "12:30",
     titulo: "El futuro de Habi · Franquicias",
+    ponente: "Edwin Alejo o Matías",
     porConfirmar: true,
     resumen: "El modelo de franquicia, de frente.",
     contenido: [
@@ -208,7 +224,7 @@ export const SESIONES: Sesion[] = [
     desde: "14:00",
     hasta: "15:00",
     titulo: "Finanzas personales: mis propias finanzas",
-    porConfirmar: true,
+    ponente: "Mis Propias Finanzas",
     resumen: "Vender bien y que además te quede.",
     contenido: [
       "Cómo separar la plata del negocio de la plata de la casa cuando tus ingresos son por comisión.",
@@ -251,7 +267,6 @@ export const SESIONES: Sesion[] = [
     desde: "17:00",
     hasta: "18:00",
     titulo: "Crea tu asistente personal con Claude",
-    porConfirmar: true,
     resumen: "Sales del evento con tu asistente funcionando.",
     contenido: [
       "Cómo se le enseña a un asistente tu forma de trabajar, tus inmuebles y tus clientes.",
@@ -266,7 +281,7 @@ export const SESIONES: Sesion[] = [
     id: "tiktok",
     salon: "taller",
     desde: "9:00",
-    hasta: "10:00",
+    hasta: "9:45",
     titulo: "Crea contenidos virales en TikTok",
     porConfirmar: true,
     resumen: "El formato que más alcance orgánico da hoy.",
@@ -281,8 +296,8 @@ export const SESIONES: Sesion[] = [
   {
     id: "score-crediticio",
     salon: "taller",
-    desde: "10:00",
-    hasta: "11:00",
+    desde: "9:45",
+    hasta: "10:30",
     titulo: "¿Cómo mejorar el score crediticio de tus clientes?",
     porConfirmar: true,
     resumen: "Rescatar la venta que el banco frenó.",
@@ -295,7 +310,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "ventas-ia",
     salon: "taller",
-    desde: "11:00",
+    desde: "10:30",
     hasta: "11:15",
     titulo: "Ventas con inteligencia artificial",
     ponente: "Dapta",
@@ -320,6 +335,7 @@ export const SESIONES: Sesion[] = [
     desde: "12:30",
     hasta: "13:15",
     titulo: "Ventas a inversionistas",
+    ponente: "Juan Londoño y Laura M.",
     porConfirmar: true,
     resumen: "El cliente que compra por números, no por gusto.",
     contenido: [
@@ -346,7 +362,7 @@ export const SESIONES: Sesion[] = [
     id: "recorridos-virtuales",
     salon: "taller",
     desde: "14:00",
-    hasta: "15:00",
+    hasta: "14:45",
     titulo: "Crea contenidos con IA: recorridos virtuales",
     ponente: "Camilo Olarte",
     resumen: "Un inmueble vacío que se ve habitado.",
@@ -361,8 +377,8 @@ export const SESIONES: Sesion[] = [
   {
     id: "campanas-meta",
     salon: "taller",
-    desde: "15:00",
-    hasta: "16:00",
+    desde: "14:45",
+    hasta: "15:30",
     titulo: "Optimización de campañas de Meta",
     ponente: "Olivia Robles Gorriti",
     resumen: "Dejar de quemar plata en Facebook e Instagram.",
@@ -377,8 +393,8 @@ export const SESIONES: Sesion[] = [
   {
     id: "crm",
     salon: "taller",
-    desde: "16:00",
-    hasta: "17:00",
+    desde: "15:30",
+    hasta: "16:30",
     titulo: "Aprende a implementar un CRM",
     ponente: "Mateo Jaramillo",
     detallePonente: "Grapez Studio",
@@ -394,9 +410,10 @@ export const SESIONES: Sesion[] = [
   {
     id: "segundo-cerebro",
     salon: "taller",
-    desde: "17:00",
-    hasta: "17:45",
+    desde: "16:30",
+    hasta: "17:15",
     titulo: "Crea tu segundo cerebro con IA",
+    ponente: "Dani Bravo o Juan José",
     porConfirmar: true,
     resumen: "Todo lo que sabes, buscable en un segundo.",
     contenido: [
@@ -408,7 +425,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "canva",
     salon: "taller",
-    desde: "17:45",
+    desde: "17:15",
     hasta: "18:00",
     titulo: "Crea tu propio diseñador con Canva",
     porConfirmar: true,

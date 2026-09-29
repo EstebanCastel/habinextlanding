@@ -223,13 +223,13 @@ export default function Credencial({
         </button>
       </div>
 
-      {cargando ? null : hayQr ? (
-        <Wallet token={entrada!.token} />
-      ) : (
+      <Wallet token={entrada?.token} listo={hayQr} />
+
+      {!cargando && !hayQr ? (
         <p className="max-w-sm text-center text-sm font-light text-white/50">
           {motivo || "Tu QR aparece aquí cuando tu entrada esté confirmada."}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -239,11 +239,15 @@ export default function Credencial({
  * credenciales que hoy no están puestas; mientras tanto el endpoint responde
  * qué falta y el botón lo dice en vez de fallar en silencio.
  */
-function Wallet({ token }: { token: string }) {
+function Wallet({ token, listo }: { token?: string; listo: boolean }) {
   const [nota, setNota] = useState("");
   const [ocupado, setOcupado] = useState<"apple" | "google" | null>(null);
 
   const guardar = async (destino: "apple" | "google") => {
+    if (!listo || !token) {
+      setNota("Tu pase para la billetera se activa cuando tu entrada esté confirmada.");
+      return;
+    }
     setOcupado(destino);
     setNota("");
     try {
@@ -279,7 +283,9 @@ function Wallet({ token }: { token: string }) {
           type="button"
           onClick={() => guardar("apple")}
           disabled={ocupado !== null}
-          className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-5 py-3 text-sm font-semibold transition-colors hover:border-white/30 disabled:opacity-50"
+          className={`inline-flex items-center gap-2.5 rounded-full border px-5 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
+            listo ? "border-white/15 bg-white/[0.06] hover:border-white/30" : "border-white/10 bg-white/[0.03] text-white/45"
+          }`}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
             <path d="M16.36 12.73c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.61-1.7-3.18-1.73-1.35-.14-2.64.8-3.33.8-.69 0-1.75-.78-2.87-.76-1.48.02-2.84.86-3.6 2.18-1.53 2.66-.39 6.6 1.1 8.76.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.87.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.2-2.48-.03-.01-2.3-.89-2.33-3.5zM14.2 5.9c.6-.74 1.01-1.76.9-2.78-.87.04-1.93.58-2.56 1.31-.56.65-1.05 1.69-.92 2.69.97.07 1.96-.49 2.58-1.22z" />
@@ -290,7 +296,9 @@ function Wallet({ token }: { token: string }) {
           type="button"
           onClick={() => guardar("google")}
           disabled={ocupado !== null}
-          className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.06] px-5 py-3 text-sm font-semibold transition-colors hover:border-white/30 disabled:opacity-50"
+          className={`inline-flex items-center gap-2.5 rounded-full border px-5 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
+            listo ? "border-white/15 bg-white/[0.06] hover:border-white/30" : "border-white/10 bg-white/[0.03] text-white/45"
+          }`}
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
             <path fill="#4285F4" d="M21.6 12.23c0-.7-.06-1.37-.18-2.02H12v3.82h5.38a4.6 4.6 0 01-2 3.02v2.5h3.24c1.89-1.74 2.98-4.3 2.98-7.32z" />
@@ -301,7 +309,10 @@ function Wallet({ token }: { token: string }) {
           Google Wallet
         </button>
       </div>
-      {nota ? <p className="max-w-sm text-center text-xs font-light text-white/45">{nota}</p> : null}
+      <p className="text-center text-xs font-light text-white/35">
+        {listo ? "Guarda tu entrada en el teléfono" : "Se activa cuando tu entrada esté confirmada"}
+      </p>
+      {nota ? <p className="max-w-sm text-center text-xs font-light text-violet-soft">{nota}</p> : null}
     </div>
   );
 }
