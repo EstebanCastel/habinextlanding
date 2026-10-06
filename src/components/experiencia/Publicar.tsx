@@ -68,7 +68,8 @@ export default function Publicar({
   alCambiar: (yo: Vista) => void;
 }) {
   const movil = useMovil();
-  const [texto, setTexto] = useState(() => textoVoy(tier));
+  // El texto es fijo: la frase del evento, igual para todos.
+  const texto = textoVoy(tier);
   const [ocupado, setOcupado] = useState<"linkedin" | "instagram" | null>(null);
   const [aviso, setAviso] = useState<{ texto: string; malo?: boolean; enlace?: { href: string; texto: string } } | null>(
     () => (li && AVISOS_LI[li] && AVISOS_LI[li].malo ? AVISOS_LI[li] : null)
@@ -211,21 +212,6 @@ export default function Publicar({
 
       {aviso ? <Mensaje {...aviso} /> : null}
 
-      <details className="group text-sm">
-        <summary className="cursor-pointer list-none text-white/50 transition-colors hover:text-white/80 [&::-webkit-details-marker]:hidden">
-          <span className="underline underline-offset-4">Ver o cambiar el texto de LinkedIn</span>
-        </summary>
-        <textarea
-          value={texto}
-          onChange={(e) => setTexto(e.target.value.slice(0, 2800))}
-          rows={7}
-          className="mt-3 w-full rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-light leading-relaxed text-white placeholder:text-white/25 focus:border-violet-soft/70 focus:outline-none"
-        />
-        <p className="mt-2 text-xs font-light text-white/40">
-          {conectado ? `Conectado como ${yo.linkedin?.nombre}. ` : "La primera vez te pedimos entrar a LinkedIn y se publica al volver. "}
-          En Instagram se abre la historia con el texto copiado.
-        </p>
-      </details>
     </div>
   );
 }

@@ -281,21 +281,17 @@ const HASHTAGS = "#HabiNext #InteligenciaArtificial #Inmobiliario";
 /**
  * Los textos salen escritos en primera persona y ya listos: la evidencia de
  * otros eventos es que un texto pensado para esa persona se comparte dos o
- * tres veces más que un enlace pelado. Todos se pueden editar antes de
- * publicar.
+ * tres veces más que un enlace pelado. El del carnet se publica tal cual,
+ * sin editor: es la frase del evento.
  */
 export function textoVoy(tier?: "general" | "vip"): string {
-  const como = tier === "vip" ? "Voy como VIP a" : "Voy a";
+  const como = tier === "vip" ? "Voy como VIP a hacer parte" : "Voy a hacer parte";
   return [
-    `${como} ${EVENT.fullName}.`,
+    `${como} del evento más importante para brokers inmobiliarios y de crédito este ${EVENT.dateShort}, realizado por Habi 💜`,
     "",
-    `El ${EVENT.dateShort}, en ${EVENT.city}, un día completo para aprender a usar Inteligencia Artificial en el negocio inmobiliario: atraer más clientes, crear contenido, organizar oportunidades y construir un asistente que trabaje 24/7.`,
+    `${EVENT.fullName} · ${EVENT.city} · habinext.com`,
     "",
-    "El agente inmobiliario del futuro no trabajará solo. Nos vemos allá.",
-    "",
-    "Entradas en habinext.com",
-    "",
-    HASHTAGS,
+    "#HabiNext #Habi #Brokers #Inmobiliario",
   ].join("\n");
 }
 
