@@ -164,6 +164,17 @@ nunca dos en dos minutos) para no volverse spam.
   llegan por `/i/<id>` traen `utm_source=experiencia` y `utm_content=<id>`, y
   los registros de Luma guardan ese `utm_content` en `luma.contenido`.
 
+## La barra fija y los términos
+
+Todas las pantallas (`Marco.tsx`) llevan arriba `Barra.tsx`: a la izquierda
+`proximo()` de `src/config/agenda.ts` (días que faltan; el día del evento, la
+próxima sesión con `desde` o con qué arranca Inspira), que abre la agenda; a
+la derecha los puntos sobre `PUNTOS_TOTALES`. Al pie, `Legal.tsx`: los
+términos de la experiencia plegados en un `<details>` (datos, foto y
+publicaciones, imagen en el evento, ranking y premio, entrada y QR,
+conservación de seis meses, derechos de la Ley 1581). El texto vive en
+`SECCIONES` con su `VERSION`.
+
 ## Probar las misiones del evento antes del 20
 
 Con sesión de panel abierta, `/experiencia?fase=evento` muestra las misiones
@@ -175,10 +186,10 @@ subida responde «Las fotos se suben desde el día del evento».
 
 El carnet (`src/components/experiencia/Carnet.tsx`) es una carta de dos
 caras: al frente la pieza que se publica y atrás la entrada con el QR de
-Luma (`dibujarReverso` en `src/lib/carnet.ts`); «Ver mi QR» en la franja
-«Tu entrada» (`Boleta.tsx`) la gira. Debajo del botón de guardar van los
-distintivos oficiales para llevarla al teléfono
-(`src/components/experiencia/Wallet.tsx`). Son enlaces a
+Luma (`dibujarReverso` en `src/lib/carnet.ts`); «Ver mi QR de entrada» la
+gira. Al lado de ese botón va el distintivo oficial de la billetera del
+aparato (`Wallet.tsx` con `segunAparato`: Apple en iPhone y Mac, Google en
+Android, los dos si no se sabe). Son enlaces a
 `GET /api/entrada/apple?t=<token>` y `GET /api/entrada/google?t=<token>`: en
 iPhone, Safari abre la hoja «Agregar a Wallet» al navegar al `.pkpass`; para
 Google el endpoint redirige al enlace de guardar. El pase lleva el **mismo QR
