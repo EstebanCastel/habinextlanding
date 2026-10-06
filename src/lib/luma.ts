@@ -163,11 +163,18 @@ export async function buscarInvitadoPorEmail(
   return null;
 }
 
-/** Datos completos de un invitado, para reconciliar si un webhook llegó cojo. */
+/**
+ * Datos completos de un invitado, para reconciliar si un webhook llegó cojo y
+ * para leer su `check_in_qr_code`.
+ *
+ * El parámetro del invitado se llama `id` y no `api_id`: con `api_id` Luma
+ * responde 400 («id: expected string») y, como acá se devolvía `null`, el QR
+ * de la credencial nunca aparecía aunque la entrada estuviera aprobada.
+ */
 export async function traerInvitado(eventId: string, guestId: string) {
   const url = new URL(`${BASE}/v1/events/guests/get`);
   url.searchParams.set("event_id", eventId);
-  url.searchParams.set("api_id", guestId);
+  url.searchParams.set("id", guestId);
   const res = await fetch(url, {
     headers: { "x-luma-api-key": llave() },
     signal: AbortSignal.timeout(15_000),

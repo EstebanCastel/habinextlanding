@@ -5,7 +5,7 @@ import { EVENT } from "@/config/event";
 import { PUNTOS_MAPA, RECINTO } from "@/config/experiencia";
 import { fase as faseActual, vistaDe } from "@/lib/experiencia";
 import { participanteActual } from "@/lib/experiencia-http";
-import { exigirSesion } from "@/lib/experiencia-sesion";
+import { exigirAbierta, exigirSesion } from "@/lib/experiencia-sesion";
 import { haySesion } from "@/lib/sesion";
 
 export const metadata: Metadata = { title: `El mapa del tesoro · ${EVENT.fullName}`, robots: { index: false, follow: false } };
@@ -17,6 +17,7 @@ export default async function PaginaMapa({ searchParams }: { searchParams: Promi
   const q = await searchParams;
   // `vista=1` deja ver el plano sin sesión, en desarrollo, para revisarlo.
   const soloVista = q.vista === "1" && process.env.NODE_ENV !== "production";
+  if (!soloVista) await exigirAbierta("mapa");
   const yo = soloVista ? await participanteActual().then((p) => (p ? vistaDe(p) : null)).catch(() => null) : await exigirSesion("/experiencia/mapa");
   let fase = faseActual();
   if ((q.fase === "evento" || q.fase === "antes") && (await haySesion())) fase = q.fase;

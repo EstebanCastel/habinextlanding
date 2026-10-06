@@ -16,6 +16,7 @@ import {
   type MisionId,
   type Red,
   type RutaId,
+  misionBloqueada,
 } from "@/config/experiencia";
 
 /**
@@ -414,9 +415,14 @@ export function anotar(p: Participante, que: string, detalle?: string): Particip
   return { ...p, bitacora: bitacora.slice(-200) };
 }
 
-/** Marca una misión como hecha. La primera vez cuenta; las demás no cambian nada. */
+/**
+ * Marca una misión como hecha. La primera vez cuenta; las demás no cambian
+ * nada. Una misión de una experiencia cerrada (`BLOQUEADAS`) tampoco: así el
+ * candado vale aunque alguna puerta lateral —la vista previa de WhatsApp, por
+ * ejemplo— no lo consulte.
+ */
 export function marcar(p: Participante, mision: MisionId, detalle?: string): Participante {
-  if (p.misiones[mision]) return p;
+  if (p.misiones[mision] || misionBloqueada(mision)) return p;
   const con = { ...p, misiones: { ...p.misiones, [mision]: { en: new Date().toISOString(), ...(detalle ? { detalle } : {}) } } };
   const m = MISIONES.find((x) => x.id === mision);
   return anotar(con, `misión: ${m?.titulo ?? mision}`, detalle);
@@ -527,19 +533,44 @@ export function tokenDeLinkedIn(p: Participante): string | null {
  * los registros, así que se hace una vez, al conectar LinkedIn, y no en cada
  * página.
  */
+/**
+ * Enlaza la entrada de boletería con el participante, por correo, pero no
+ * por correo solamente: el correo es un dato que cualquiera puede escribir.
+ * Si el registro de Luma trae cédula, la cédula con la que entró la persona
+ * tiene que ser la misma (se comparan los hashes); si entró con LinkedIn,
+ * el correo tiene que ser el que LinkedIn verificó. Un registro sin cédula
+ * se enlaza a quien fijó su clave con ese correo, que es lo que hoy puede
+ * comprobarse; la cédula queda registrada en la bitácora como pendiente.
+ */
 export async function vincularRegistro(id: string, email: string | undefined): Promise<void> {
   if (!email) return;
-  const correo = email.trim().toLowerCase();
+  const correo = normalizarCorreo(email);
+  const p = await porId(id);
+  if (!p || p.registro) return;
   const registros = await todosLosRegistros().catch(() => []);
   const mio = registros
-    .filter((r) => r.luma.email.trim().toLowerCase() === correo && r.etapa !== "rechazado")
+    .filter((r) => normalizarCorreo(r.luma.email) === correo && r.etapa !== "rechazado")
     .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))[0];
   if (!mio) return;
-  await cambiar(id, (p) =>
+
+  const porLinkedIn = Boolean(p.linkedin?.email && normalizarCorreo(p.linkedin.email) === correo);
+  const porCedula = Boolean(p.credencial && normalizarCorreo(p.credencial.email) === correo);
+  let motivo: string | null = null;
+  if (mio.luma.cedula) {
+    const coincide = porCedula && igualSeguro(p.credencial!.cedulaHash, hashCedula(correo, mio.luma.cedula));
+    if (!coincide && !porLinkedIn) motivo = "la cédula no coincide con la del registro";
+  } else if (!porCedula && !porLinkedIn) {
+    motivo = "sin cédula ni LinkedIn con qué comprobarla";
+  }
+  if (motivo) {
+    await cambiar(id, (q) => anotar(q, "entrada encontrada pero no enlazada", motivo!)).catch(() => null);
+    return;
+  }
+  await cambiar(id, (q) =>
     anotar(
-      { ...p, registro: { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: new Date().toISOString() } },
+      { ...q, registro: { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: new Date().toISOString() } },
       "vinculó su entrada",
-      `${mio.tier} · ${mio.etapa}`
+      `${mio.tier} · ${mio.etapa}${mio.luma.cedula ? "" : " · registro sin cédula"}`
     )
   );
 }

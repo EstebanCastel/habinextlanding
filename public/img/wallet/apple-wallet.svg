@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="44" viewBox="0 0 160 44" role="img" aria-label="Agregar a Apple Wallet">
+  <defs>
+    <linearGradient id="bolsillo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5c5c60"/>
+      <stop offset="1" stop-color="#2f2f33"/>
+    </linearGradient>
+  </defs>
+  <rect x="0.5" y="0.5" width="159" height="43" rx="7" fill="#000" stroke="#a6a6a6"/>
+  <g transform="translate(7 7)">
+    <rect width="30" height="30" rx="6.6" fill="#1c1c1e"/>
+    <rect x="5" y="2.6" width="20" height="13" rx="2.4" fill="#3d8bff"/>
+    <rect x="5" y="6.3" width="20" height="13" rx="2.4" fill="#35c759"/>
+    <rect x="5" y="10" width="20" height="13" rx="2.4" fill="#ffcc00"/>
+    <rect x="5" y="13.7" width="20" height="13" rx="2.4" fill="#ff5a5f"/>
+    <rect x="3.6" y="18.4" width="22.8" height="9.2" rx="2.4" fill="url(#bolsillo)"/>
+    <rect x="3.6" y="18.4" width="22.8" height="1" fill="#8e8e93" opacity="0.9"/>
+  </g>
+  <g fill="#fff" font-family="-apple-system, 'SF Pro Text', Helvetica, Arial, sans-serif">
+    <text x="44" y="17.5" font-size="9.5" letter-spacing="0.1">Agregar a</text>
+    <text x="43.5" y="34" font-size="17" font-weight="600" letter-spacing="-0.25">Apple Wallet</text>
+  </g>
+</svg>

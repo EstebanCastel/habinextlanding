@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { guardarArchivo } from "@/lib/almacen";
-import { LIMITES, MISIONES } from "@/config/experiencia";
+import { LIMITES, MISIONES, misionBloqueada, type MisionId } from "@/config/experiencia";
 import { agregarFoto, anotar, cambiar, fase, marcar, quitarFoto, rutaDeArchivo, vistaDe, type Foto } from "@/lib/experiencia";
 import {
   dentroDelLimite,
@@ -35,6 +35,11 @@ export async function POST(request: Request) {
   // Una prueba es la captura de una publicación: va atada a su misión.
   const mision = clase === "prueba" ? MISIONES.find((m) => m.id === String(form.get("mision") ?? "")) : undefined;
   if (clase === "prueba" && !mision) return error("¿De qué misión es la prueba?");
+  // Cada subida alimenta una misión: la prueba, la suya; una foto, «fotos»;
+  // la pieza, «frase». Si esa misión está en una experiencia de `BLOQUEADAS`,
+  // no se guarda nada.
+  const misionDeLaSubida: MisionId = clase === "prueba" ? mision!.id : clase === "frase" ? "frase" : "fotos";
+  if (misionBloqueada(misionDeLaSubida)) return error("Esa experiencia todavía no está abierta.", 403);
   if (!(archivo instanceof Blob)) return error("Falta la foto.");
   if (archivo.size > LIMITES.bytesPorArchivo) return error("Esa foto pesa demasiado.");
 

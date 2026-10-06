@@ -379,7 +379,7 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesReverso) {
   ctx.fillStyle = "rgba(255,255,255,0.5)";
   ctx.font = `300 25px ${o.familia}`;
   ctx.fillText("Centro de Convenciones Av. 68", w / 2, 1262);
-  ctx.fillText("Bogotá · 9:00 a. m. a 6:00 p. m.", w / 2, 1298);
+  ctx.fillText("Bogotá, Colombia", w / 2, 1298);
 
   ctx.textAlign = "left";
   const anchoLockup = 420;

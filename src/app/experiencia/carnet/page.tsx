@@ -8,6 +8,7 @@ import { exigirSesion } from "@/lib/experiencia-sesion";
 import { participanteActual } from "@/lib/experiencia-http";
 import { vistaDe } from "@/lib/experiencia";
 import { diferenciaVip, precioVigente } from "@/lib/registros";
+import { disponibilidad } from "@/lib/wallet";
 
 export const metadata: Metadata = { title: `Tu carnet · ${EVENT.fullName}`, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export default async function PaginaCarnet({
           Tu <span className="font-bold">carnet.</span>
         </>
       }
-      bajada="Sube tu foto, escribe tu nombre y llévatelo. Abajo queda tu credencial del evento, con el código de entrada al respaldo."
+      bajada="Primero tu entrada: si está confirmada, de qué tipo es y cómo la guardas en el teléfono. Después, tres pasos para jugar: tu carnet, tu credencial y publicarlo."
     >
       <Sala
         modo="carnet"
@@ -49,6 +50,7 @@ export default async function PaginaCarnet({
         li={q.li}
         abrir={q.abrir}
         vip={{ diferencia: diferenciaVip(), precio: tarifaVip.precio, etiqueta: tarifaVip.etiqueta }}
+        billetera={disponibilidad()}
       />
     </Marco>
   );

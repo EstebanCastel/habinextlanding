@@ -1,4 +1,4 @@
-import { LIMITES } from "@/config/experiencia";
+import { LIMITES, MISIONES, misionBloqueada, type MisionId } from "@/config/experiencia";
 import { anotar, cambiar, fase, marcar, vistaDe } from "@/lib/experiencia";
 import { dentroDelLimite, error, ipDe, mismoOrigen, participanteOCrear, responder } from "@/lib/experiencia-http";
 
@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 type Cuerpo = { mision?: string; detalle?: string; frase?: string; nombre?: string; apellido?: string };
 
 const limpiar = (v: unknown, max: number) => String(v ?? "").trim().replace(/\s+/g, " ").slice(0, max);
+const esMision = (v: unknown): v is MisionId => MISIONES.some((m) => m.id === v);
 
 export async function POST(request: Request) {
   if (!mismoOrigen(request)) return error("origen no permitido", 403);
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
 
   const cuerpo = (await request.json().catch(() => null)) as Cuerpo | null;
   if (!cuerpo) return error("Petición inválida.");
+  // Las misiones de una experiencia en `BLOQUEADAS` no suman ni por acá.
+  // «nombre» no es misión y pasa; las desconocidas las rechaza el switch.
+  if (esMision(cuerpo.mision) && misionBloqueada(cuerpo.mision)) return error("Esa experiencia todavía no está abierta.", 403);
 
   const sesion = await participanteOCrear();
   const id = sesion.participante.id;

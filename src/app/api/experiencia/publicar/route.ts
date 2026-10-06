@@ -1,5 +1,5 @@
 import { leerBytes } from "@/lib/almacen";
-import { LIMITES } from "@/config/experiencia";
+import { LIMITES, misionBloqueada } from "@/config/experiencia";
 import { anotar, cambiar, marcar, rutaDeCarnet, tokenDeLinkedIn, vistaDe, type Formato } from "@/lib/experiencia";
 import { dentroDelLimite, error, mismoOrigen, participanteActual, responder } from "@/lib/experiencia-http";
 import { publicar, type Imagen } from "@/lib/linkedin";
@@ -36,6 +36,9 @@ export async function POST(request: Request) {
   if (!cuerpo) return error("Petición inválida.");
 
   const mision: "linkedin_voy" | "linkedin_fotos" = cuerpo.mision === "linkedin_fotos" ? "linkedin_fotos" : "linkedin_voy";
+  // `linkedin_fotos` es de la experiencia de redes: si está en `BLOQUEADAS`
+  // no se publica ni se marca. `linkedin_voy` es del carnet y sigue abierta.
+  if (misionBloqueada(mision)) return error("Esa experiencia todavía no está abierta.", 403);
   const texto = String(cuerpo.texto ?? "").trim().slice(0, 2800);
   if (texto.length < 10) return error("Escribe algo en el texto.");
 

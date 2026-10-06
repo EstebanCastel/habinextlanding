@@ -25,8 +25,11 @@ export default function Marco({
   atras?: boolean;
   children: React.ReactNode;
 }) {
+  // `overflow-clip` y no `hidden`: recorta igual el asterisco decorativo pero
+  // no convierte el <main> en contenedor de scroll, que es lo que dejaba sin
+  // efecto al selector de salón «sticky» de la agenda.
   return (
-    <main className="s-night relative min-h-dvh overflow-hidden">
+    <main className="s-night relative min-h-dvh overflow-clip">
       <header className="relative z-20 mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-5 pt-6 sm:px-8 md:px-14 lg:px-20">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center py-1.5" aria-label={EVENT.fullName}>

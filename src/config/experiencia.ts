@@ -224,6 +224,30 @@ export const PUNTOS_TOTALES = MISIONES.reduce((s, m) => s + m.puntos, 0) + PUNTO
 export const puntosDeExperiencia = (id: ExperienciaId) =>
   id === "mapa" ? PUNTOS_MAPA : MISIONES.filter((m) => m.experiencia === id).reduce((s, m) => s + m.puntos, 0);
 
+/**
+ * Las experiencias que todavía no se abren. Quedan a la vista en la portada,
+ * con candado, pero nadie entra: ni por la tarjeta, ni por la URL, ni por
+ * las APIs que dan puntos. Para abrir una, se quita de esta lista.
+ */
+export const BLOQUEADAS: Partial<Record<ExperienciaId, { desde: string; nota: string; hasta?: string }>> = {
+  // El mapa se abre solo el día del evento, a la medianoche de Bogotá.
+  mapa: { desde: "Se abre el 20 de octubre", nota: "Las paradas se activan en el recinto, el día del evento.", hasta: "2026-10-20T00:00:00-05:00" },
+  redes: { desde: "Se abre muy pronto", nota: "Las misiones de redes se activan unos días antes del evento." },
+};
+
+/** Cerrada hoy: está en la lista y, si tiene fecha de apertura, todavía no llegó. */
+export const bloqueada = (id: ExperienciaId, ahora = Date.now()) => {
+  const b = BLOQUEADAS[id];
+  if (!b) return false;
+  return b.hasta ? ahora < new Date(b.hasta).getTime() : true;
+};
+
+/** Si una misión pertenece a una experiencia cerrada, tampoco se puede completar. */
+export const misionBloqueada = (id: MisionId) => {
+  const m = MISIONES.find((x) => x.id === id);
+  return m ? bloqueada(m.experiencia) : false;
+};
+
 /** Los niveles se alcanzan por puntos; el último exige completar todo. */
 export const NIVELES = [
   { desde: 0, nombre: "Asistente" },

@@ -1,5 +1,5 @@
 import { entradaDe, type Entrada } from "@/lib/entrada";
-import { error, participanteActual, responder, vincularRegistroSiFalta } from "@/lib/experiencia-http";
+import { dentroDelLimite, error, participanteActual, responder, vincularRegistroSiFalta } from "@/lib/experiencia-http";
 
 /**
  * La entrada de quien está en sesión: el QR de Luma para el reverso de la
@@ -19,7 +19,10 @@ export async function GET() {
 
   // Quien compró después de armar su carnet todavía no tiene la entrada
   // enlazada: se intenta enlazar acá, que es justo cuando hace falta.
-  const conRegistro = p.registro ? p : await vincularRegistroSiFalta(p);
+  // Buscar la entrada recorre todos los registros: se intenta unas pocas
+  // veces por persona cada diez minutos, no en cada recarga de la página.
+  const buscar = !p.registro && dentroDelLimite(`entrada:${p.id}`, 4, 10 * 60_000);
+  const conRegistro = p.registro || !buscar ? p : await vincularRegistroSiFalta(p);
   if (!conRegistro.registro) {
     return responder({
       ok: true,

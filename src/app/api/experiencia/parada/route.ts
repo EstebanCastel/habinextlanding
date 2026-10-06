@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { guardarArchivo } from "@/lib/almacen";
-import { PARADAS, RECINTO } from "@/config/experiencia";
+import { bloqueada, PARADAS, RECINTO } from "@/config/experiencia";
 import { cambiar, distanciaM, fase, marcarParada, rutaDeArchivo, vistaDe, type Foto } from "@/lib/experiencia";
 import { dentroDelLimite, error, ipDe, mismoOrigen, participanteActual, responder, tipoDeImagen } from "@/lib/experiencia-http";
 
@@ -16,6 +16,9 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   if (!mismoOrigen(request)) return error("origen no permitido", 403);
   if (!dentroDelLimite(`parada:${ipDe(request)}`, 60, 10 * 60_000)) return error("Demasiados intentos. Espera un momento.", 429);
+  // Mientras el mapa esté en `BLOQUEADAS` no se guarda nada, ni la foto: el
+  // candado de la portada no sirve si la API deja pasar.
+  if (bloqueada("mapa")) return error("El mapa del tesoro todavía no está abierto.", 403);
 
   const p = await participanteActual();
   if (!p) return error("Sin sesión. Entra de nuevo.", 401);

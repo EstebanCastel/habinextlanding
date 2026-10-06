@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { misionBloqueada } from "@/config/experiencia";
 import { cambiar, contarInvitacion, esId, marcar, porId, redDelRobot } from "@/lib/experiencia";
 
 /**
@@ -25,7 +26,9 @@ export async function GET(request: Request, contexto: { params: Promise<{ id: st
 
   const robot = redDelRobot(request.headers.get("user-agent"));
   after(async () => {
-    if (robot === "whatsapp") {
+    // Mientras «Cuéntalo en tus redes» esté cerrada, la vista previa no suma:
+    // el enlace sigue funcionando, pero no es una puerta lateral a los puntos.
+    if (robot === "whatsapp" && !misionBloqueada("invitar")) {
       await cambiar(id, (q) => marcar(q, "invitar", "WhatsApp pidió la vista previa")).catch(() => null);
     } else if (!robot) {
       await contarInvitacion(id).catch(() => null);

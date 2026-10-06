@@ -14,6 +14,12 @@ entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
 - **Entrar** (`POST /api/experiencia/entrar`): correo y cédula como clave, o
   LinkedIn. La cédula se guarda como hash con sal en `credencial`; la primera
   vez queda fijada, y si el registro de Luma no tenía cédula, se le completa.
+  La entrada de boletería se enlaza por correo **y** cédula
+  (`vincularRegistro`): si el registro de Luma trae cédula, tiene que
+  coincidir con la fijada; si la persona entró con LinkedIn, vale el correo
+  que LinkedIn verificó. Un registro sin cédula se enlaza a quien fijó su
+  clave con ese correo (riesgo residual: quien conozca el correo y entre
+  antes que el dueño; queda anotado en la bitácora).
   Límite: 12 intentos por IP y 6 por correo cada 15 minutos.
 - **1 · Tu carnet** (`/experiencia/carnet`): el editor del carnet y las
   misiones «Cuéntalo en LinkedIn» y «Súbelo a tus historias». 45 puntos.
@@ -30,6 +36,16 @@ entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
   Instagram, WhatsApp y las del día del evento. Cada una se puede cerrar
   publicando desde la página o **subiendo una captura como prueba**
   (`clase=prueba&mision=` en `/api/experiencia/fotos`). 80 puntos.
+- **Cerradas por ahora** (`BLOQUEADAS` en `src/config/experiencia.ts`): el
+  mapa (con `hasta`: se abre solo el 20 de octubre a medianoche) y las redes
+  (sin fecha: se abren quitándolas de la lista). `marcar()` también ignora
+  las misiones de una experiencia cerrada, así que ninguna puerta lateral
+  (por ejemplo la vista previa de WhatsApp en `/i/<id>`) suma puntos. La tarjeta se ve con candado en la portada, la URL
+  (`/experiencia/mapa`, `/experiencia/redes`) devuelve a `/experiencia?cerrada=<id>`
+  y las APIs que dan puntos por ellas responden `403` (`/parada`, y `/mision`,
+  `/fotos` y `/publicar` para las misiones de redes). Con la sesión del panel
+  (`habinext_panel`) la pantalla sí se abre, para revisarla; la API no
+  distingue. Para abrir una experiencia se quita de `BLOQUEADAS`.
 - **Ranking**: un solo documento `experiencia/ranking.json` con una fila por
   persona, que se toca solo cuando cambian sus puntos o su nombre. Nombre de
   pila e inicial del apellido; desempata quien llegó primero a ese puntaje.
@@ -155,11 +171,88 @@ del día del evento. Para que el servidor también las acepte (subir fotos,
 frase) hay que poner `EXPERIENCIA_FASE=evento` en el entorno; sin eso, la
 subida responde «Las fotos se suben desde el día del evento».
 
+## Billetera (Apple Wallet y Google Wallet)
+
+La franja «Tu entrada», arriba de `/experiencia/carnet`
+(`src/components/experiencia/Boleta.tsx`), ofrece guardar la entrada en el
+teléfono con los distintivos oficiales (`src/components/experiencia/Wallet.tsx`). Son enlaces a
+`GET /api/entrada/apple?t=<token>` y `GET /api/entrada/google?t=<token>`: en
+iPhone, Safari abre la hoja «Agregar a Wallet» al navegar al `.pkpass`; para
+Google el endpoint redirige al enlace de guardar. El pase lleva el **mismo QR
+de Luma** que lee la puerta, vence el 21 de octubre a las 6 a. m. y no se
+puede compartir desde el teléfono. Si algo falla en la navegación, se vuelve a
+`/experiencia/carnet?billetera=<código>` y la pantalla lo explica.
+
+El código ya hace todo; lo que falta son las credenciales. Mientras no estén,
+`disponibilidad()` (`src/lib/wallet.ts`) deja el botón atenuado con «estará
+disponible muy pronto». Las imágenes del pase de Apple ya van incrustadas
+(`src/lib/wallet-recursos.ts`); el logo del pase de Google se sirve desde
+`public/img/wallet/logo-pase.png`.
+
+### Apple Wallet: qué conseguir
+
+1. **Pass Type ID.** [Apple Developer](https://developer.apple.com/account) →
+   Certificates, Identifiers & Profiles → Identifiers → `+` → Pass Type IDs →
+   identificador `pass.co.habi.habinext` (o similar), descripción «Habi Next».
+2. **Certificado del pase.** En ese Pass Type ID → Create Certificate → subir
+   un CSR hecho en Acceso a Llaveros (Asistente de certificados → Solicitar un
+   certificado de una autoridad → guardar en disco) → descargar el `.cer` y
+   abrirlo con doble clic para que entre al Llavero.
+3. **Exportar el `.p12`.** En Llavero, buscar «Pass Type ID: pass.co.habi…»,
+   desplegar para ver la llave privada, seleccionar certificado + llave →
+   clic derecho → Exportar 2 ítems → formato `.p12` → ponerle contraseña.
+   Luego `base64 -i habinext.p12 | tr -d '\n' | pbcopy`.
+4. **WWDR G4.** Bajar «Worldwide Developer Relations - G4» de
+   <https://www.apple.com/certificateauthority/> (`AppleWWDRCAG4.cer`) y
+   pasarlo a PEM: `openssl x509 -inform der -in AppleWWDRCAG4.cer -out wwdr.pem`.
+5. **Team ID.** Apple Developer → Membership details (10 caracteres).
+
+Variables: `APPLE_PASS_P12_BASE64` (el `.p12` en base64), `APPLE_PASS_P12_PASSWORD`
+(puede ir vacía si se exportó sin clave), `APPLE_WWDR_PEM` (el PEM completo,
+con sus `BEGIN`/`END`), `APPLE_PASS_TYPE_ID` (`pass.co.habi.habinext`),
+`APPLE_TEAM_ID`.
+
+### Google Wallet: qué conseguir
+
+1. **Cuenta de emisor.** [Google Pay & Wallet Console](https://pay.google.com/business/console)
+   → crear la cuenta de empresa de Habi → en Google Wallet API aparece el
+   **Issuer ID** (un número largo).
+2. **API y cuenta de servicio.** En Google Cloud, un proyecto de Habi →
+   habilitar «Google Wallet API» → IAM → Cuentas de servicio → crear una
+   (`habinext-wallet`) → Claves → Agregar clave → JSON. Ese archivo completo es
+   `GOOGLE_WALLET_SERVICE_ACCOUNT`.
+3. **Darle permiso.** De vuelta en la consola de Wallet → Usuarios → agregar
+   el `client_email` de la cuenta de servicio como usuario (desarrollador).
+4. Mientras la cuenta esté en modo demo, solo los correos agregados como
+   «testers» en la consola pueden guardar pases. Para abrirla a todo el mundo
+   hay que pedir el acceso de producción en la misma consola (perfil de
+   empresa completo).
+
+Variables: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SERVICE_ACCOUNT` (el JSON
+en una sola línea; los `\n` de la `private_key` pueden quedar escapados).
+
+### Cargarlas en Vercel
+
+```bash
+base64 -i habinext.p12 | tr -d '\n' | vercel env add APPLE_PASS_P12_BASE64 production
+printf '%s' 'la-clave' | vercel env add APPLE_PASS_P12_PASSWORD production
+vercel env add APPLE_WWDR_PEM production < wwdr.pem
+printf '%s' 'pass.co.habi.habinext' | vercel env add APPLE_PASS_TYPE_ID production
+printf '%s' 'TEAMID1234' | vercel env add APPLE_TEAM_ID production
+printf '%s' '3388000000012345678' | vercel env add GOOGLE_WALLET_ISSUER_ID production
+vercel env add GOOGLE_WALLET_SERVICE_ACCOUNT production < habinext-wallet.json
+```
+
+Después, redeploy. Para probar en local, las mismas variables van en
+`.env.local` (nunca al repo).
+
 ## Variables de entorno
 
 | Variable | Para qué |
 | --- | --- |
 | `EXPERIENCIA_SECRET` | Firma la cookie de sesión y deriva la llave que cifra los tokens. 64 hex. |
+| `APPLE_PASS_P12_BASE64`, `APPLE_PASS_P12_PASSWORD`, `APPLE_WWDR_PEM`, `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID` | Apple Wallet (sección «Billetera»). |
+| `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SERVICE_ACCOUNT` | Google Wallet (sección «Billetera»). |
 | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | La app de LinkedIn (la misma de habipublicador). |
 | `LINKEDIN_API_VERSION` | Versión de la Posts API. `202606`. |
 | `EXPERIENCIA_FASE` | `antes` o `evento`, para forzar la fase. Sin valor, decide la fecha. |

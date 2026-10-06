@@ -3,6 +3,7 @@ import Asterisk from "@/components/Asterisk";
 import Marco from "@/components/experiencia/Marco";
 import Portada from "@/components/experiencia/Portada";
 import { EVENT } from "@/config/event";
+import { BLOQUEADAS, type ExperienciaId } from "@/config/experiencia";
 import { puestoDe, ranking, vistaDe } from "@/lib/experiencia";
 import { participanteActual } from "@/lib/experiencia-http";
 
@@ -34,13 +35,14 @@ export const dynamic = "force-dynamic";
 export default async function Pagina({
   searchParams,
 }: {
-  searchParams: Promise<{ entrar?: string; error?: string; li?: string }>;
+  searchParams: Promise<{ entrar?: string; error?: string; li?: string; cerrada?: string }>;
 }) {
   const q = await searchParams;
   const [p, r] = await Promise.all([participanteActual().catch(() => null), ranking().catch(() => ({ podio: [], total: 0, filas: {} }))]);
   const yo = p ? vistaDe(p) : null;
   const puesto = p ? puestoDe(p.id, r.filas) : null;
   const entrar = q.entrar && /^\/experiencia(\/[a-z]+)?$/.test(q.entrar) ? q.entrar : undefined;
+  const cerrada = q.cerrada && q.cerrada in BLOQUEADAS ? (q.cerrada as ExperienciaId) : undefined;
 
   return (
     <Marco
@@ -61,12 +63,12 @@ export default async function Pagina({
       bajada={
         <>
           Tu carnet, el mapa del tesoro del recinto y lo que cuentes en tus redes. Todo suma puntos, y los que más sumen se
-          llevan una sorpresa el 20 de octubre.
+          llevan una sorpresa el 20 de octubre. Por ahora está abierto el carnet; lo demás se abre más adelante.
         </>
       }
     >
       <Asterisk color="var(--violet)" className="pointer-events-none absolute -right-28 -top-[30rem] h-[26rem] w-[26rem] opacity-[0.08] md:-right-20 md:h-[36rem] md:w-[36rem]" />
-      <Portada yo={yo} podio={r.podio} puesto={puesto} entrar={entrar} error={q.error} />
+      <Portada yo={yo} podio={r.podio} puesto={puesto} entrar={entrar} error={q.error} cerrada={cerrada} />
     </Marco>
   );
 }
