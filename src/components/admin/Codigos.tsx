@@ -1,4 +1,4 @@
-import { resumir, type CodigoConEstado } from "@/lib/codigos";
+import { filtrarCodigos as filtrar, resumir, type CodigoConEstado, type FiltrosCodigos as Filtros } from "@/lib/codigos";
 import SoltarExcel from "./SoltarExcel";
 import { consulta, hora, Paginacion, Pastilla, Tarjetas, Vacio } from "./comunes";
 
@@ -11,8 +11,6 @@ import { consulta, hora, Paginacion, Pastilla, Tarjetas, Vacio } from "./comunes
  * mirar: el código se reenvió, o la persona entró con otro correo.
  */
 
-export type Filtros = { estado: string; entrada: string; q: string; pagina: number };
-
 const ESTADOS: { id: string; texto: string }[] = [
   { id: "todos", texto: "Todos" },
   { id: "redimidos", texto: "Redimidos" },
@@ -20,28 +18,6 @@ const ESTADOS: { id: string; texto: string }[] = [
   { id: "sin-asignar", texto: "Sin dueño" },
   { id: "desactivados", texto: "Desactivados" },
 ];
-
-const llano = (t: unknown) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
-export function filtrar(codigos: CodigoConEstado[], f: Filtros): CodigoConEstado[] {
-  const q = llano(f.q).trim();
-  return codigos.filter((c) => {
-    if (f.estado === "redimidos" && c.usos === 0) return false;
-    if (f.estado === "asignados" && (!c.asignado || c.usos > 0)) return false;
-    if (f.estado === "sin-asignar" && (c.asignado || c.usos > 0)) return false;
-    if (f.estado === "desactivados" && c.activo) return false;
-    if (f.entrada === "vip" && c.sirvePara === "general") return false;
-    if (f.entrada === "general" && c.sirvePara === "vip") return false;
-    if (q) {
-      const a = c.asignado;
-      const pajar = llano(
-        [c.codigo, a?.nombre, a?.apellido, a?.email, a?.telefono, a?.grupo, c.nota, ...c.redenciones.flatMap((r) => [r.nombre, r.email])].join(" ")
-      );
-      if (!pajar.includes(q)) return false;
-    }
-    return true;
-  });
-}
 
 export const POR_PAGINA = 50;
 
@@ -58,12 +34,21 @@ export default function Codigos({ codigos, filtros }: { codigos: CodigoConEstado
           <h2 className="text-xl font-semibold tracking-tight">Códigos de invitación</h2>
           <p className="mt-1 text-sm font-light text-white/50">Quien tiene uno entra sin pagar. Cada código es de una persona y sirve una vez.</p>
         </div>
-        <a
-          href={`/api/admin/codigos.csv${consulta({ estado: filtros.estado, entrada: filtros.entrada })}`}
-          className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-light text-white/60 transition-colors hover:border-white/30 hover:text-white"
-        >
-          Bajar los códigos
-        </a>
+        <div className="flex flex-wrap gap-2">
+          {/* Lo que se ve es lo que se baja: mismos filtros y misma búsqueda que la tabla. */}
+          <a
+            href={`/api/admin/codigos.xlsx${consulta({ estado: filtros.estado, entrada: filtros.entrada, q: filtros.q })}`}
+            className="rounded-full bg-violet px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-press"
+          >
+            Bajar esta vista en Excel
+          </a>
+          <a
+            href="/api/admin/codigos.xlsx"
+            className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-light text-white/60 transition-colors hover:border-white/30 hover:text-white"
+          >
+            Bajar todo
+          </a>
+        </div>
       </div>
 
       <Tarjetas

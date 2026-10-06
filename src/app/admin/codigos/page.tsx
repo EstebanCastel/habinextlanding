@@ -1,6 +1,6 @@
-import Codigos, { filtrar, POR_PAGINA } from "@/components/admin/Codigos";
+import Codigos, { POR_PAGINA } from "@/components/admin/Codigos";
 import { Aviso, paginaDe } from "@/components/admin/comunes";
-import { todos, type CodigoConEstado } from "@/lib/codigos";
+import { filtrarCodigos as filtrar, todos, type CodigoConEstado } from "@/lib/codigos";
 import { haySesion } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";

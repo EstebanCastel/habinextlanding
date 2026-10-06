@@ -382,6 +382,32 @@ export async function cambiarEstado(codigo: string, activo: boolean): Promise<bo
   return Boolean(res);
 }
 
+/** Los filtros del listado del panel y de las descargas: viven acá para que la pantalla y el Excel digan lo mismo. */
+export type FiltrosCodigos = { estado: string; entrada: string; q: string; pagina: number };
+
+const llanoBusqueda = (t: unknown) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+export function filtrarCodigos(codigos: CodigoConEstado[], f: FiltrosCodigos): CodigoConEstado[] {
+  const q = llanoBusqueda(f.q).trim();
+  return codigos.filter((c) => {
+    if (f.estado === "redimidos" && c.usos === 0) return false;
+    if (f.estado === "asignados" && (!c.asignado || c.usos > 0)) return false;
+    if (f.estado === "sin-asignar" && (c.asignado || c.usos > 0)) return false;
+    if (f.estado === "desactivados" && c.activo) return false;
+    if (f.entrada === "vip" && c.sirvePara === "general") return false;
+    if (f.entrada === "general" && c.sirvePara === "vip") return false;
+    if (q) {
+      const a = c.asignado;
+      const pajar = llanoBusqueda(
+        [c.codigo, a?.nombre, a?.apellido, a?.email, a?.telefono, a?.grupo, c.nota, ...c.redenciones.flatMap((r) => [r.nombre, r.email])].join(" ")
+      );
+      if (!pajar.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+
 export type InformeImportacion = {
   archivo: string;
   hojasLeidas: string[];
