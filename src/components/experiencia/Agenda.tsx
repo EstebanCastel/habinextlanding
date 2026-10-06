@@ -1,29 +1,35 @@
 "use client";
 
 import Image from "next/image";
+import { Cormorant_Garamond } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Asterisk from "@/components/Asterisk";
 import { gsap, useGSAP } from "@/lib/gsap";
-import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionesDe, type Salon, type SalonId, type Sesion } from "@/config/agenda";
+import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionesDe, type Ficha, type Salon, type SalonId, type Sesion } from "@/config/agenda";
 import type { Vista } from "@/lib/experiencia";
-import { pedirJson } from "./util";
+import { clasesBoton, pedirJson } from "./util";
 
 /**
  * El programa del día, como un cartel y no como una tabla.
  *
  * Son dos salones, uno al lado del otro: la foto del escenario arriba y,
- * debajo, cada sesión como una tarjeta en el orden en que pasa. No hay horas
- * a propósito: el equipo las está cerrando y es mejor un programa sin reloj
- * que un reloj que después se desdice. Lo que sí se sabe es qué viene
- * primero y qué viene después, y eso es lo que se lee.
+ * debajo, cada sesión como una tarjeta en el orden en que pasa. A la derecha
+ * de cada tarjeta va la foto de quien dicta, grande y degradada hacia el
+ * texto; al abrirla, el retrato ocupa el afiche con el nombre en serif y la
+ * ficha de la sesión se puede descargar.
+ *
+ * No hay horas a propósito: el equipo las está cerrando y es mejor un
+ * programa sin reloj que un reloj que después se desdice.
  *
  * Cada sesión se puede marcar con «me interesa»: la persona arma su día y el
  * equipo ve qué charlas tienen más expectativa. No da puntos.
- *
- * En celular los dos salones no caben a la vez y se elige uno; en pantalla
- * ancha se ven los dos, que es como se decide a cuál entrar.
  */
+
+const serif = Cormorant_Garamond({ subsets: ["latin"], weight: ["500", "600"], display: "swap" });
+
+/** Las palabras que corren por el borde del afiche, como en la credencial. */
+const PALABRAS = ["GLOBAL", "EXPERIENCIA", "OPORTUNIDAD", "BOGOTÁ", "IA", "OCT. 2026"];
 
 type Intereses = {
   gustan: Set<string>;
@@ -126,7 +132,7 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
 
       <p className="mt-10 max-w-xl text-sm font-light leading-relaxed text-white/45">
         Las horas de cada sesión se publican apenas el equipo las confirme. El orden ya es el del programa. Toca
-        una sesión para ver el salón por dentro y lo que te llevas de ella.
+        una sesión para ver quién la dicta, qué te llevas y descargar su ficha.
       </p>
 
       {abierta ? <Panel sesion={abierta} intereses={intereses} onCerrar={() => setAbierta(null)} /> : null}
@@ -154,8 +160,8 @@ function MeInteresa({ sesion, intereses, grande = false }: { sesion: Sesion; int
       aria-label={gusta ? "Ya no me interesa" : "Me interesa"}
       disabled={intereses.ocupada === sesion.id}
       className={`inline-flex items-center gap-1.5 rounded-full border transition-colors disabled:opacity-60 ${
-        grande ? "px-4 py-2 text-sm" : "h-8 px-2.5 text-xs"
-      } ${gusta ? "border-violet bg-violet text-white" : "border-white/15 text-white/70 hover:border-violet/60 hover:text-white"}`}
+        grande ? "px-5 py-3 text-base font-medium" : "h-8 px-2.5 text-xs"
+      } ${gusta ? "border-violet bg-violet text-white" : "border-white/20 text-white/75 hover:border-violet/60 hover:text-white"}`}
     >
       <Corazon lleno={gusta} className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} />
       {grande ? <span>{gusta ? "Te interesa" : "Me interesa"}</span> : null}
@@ -166,9 +172,7 @@ function MeInteresa({ sesion, intereses, grande = false }: { sesion: Sesion; int
 
 /**
  * Un salón: la foto del escenario con su número de tótem, y debajo las
- * sesiones como tarjetas, en el orden del programa. El número grande es el
- * que está señalizado en piso; se repite acá para que la gente lo reconozca
- * al llegar.
+ * sesiones como tarjetas, en el orden del programa.
  */
 function Columna({
   salon,
@@ -225,79 +229,95 @@ function Columna({
   );
 }
 
-/** «Juanfe Quiñones» → «JQ»; «Anderson · Hipoteca» → «A». Para el cuadro sin foto. */
-function iniciales(nombre: string): string {
-  const limpio = nombre.split("·")[0].replace(/\(.*?\)/g, "").trim();
-  const partes = limpio.split(/\s+/).filter((p) => p && !/^(y|o|de|del|la|el)$/i.test(p));
-  return partes
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join("");
+// ---------- quién dicta ----------
+
+type Quien = { nombre: string; cargo?: string; ficha?: Ficha };
+
+/** La lista de quienes dictan, con su ficha, a partir de cómo está escrito en la sesión. */
+function gente(s: Sesion): Quien[] {
+  const lista = s.ponentes ?? (s.ponente ? [s.ponente] : []);
+  return lista.map((p) => {
+    const [nombre, extra] = p.split("·").map((t) => t.trim());
+    const ficha = fichaDe(nombre);
+    return { nombre, cargo: s.detallePonente && !s.ponentes ? s.detallePonente : (ficha?.cargo ?? extra), ficha };
+  });
 }
 
-/**
- * Quien dicta: la foto en blanco y negro, como el carnet, y debajo el nombre
- * grande. Las marcas van con su logo; quien no tiene foto, con sus iniciales.
- */
-function Ponente({ nombre, detalle, parte }: { nombre: string; detalle?: string; parte?: string }) {
-  const [quien, extra] = nombre.split("·").map((t) => t.trim());
-  const ficha = fichaDe(quien);
-  const cargo = detalle ?? ficha?.cargo ?? extra;
-  return (
-    <span className="flex w-[7.5rem] flex-col items-start gap-2 sm:w-[8.5rem]">
-      {ficha?.foto ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={ficha.foto} alt="" width={160} height={160} loading="lazy" className="h-20 w-20 rounded-2xl border border-white/10 object-cover grayscale sm:h-24 sm:w-24" />
-      ) : ficha?.logo ? (
-        <span className="grid h-20 w-20 place-items-center rounded-2xl border border-white/10 p-3 sm:h-24 sm:w-24" style={{ background: ficha.fondo ?? "#ffffff" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ficha.logo} alt="" className="max-h-full max-w-full object-contain" loading="lazy" />
-        </span>
-      ) : (
-        <span className="grid h-20 w-20 place-items-center rounded-2xl border border-violet/40 bg-violet-shade text-xl font-bold tracking-wide text-violet-soft sm:h-24 sm:w-24">
-          {iniciales(quien)}
-        </span>
-      )}
-      <span className="flex flex-col">
-        {parte ? <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-soft">{parte}</span> : null}
-        <span className="text-[15px] font-semibold leading-tight tracking-tight text-white">{quien}</span>
-        {cargo ? <span className="text-xs font-light leading-snug text-white/50">{cargo}</span> : null}
+/** «Juanfe Quiñones» → «JQ»; para quien no tiene foto. */
+function iniciales(nombre: string): string {
+  const partes = nombre.replace(/\(.*?\)/g, "").trim().split(/\s+/).filter((p) => p && !/^(y|o|de|del|la|el)$/i.test(p));
+  return partes.slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
+}
+
+/** Lo que va en el cuadro de alguien sin foto: su logo o sus iniciales. */
+function Relleno({ q, className = "" }: { q: Quien; className?: string }) {
+  if (q.ficha?.logo) {
+    return (
+      <span className={`grid place-items-center p-4 ${className}`} style={{ background: q.ficha.fondo ?? "#ffffff" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={q.ficha.logo} alt="" className="max-h-full max-w-full object-contain" loading="lazy" />
       </span>
-    </span>
+    );
+  }
+  return (
+    <span className={`grid place-items-center bg-violet-shade text-2xl font-bold tracking-wide text-violet-soft ${className}`}>{iniciales(q.nombre)}</span>
   );
 }
 
-/** Los ponentes de una sesión, en fila. */
-function Ponentes({ sesion: s }: { sesion: Sesion }) {
-  if (s.partes) {
+/**
+ * El lado derecho de la tarjeta: la foto de quien dicta, tan alta como la
+ * tarjeta y degradada hacia el texto, con el nombre abajo. Con varias
+ * personas van apiladas; sin nadie confirmado, el hueco lo dice.
+ */
+function LadoDerecho({ s }: { s: Sesion }) {
+  const lista = gente(s);
+  if (!lista.length) {
     return (
-      <span className="mt-4 flex flex-wrap gap-x-4 gap-y-4">
-        {s.partes.map((p) => (
-          <Ponente key={p.titulo} nombre={p.ponente} detalle={p.detalle} parte={p.titulo} />
-        ))}
+      <span className="relative flex h-full flex-col items-center justify-center gap-2 border-l border-dashed border-white/10 text-white/35">
+        <span className="grid h-14 w-14 place-items-center rounded-2xl border border-dashed border-white/20 text-xl">?</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Por confirmar</span>
       </span>
     );
   }
-  if (s.ponentes) {
+  if (lista.length === 1) {
+    const q = lista[0];
     return (
-      <span className="mt-4 flex flex-wrap gap-x-4 gap-y-4">
-        {s.ponentes.map((p) => (
-          <Ponente key={p} nombre={p} />
-        ))}
-      </span>
-    );
-  }
-  if (s.ponente) {
-    return (
-      <span className="mt-4 block">
-        <Ponente nombre={s.ponente} detalle={s.detallePonente} />
+      <span className="relative block h-full">
+        {q.ficha?.foto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={q.ficha.foto}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover object-top grayscale"
+            style={{ maskImage: "linear-gradient(to right, transparent 0%, black 45%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 45%)" }}
+          />
+        ) : (
+          <Relleno q={q} className="absolute inset-0 h-full w-full" />
+        )}
+        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night via-night/80 to-transparent px-4 pb-4 pt-10">
+          <span className="block text-[15px] font-semibold leading-tight tracking-tight text-white sm:text-base">{q.nombre}</span>
+          {q.cargo ? <span className="mt-0.5 block text-[11px] font-light leading-snug text-white/55">{q.cargo}</span> : null}
+        </span>
       </span>
     );
   }
   return (
-    <span className="mt-4 inline-flex items-center gap-3 text-sm text-white/45">
-      <span className="grid h-12 w-12 place-items-center rounded-2xl border border-dashed border-white/25 text-base text-white/40">?</span>
-      Ponente por confirmar
+    <span className="relative flex h-full flex-col justify-center gap-2 border-l border-white/[0.06] bg-white/[0.02] p-3">
+      {lista.slice(0, 4).map((q) => (
+        <span key={q.nombre} className="flex items-center gap-2.5">
+          {q.ficha?.foto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={q.ficha.foto} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-xl object-cover object-top grayscale" />
+          ) : (
+            <Relleno q={q} className="h-10 w-10 shrink-0 rounded-xl !p-1.5 !text-xs" />
+          )}
+          <span className="min-w-0">
+            <span className="block truncate text-[13px] font-semibold leading-tight">{q.nombre}</span>
+            {q.cargo ? <span className="block truncate text-[10px] font-light text-white/50">{q.cargo}</span> : null}
+          </span>
+        </span>
+      ))}
     </span>
   );
 }
@@ -328,26 +348,16 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
       <button
         type="button"
         onClick={onAbrir}
-        className={`group relative block w-full overflow-hidden rounded-[22px] border bg-white/[0.03] p-5 pb-16 text-left transition-colors hover:bg-violet/[0.06] focus-visible:outline-none sm:p-6 sm:pb-16 ${
+        className={`group grid min-h-[13.5rem] w-full grid-cols-[1fr_10rem] overflow-hidden rounded-[22px] border bg-white/[0.03] text-left transition-colors hover:bg-violet/[0.06] focus-visible:outline-none sm:grid-cols-[1fr_12rem] ${
           gusta ? "border-violet/50" : "border-white/10 hover:border-violet/60 focus-visible:border-violet/60"
         }`}
       >
-        {/* El número, grande y en marca de agua: ordena sin pedir atención. */}
-        <span aria-hidden="true" className="pointer-events-none absolute -right-1 -top-3 font-mono text-[4.5rem] font-bold leading-none tracking-tighter text-white/[0.05] transition-colors group-hover:text-violet/[0.14]">
-          {n}
+        <span className="flex flex-col p-5 pb-16 sm:p-6 sm:pb-16">
+          <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">SESIÓN {n}</span>
+          <span className="mt-1.5 block text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
+          {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
         </span>
-        <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">SESIÓN {n}</span>
-        <span className="mt-1.5 block pr-8 text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
-
-        <Ponentes sesion={s} />
-
-        {s.resumen ? <span className="mt-4 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
-
-        <span className="absolute bottom-5 right-5 grid h-8 w-8 place-items-center rounded-full border border-white/15 text-white/60 transition-colors group-hover:border-violet group-hover:bg-violet group-hover:text-white sm:bottom-6 sm:right-6">
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </span>
+        <LadoDerecho s={s} />
       </button>
       {/* El corazón va fuera del botón de la tarjeta: un botón no puede contener otro. */}
       <span className="absolute bottom-5 left-5 sm:bottom-6 sm:left-6">
@@ -357,11 +367,71 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
   );
 }
 
+// ---------- el panel ----------
+
 /**
- * El panel de una sesión: primero el lugar, después el contenido. Está en ese
- * orden a propósito — la pregunta que la gente hace antes de moverse es «¿a
- * cuál salón voy?», y la foto la responde sin leer.
+ * El afiche de quien dicta: el retrato grande sobre la noche, la banda
+ * morada en diagonal, las palabras de la marca corriendo por el borde y el
+ * nombre en serif. Es la misma gramática de la pieza oficial del evento.
  */
+function Afiche({ s }: { s: Sesion }) {
+  const lista = gente(s);
+  const principal = lista.find((q) => q.ficha?.foto) ?? lista[0];
+  const otros = lista.filter((q) => q !== principal);
+  return (
+    <div className="relative aspect-[4/5] w-full overflow-hidden bg-night sm:aspect-[16/10]">
+      {principal?.ficha?.foto ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={principal.ficha.foto}
+          alt=""
+          className="absolute inset-y-0 left-0 h-full w-[72%] object-cover object-top grayscale sm:w-[58%]"
+          style={{
+            maskImage: "linear-gradient(to right, black 55%, transparent 100%), linear-gradient(to bottom, black 60%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to right, black 55%, transparent 100%), linear-gradient(to bottom, black 60%, transparent 100%)",
+            maskComposite: "intersect",
+            WebkitMaskComposite: "source-in",
+          }}
+        />
+      ) : principal ? (
+        <div className="absolute left-6 top-8 h-24 w-24 overflow-hidden rounded-3xl sm:left-10 sm:top-10 sm:h-32 sm:w-32">
+          <Relleno q={principal} className="h-full w-full" />
+        </div>
+      ) : null}
+      {/* La banda morada, en diagonal, como en la pieza del evento. */}
+      <div aria-hidden="true" className="pointer-events-none absolute -right-[18%] top-[-30%] h-[170%] w-[48%] rotate-[24deg] bg-gradient-to-b from-violet/70 via-violet-deep/50 to-transparent mix-blend-screen" />
+      {/* Las palabras por el borde. */}
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-6 right-4 top-6 flex flex-col-reverse items-center justify-between font-mono text-[9px] tracking-[0.3em] text-white/45 sm:right-6" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+        {PALABRAS.map((p) => (
+          <span key={p}>{p}</span>
+        ))}
+      </div>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night via-night/70 to-transparent px-6 pb-6 pt-16 pr-14 sm:px-10 sm:pb-8">
+        {principal ? (
+          <>
+            <p className={`${serif.className} text-[2.6rem] font-medium leading-[0.95] tracking-tight text-white sm:text-6xl`}>
+              {principal.nombre.split(" ").slice(0, 1).join(" ")}
+              <br />
+              {principal.nombre.split(" ").slice(1).join(" ")}
+            </p>
+            {principal.cargo ? (
+              <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.3em] text-violet-soft">{principal.cargo}</p>
+            ) : null}
+          </>
+        ) : (
+          <p className={`${serif.className} text-4xl font-medium leading-none text-white/70 sm:text-5xl`}>Ponente por confirmar</p>
+        )}
+        {s.gancho ? <p className="mt-3 max-w-sm text-sm font-light leading-snug text-white/80">{s.gancho}</p> : null}
+        {otros.length ? (
+          <p className="mt-3 text-xs font-light text-white/60">
+            Con {otros.map((q) => q.nombre).join(" · ")}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Intereses; onCerrar: () => void }) {
   const salon = salonDe(sesion.salon);
   const dialogo = useRef<HTMLDialogElement>(null);
@@ -398,66 +468,51 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
       className="m-0 mt-auto w-full max-w-none bg-transparent p-0 text-white backdrop:bg-night/80 backdrop:backdrop-blur-sm sm:m-auto sm:max-w-2xl"
     >
       <div ref={caja} className="relative mx-auto max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[28px] border border-white/12 bg-night sm:rounded-[28px]">
-        <div className="relative h-48 w-full overflow-hidden sm:h-60">
-          <Image src={salon.imagen} alt={`Montaje del ${salon.nombre}`} fill sizes="(max-width: 640px) 100vw, 42rem" className="object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-night via-night/40 to-night/10" />
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-night/70 text-white/70 backdrop-blur transition-colors hover:text-white">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-            </svg>
-          </button>
-          <div className="absolute bottom-4 left-5 right-5 flex items-end gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-violet text-sm font-bold tabular-nums">{salon.numero}</span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-violet-soft">Salón</p>
-              <p className="truncate text-lg font-semibold tracking-tight">{salon.nombre}</p>
-            </div>
-          </div>
-        </div>
+        <button type="button" onClick={onCerrar} aria-label="Cerrar" className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-night/70 text-white/70 backdrop-blur transition-colors hover:text-white">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+          </svg>
+        </button>
 
-        <div className="px-5 pb-8 pt-5 md:px-8">
-          <div data-linea className="flex flex-wrap gap-2">
-            {salon.montaje.map((m) => (
-              <span key={m} className="rounded-full border border-white/12 px-3 py-1 text-xs font-light text-white/60">{m}</span>
-            ))}
-          </div>
+        <Afiche s={sesion} />
 
-          <p data-linea className="mt-5 font-mono text-[11px] font-medium tabular-nums tracking-[0.2em] text-violet-soft">
-            SESIÓN {String(n).padStart(2, "0")} DE {String(total).padStart(2, "0")} · {salon.rotulo.toUpperCase()}
+        <div className="px-6 pb-8 pt-5 sm:px-10">
+          <p data-linea className="font-mono text-[11px] font-medium tabular-nums tracking-[0.2em] text-violet-soft">
+            SESIÓN {String(n).padStart(2, "0")} DE {String(total).padStart(2, "0")} · SALÓN {salon.numero} · {salon.rotulo.toUpperCase()}
           </p>
-          <h3 id={`sesion-${sesion.id}`} data-linea className="mt-1.5 text-3xl font-bold leading-tight tracking-tighter">{sesion.titulo}</h3>
+          <h3 id={`sesion-${sesion.id}`} data-linea className="mt-1.5 text-2xl font-bold leading-tight tracking-tighter sm:text-3xl">{sesion.titulo}</h3>
+          {sesion.resumen ? <p data-linea className="mt-2 text-base font-light text-white/65">{sesion.resumen}</p> : null}
 
-          <div data-linea className="mt-4">
+          <div data-linea className="mt-5 flex flex-wrap items-center gap-3">
+            <a href={`/api/experiencia/agenda/${sesion.id}`} download className={`${clasesBoton.solido} !px-6 !py-3 !text-sm`}>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Descargar los contenidos
+            </a>
             <MeInteresa sesion={sesion} intereses={intereses} grande />
           </div>
 
-          <div data-linea>
-            <Ponentes sesion={sesion} />
-          </div>
-
           {sesion.contenido?.length ? (
-            <>
-              <p data-linea className="mt-7 text-[11px] font-bold uppercase tracking-[0.24em] text-white/45">Qué te llevas</p>
-              <ul className="mt-3 flex flex-col gap-3">
-                {sesion.contenido.map((c) => (
-                  <li data-linea key={c} className="flex gap-3 text-[15px] font-light leading-snug text-white/75">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet" />
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </>
+            <ul className="mt-6 flex flex-col gap-2.5">
+              {sesion.contenido.map((c) => (
+                <li data-linea key={c} className="flex gap-3 text-[15px] font-light leading-snug text-white/75">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet" />
+                  {c}
+                </li>
+              ))}
+            </ul>
           ) : null}
 
           {sesion.necesitas ? (
-            <p data-linea className="mt-6 rounded-2xl border border-violet/25 bg-violet/10 px-4 py-3 text-sm font-light text-white/75">
+            <p data-linea className="mt-5 rounded-2xl border border-violet/25 bg-violet/10 px-4 py-3 text-sm font-light text-white/75">
               <span className="font-semibold text-white">Trae contigo: </span>
               {sesion.necesitas}
             </p>
           ) : null}
 
-          <p data-linea className="mt-6 text-xs font-light text-white/50">
-            La hora exacta se publica cuando el equipo la confirme. {salon.aforo}.
+          <p data-linea className="mt-5 text-xs font-light text-white/45">
+            {salon.nombre} · {salon.aforo}. La hora se publica cuando el equipo la confirme.
           </p>
         </div>
       </div>

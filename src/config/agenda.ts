@@ -88,8 +88,10 @@ export type Sesion = {
   contenido?: string[];
   /** Qué hay que traer o tener listo. */
   necesitas?: string;
-  /** Un bloque de charlas cortas bajo un mismo título, una detrás de otra. */
-  partes?: { titulo: string; ponente: string; detalle?: string }[];
+  /** Material de la sesión para descargar (PDF, carpeta). Sin esto se baja la ficha generada. */
+  material?: string;
+  /** Una frase de gancho sobre quien dicta, para el afiche del panel. */
+  gancho?: string;
 };
 
 export const SESIONES: Sesion[] = [
@@ -127,27 +129,68 @@ export const SESIONES: Sesion[] = [
     tipo: "pausa",
     resumen: "Café, baño y una vuelta por los stands.",
   },
+  // «El futuro de Habi» son cinco charlas cortas seguidas: una tarjeta por
+  // cada una, con quien la dicta.
   {
     id: "futuro-habi",
     salon: "inspira",
     titulo: "El futuro de Habi",
     ponente: "Sebastián Noguera",
-    detallePonente: "Cofundador de Habi",
-    resumen: "Hacia dónde va la compañía, contado por quienes la construyen.",
-    partes: [
-      { titulo: "La compañía", ponente: "Sebastián Noguera", detalle: "Cofundador de Habi" },
-      { titulo: "Mi Red", ponente: "Agustín Iglesias" },
-      { titulo: "Habi Capital", ponente: "Martín Oviedo" },
-      { titulo: "Habi Credit", ponente: "Gabriel Morris" },
-      // La hoja dice «Edwin Alejo o Matías»; va Edwin mientras el equipo lo cierra.
-      { titulo: "Franquicias", ponente: "Edwin Alejo" },
-    ],
+    detallePonente: "Cofundador y presidente de Habi",
+    resumen: "Hacia dónde va la compañía, contado por quien la fundó.",
     contenido: [
       "Dónde está parada Habi hoy en Colombia y en México, con las cifras reales del año.",
-      "Mi Red: cómo funciona la red de aliados, qué recibe cada uno y cómo se reparte la comisión.",
-      "Habi Capital: el brazo de inversión, qué financia y cómo se le presenta una oportunidad.",
-      "Habi Credit: cómo entra el crédito en una venta y qué gana el asesor por acompañarlo.",
-      "Franquicias: qué incluye, cuánto cuesta y para quién tiene sentido.",
+      "Qué se viene en producto y qué parte de eso queda en manos de los aliados.",
+      "Cómo encaja un asesor independiente en lo que Habi está construyendo.",
+    ],
+  },
+  {
+    id: "futuro-mi-red",
+    salon: "inspira",
+    titulo: "El futuro de Habi · Mi Red",
+    ponente: "Agustín Iglesias",
+    resumen: "La red de aliados y cómo se gana dentro de ella.",
+    contenido: [
+      "Cómo funciona la red de aliados: quién entra, qué recibe y qué se espera de cada uno.",
+      "El inventario que puedes mostrar desde el primer día y cómo se reparte la comisión.",
+      "Lo que viene para quienes ya están adentro.",
+    ],
+  },
+  {
+    id: "futuro-habi-capital",
+    salon: "inspira",
+    titulo: "El futuro de Habi · Habi Capital",
+    ponente: "Martín Oviedo",
+    resumen: "El brazo de inversión, explicado sin jerga.",
+    contenido: [
+      "Qué es Habi Capital y qué tipo de operaciones financia.",
+      "Cómo se le presenta una oportunidad y qué la hace viable.",
+      "Qué puede ofrecerle un asesor a un cliente inversionista con este respaldo.",
+    ],
+  },
+  {
+    id: "futuro-habi-credit",
+    salon: "inspira",
+    titulo: "El futuro de Habi · Habi Credit",
+    ponente: "Gabriel Morris",
+    resumen: "Crédito hipotecario como parte de tu cierre.",
+    contenido: [
+      "Cómo entra el crédito en una venta y en qué momento hay que hablarlo con el comprador.",
+      "Qué frena un desembolso y cómo anticiparlo antes de firmar promesa.",
+      "Lo que un asesor gana por acompañar el crédito, no solo la venta.",
+    ],
+  },
+  {
+    // La hoja dice «Edwin Alejo o Matías»; va Edwin mientras el equipo lo cierra.
+    id: "futuro-franquicias",
+    salon: "inspira",
+    titulo: "El futuro de Habi · Franquicias",
+    ponente: "Edwin Alejo",
+    resumen: "El modelo de franquicia, de frente.",
+    contenido: [
+      "Qué incluye una franquicia Habi y qué no.",
+      "La inversión, los tiempos y el punto de equilibrio con números.",
+      "Para quién tiene sentido y para quién no vale la pena.",
     ],
   },
   {

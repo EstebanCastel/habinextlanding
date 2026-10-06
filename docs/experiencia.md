@@ -179,6 +179,15 @@ sesión vive en `experiencia/agenda-interes.json` (`marcarInteres`,
 `interesPorSesion`). No da puntos; sirve para que la persona arme su día
 (filtro «Las que me interesan») y para ver qué charlas tienen expectativa.
 
+Cada tarjeta lleva a la derecha la foto de quien dicta, tan alta como la
+tarjeta y degradada hacia el texto (`LadoDerecho` en `Agenda.tsx`); varias
+personas van apiladas. Al abrirla, `Afiche` pinta el retrato grande con la
+banda morada, las palabras de la marca por el borde y el nombre en
+Cormorant Garamond, y «Descargar los contenidos» baja la ficha de la sesión
+(`GET /api/experiencia/agenda/<id>` → PDF hecho a mano en `src/lib/pdf.ts`;
+si la sesión tiene `material`, redirige allá). «El futuro de Habi» son
+cinco sesiones, una por persona.
+
 Las fichas de quienes dictan están en `PONENTES` (`src/config/agenda.ts`),
 con la foto en blanco y negro en `public/img/ponentes/<slug>.jpg` (600×600,
 hecha con `magick … -colorspace Gray`) y el cargo; las marcas llevan `logo`.
