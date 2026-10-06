@@ -379,6 +379,12 @@ export const PONENTES: Record<string, Ficha> = {
   "Juanfe Quiñones": { foto: "/img/ponentes/juanfe-quinones.jpg", cargo: "IA generativa · Habi" },
   Auco: { logo: "/img/marcas/auco.png" },
   Wekall: { logo: "/img/marcas/wekall.svg" },
+  // Logos claros, pensados para fondo oscuro: van sobre la tinta y no sobre blanco.
+  Dapta: { logo: "/img/ponentes/dapta.png", fondo: "#0d0618" },
+  "Funnel Chat": { logo: "/img/ponentes/funnel-chat.png", fondo: "#0d0618" },
+  "Mis Propias Finanzas": { logo: "/img/ponentes/mis-propias-finanzas.png", fondo: "#0d0618" },
+  Amarilo: { logo: "/img/ponentes/amarilo.svg", fondo: "#0d0618" },
+  Bolívar: { logo: "/img/ponentes/bolivar.svg", fondo: "#0d0618" },
 };
 
 /** La ficha de un nombre tal como aparece en la sesión («Anderson · Hipoteca» busca «Anderson»). */
