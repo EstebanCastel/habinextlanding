@@ -228,7 +228,10 @@ de Luma** que lee la puerta, vence el 21 de octubre a las 6 a. m. y no se
 puede compartir desde el teléfono. Si algo falla en la navegación, se vuelve a
 `/experiencia/carnet?billetera=<código>` y la pantalla lo explica.
 
-El código ya hace todo; lo que falta son las credenciales. Mientras no estén,
+Apple quedó configurado el 6 de octubre de 2026 (Team ID `UD6ZAR8J87`, Pass
+Type ID `pass.co.habi.habinext`, certificado firmado por WWDR G4, vence el 5
+de noviembre de 2027: hay que renovarlo y volver a cargar `APPLE_PASS_P12_BASE64`
+antes de esa fecha). Google Wallet sigue pendiente. Mientras falte una credencial,
 `disponibilidad()` (`src/lib/wallet.ts`) deja el botón atenuado con «estará
 disponible muy pronto». Las imágenes del pase de Apple ya van incrustadas
 (`src/lib/wallet-recursos.ts`); el logo del pase de Google se sirve desde
