@@ -129,14 +129,6 @@ body {
 .agenda-giro {
   animation: hn-giro 90s linear infinite;
 }
-/* El podio: el destello que recorre cada medalla cada tanto. */
-@keyframes hn-destello {
-  0%, 70% { transform: translateX(-160%) skewX(-18deg); }
-  100% { transform: translateX(260%) skewX(-18deg); }
-}
-.medalla-destello {
-  animation: hn-destello 5.5s ease-in-out infinite;
-}
 @media (prefers-reduced-motion: reduce) {
-  .agenda-giro, .medalla-destello { animation: none; }
+  .agenda-giro { animation: none; }
 }

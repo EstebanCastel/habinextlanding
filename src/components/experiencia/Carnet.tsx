@@ -199,12 +199,18 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
           { xPercent: -140, opacity: 0 },
           { xPercent: 140, opacity: 1, duration: 1.5, ease: "power1.inOut", repeat: -1, repeatDelay: 4 }
         );
-        // Los asteriscos giran despacio, uno hacia cada lado, y respiran. No
-        // existen mientras se muestra el carnet guardado (ya van pintados).
+        // Los asteriscos son dos ruedas: al entrar en pantalla arrancan
+        // rápido, frenan y se quedan girando despacio, cada una hacia un
+        // lado. No existen mientras se muestra el carnet guardado (ya van
+        // pintados en la imagen).
         if (astBlanco.current && astMorado.current) {
-          gsap.to(astBlanco.current, { rotate: 360, duration: 46, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
-          gsap.to(astMorado.current, { rotate: -360, duration: 64, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
-          gsap.to([astBlanco.current, astMorado.current], { scale: 1.07, duration: 2.8, ease: "sine.inOut", yoyo: true, repeat: -1, stagger: 1.2, transformOrigin: "50% 50%" });
+          const rueda = (el: SVGSVGElement, sentido: 1 | -1, lento: number) =>
+            gsap
+              .timeline({ scrollTrigger: { trigger: escena.current, start: "top 90%", once: true } })
+              .fromTo(el, { rotate: 0 }, { rotate: 900 * sentido, duration: 2.6, ease: "power3.out", transformOrigin: "50% 50%" })
+              .to(el, { rotate: `+=${360 * sentido}`, duration: lento, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
+          rueda(astBlanco.current, 1, 42);
+          rueda(astMorado.current, -1, 58);
         }
       });
       return () => mm.revert();

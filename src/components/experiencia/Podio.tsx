@@ -5,9 +5,8 @@ import type { Podio as Filas } from "@/lib/experiencia";
  *
  * El primero va en el medio y más alto, como en una premiación; los otros
  * dos a los lados. Cada medalla es un SVG con su metal pintado a mano —un
- * degradado radial con el brillo arriba a la izquierda y el canto más
- * oscuro— y la cinta en el morado de la marca, para que las tres se lean
- * como de la misma casa. Donde todavía no hay nadie se deja el puesto
+ * degradado radial y el canto más oscuro, sin destellos— y la cinta en el
+ * morado de la marca, para que las tres se lean como de la misma casa. Donde todavía no hay nadie se deja el puesto
  * dibujado: es una invitación, no un vacío.
  */
 
@@ -64,13 +63,7 @@ export function Medalla({ puesto, className = "" }: { puesto: Puesto; className?
         >
           {puesto}
         </text>
-        {/* El brillo fijo, arriba a la izquierda, como luz de estudio. */}
-        <ellipse cx="38" cy="62" rx="14" ry="7" fill="#fff" opacity="0.28" transform="rotate(-30 38 62)" />
       </svg>
-      <span
-        aria-hidden="true"
-        className="medalla-destello pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent"
-      />
     </span>
   );
 }
