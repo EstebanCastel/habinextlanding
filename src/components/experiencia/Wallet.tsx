@@ -103,12 +103,30 @@ export function AvisoBilletera() {
 
 const etiquetaTier = (t: Tier) => (t === "vip" ? "VIP" : "General");
 
+/** La familia del aparato, estable entre servidor y navegador. */
+export function useAparato(): "apple" | "android" | "otro" {
+  return useSyncExternalStore(nada, familia, () => "otro");
+}
+
+/** La frase que acompaña a los distintivos según lo que falte. */
+export function notaBilletera(listo: boolean, disponible: { apple: boolean; google: boolean }, aparato: "apple" | "android" | "otro"): string {
+  if (!listo) return "Se activa cuando tu entrada esté confirmada.";
+  const faltaApple = !disponible.apple && aparato !== "android";
+  const faltaGoogle = !disponible.google && aparato !== "apple";
+  if (faltaApple && faltaGoogle) return "Guardarla en Apple Wallet y Google Wallet estará disponible muy pronto.";
+  if (faltaApple) return "Apple Wallet estará disponible muy pronto.";
+  if (faltaGoogle) return "Google Wallet estará disponible muy pronto.";
+  return "El QR del pase es el mismo que leen en la puerta.";
+}
+
 export default function Wallet({
   token,
   listo,
   disponible,
   tier,
   alinear = "centro",
+  segunAparato = false,
+  conNota = true,
 }: {
   token?: string;
   listo: boolean;
@@ -116,18 +134,16 @@ export default function Wallet({
   tier: Tier;
   /** Centrado bajo una pieza, o pegado a la izquierda dentro de un formulario. */
   alinear?: "centro" | "inicio";
+  /** Solo el distintivo del aparato: Apple en iPhone/Mac, Google en Android; los dos si no se sabe. */
+  segunAparato?: boolean;
+  conNota?: boolean;
 }) {
-  const aparato = useSyncExternalStore(nada, familia, () => "otro");
+  const aparato = useAparato();
 
-  const orden: Destino[] = aparato === "android" ? ["google", "apple"] : ["apple", "google"];
+  const todos: Destino[] = aparato === "android" ? ["google", "apple"] : ["apple", "google"];
+  const orden: Destino[] = segunAparato && aparato !== "otro" ? [aparato === "android" ? "google" : "apple"] : todos;
   const conQr = listo && Boolean(token);
-
-  let nota: string;
-  if (!conQr) nota = "Se activa cuando tu entrada esté confirmada.";
-  else if (!disponible.apple && !disponible.google) nota = "Guardarla en Apple Wallet y Google Wallet estará disponible muy pronto.";
-  else if (!disponible.apple) nota = "Apple Wallet estará disponible muy pronto.";
-  else if (!disponible.google) nota = "Google Wallet estará disponible muy pronto.";
-  else nota = "Guarda tu entrada en el teléfono: el QR es el mismo que leen en la puerta.";
+  const nota = notaBilletera(conQr, disponible, segunAparato ? aparato : "otro");
 
   const alInicio = alinear === "inicio";
   return (
@@ -142,7 +158,7 @@ export default function Wallet({
           />
         ))}
       </div>
-      <p className={`max-w-sm text-xs font-light text-white/55 ${alInicio ? "" : "text-center"}`}>{nota}</p>
+      {conNota ? <p className={`max-w-sm text-xs font-light text-white/55 ${alInicio ? "" : "text-center"}`}>{nota}</p> : null}
     </div>
   );
 }

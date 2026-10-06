@@ -26,7 +26,7 @@ export default function Agenda() {
   return (
     <div>
       {/* Elegir salón: solo en celular. */}
-      <div className="sticky top-0 z-20 -mx-5 bg-night/92 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8 md:hidden">
+      <div className="sticky top-12 z-20 -mx-5 bg-night/92 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8 md:hidden">
         <div className="grid grid-cols-2 gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
           {SALONES.map((s) => (
             <button

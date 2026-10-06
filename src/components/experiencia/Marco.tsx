@@ -4,11 +4,14 @@ import Dot from "@/components/Dot";
 import Footer from "@/components/sections/Footer";
 import { EVENT } from "@/config/event";
 import type { Vista } from "@/lib/experiencia";
+import Barra from "./Barra";
+import Legal from "./Legal";
 
 /**
- * El marco de las páginas de la experiencia: cabecera con la marca, el
- * regreso a las tres tarjetas y el estado de la sesión, y el pie de la
- * landing. Todo lo que está adentro es lo que cambia entre experiencias.
+ * El marco de las páginas de la experiencia: la barra fija con lo que viene
+ * y los puntos, la cabecera con la marca, el regreso a las tres tarjetas y el
+ * estado de la sesión, los términos plegados y el pie de la landing. Todo lo
+ * que está adentro es lo que cambia entre experiencias.
  */
 export default function Marco({
   yo,
@@ -30,7 +33,8 @@ export default function Marco({
   // efecto al selector de salón «sticky» de la agenda.
   return (
     <main className="s-night relative min-h-dvh overflow-clip">
-      <header className="relative z-20 mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-5 pt-6 sm:px-8 md:px-14 lg:px-20">
+      <Barra yo={yo} />
+      <header className="relative z-20 mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-5 pt-5 sm:px-8 md:px-14 lg:px-20">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center py-1.5" aria-label={EVENT.fullName}>
             <Image src="/img/habi-next-logo.svg" alt={EVENT.fullName} width={780} height={260} priority className="h-8 w-auto md:h-11" />
@@ -75,8 +79,9 @@ export default function Marco({
         {bajada ? <p className="mt-6 max-w-2xl text-lg font-light leading-relaxed text-white/70 md:text-xl">{bajada}</p> : null}
       </section>
 
-      <div className="relative z-10 mx-auto max-w-[1400px] px-5 pb-20 sm:px-8 md:px-14 md:pb-28 lg:px-20">{children}</div>
+      <div className="relative z-10 mx-auto max-w-[1400px] px-5 pb-16 sm:px-8 md:px-14 md:pb-20 lg:px-20">{children}</div>
 
+      <Legal />
       <Footer />
     </main>
   );

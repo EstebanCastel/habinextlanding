@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { gsap, useGSAP } from "@/lib/gsap";
 import {
@@ -21,6 +21,7 @@ import type { Vista } from "@/lib/experiencia";
 import type { MisionId } from "@/config/experiencia";
 import Dot from "@/components/Dot";
 import { BotonRed } from "./Redes";
+import Wallet, { AvisoBilletera, notaBilletera, useAparato } from "./Wallet";
 import type { EntradaVista } from "./entrada";
 import {
   cargarImagenDeArchivo,
@@ -53,8 +54,8 @@ type Props = {
   motivo: string;
   /** Sube cada vez que, desde arriba, alguien pide ver el QR: la carta se gira sola. */
   pedidoQr?: number;
-  /** Lo que va debajo de la nota de guardar: los distintivos de la billetera. */
-  pie?: ReactNode;
+  /** Qué billeteras están configuradas en el servidor. */
+  billetera: { apple: boolean; google: boolean };
 };
 
 const FORMATOS: { id: Formato; texto: string; nota: string }[] = [
@@ -62,7 +63,7 @@ const FORMATOS: { id: Formato; texto: string; nota: string }[] = [
   { id: "story", texto: "Historia", nota: "9:16 · Instagram y WhatsApp" },
 ];
 
-export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, pedidoQr = 0, pie }: Props) {
+export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, pedidoQr = 0, billetera }: Props) {
   const [nombre, setNombre] = useState(yo?.nombre ?? "");
   const [apellido, setApellido] = useState(yo?.apellido ?? "");
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);
@@ -90,6 +91,7 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
   const carta = useRef<HTMLDivElement>(null);
   const brillo = useRef<HTMLDivElement>(null);
   const archivo = useRef<HTMLInputElement>(null);
+  const camara = useRef<HTMLInputElement>(null);
   const cuadro = useRef(0);
   const arrastre = useRef<{ x: number; y: number; dx: number; dy: number } | null>(null);
   const fotoInicialCargada = useRef(false);
@@ -300,7 +302,17 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
   }
 
   const D = DISENO[formato];
-  const hayQr = Boolean(entrada?.qr);
+  const hayQr = Boolean(entrada?.qr) && entrada?.etapa !== "rechazado";
+  const aparato = useAparato();
+  const pista = volteado
+    ? hayQr
+      ? "Este es el QR que leen en la puerta. Toca la carta para volver al frente."
+      : "Atrás va tu entrada: el QR aparece cuando esté confirmada."
+    : !hayQr || !(aparato === "android" ? billetera.google : aparato === "apple" ? billetera.apple : billetera.apple && billetera.google)
+      ? notaBilletera(hayQr, billetera, aparato)
+      : foto
+        ? "Arrastra la foto para acomodarla. El carnet sale en blanco y negro, como la pieza oficial."
+        : "Al frente, tu carnet; atrás, tu entrada con el QR.";
 
   return (
     <section id="carnet" className="relative scroll-mt-24">
@@ -376,25 +388,24 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
             </div>
           </div>
 
+          {/* Ver el QR y llevarlo al teléfono, juntos: es lo que la gente
+              busca el día del evento. Solo la billetera del aparato; las dos
+              cuando no se sabe cuál es. */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <button type="button" onClick={() => setVolteado((v) => !v)} className={clasesBoton.borde} aria-pressed={volteado}>
+            <button type="button" onClick={() => setVolteado((v) => !v)} className={`${clasesBoton.borde} !py-3`} aria-pressed={volteado}>
               {volteado ? "Ver el frente" : hayQr ? "Ver mi QR de entrada" : "Ver el reverso"}
             </button>
+            <Wallet token={entrada?.token} listo={hayQr} disponible={billetera} tier={entrada?.tier ?? yo?.registro?.tier ?? "general"} segunAparato conNota={false} />
             {volteado && hayQr ? (
               <button type="button" onClick={guardarQr} className={clasesBoton.suave}>
                 Guardar el QR como imagen
               </button>
             ) : null}
           </div>
-          <p className="mt-3 text-center text-xs font-light text-white/45">
-            {volteado
-              ? hayQr
-                ? "Este es el QR que leen en la puerta. Toca la carta para volver al frente."
-                : "Atrás va tu entrada: el QR aparece cuando esté confirmada."
-              : foto
-                ? "Arrastra la foto para acomodarla. El carnet sale en blanco y negro, como la pieza oficial."
-                : "Al frente, tu carnet; atrás, tu entrada con el QR."}
-          </p>
+          <p className="mt-3 text-center text-xs font-light text-white/45">{pista}</p>
+          <div className="mt-3 empty:hidden">
+            <AvisoBilletera />
+          </div>
         </div>
 
         {/* Formulario */}
@@ -426,14 +437,21 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
 
           <div className="flex flex-col gap-2.5">
             <span className="text-sm font-medium tracking-tight text-white/65">Tu foto</span>
+            {/* `capture="user"` abre la cámara frontal en el celular; en el
+                computador el navegador lo ignora y abre el selector de archivos. */}
+            <input ref={camara} type="file" accept="image/*" capture="user" hidden onChange={(e) => elegirFoto(e.target.files?.[0])} />
             <input ref={archivo} type="file" accept="image/*" hidden onChange={(e) => elegirFoto(e.target.files?.[0])} />
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => archivo.current?.click()} className={clasesBoton.borde}>
-                {foto ? "Cambiar foto" : "Subir mi foto"}
+              <button type="button" onClick={() => camara.current?.click()} className={clasesBoton.borde}>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M4 8.5A2.5 2.5 0 016.5 6h1.2l1.1-1.6A1 1 0 019.6 4h4.8a1 1 0 01.8.4L16.3 6h1.2A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5v-8z" strokeLinejoin="round" />
+                  <circle cx="12" cy="12.5" r="3.2" />
+                </svg>
+                {foto ? "Tomarme otra" : "Tomarme una foto"}
               </button>
-              <span className="text-sm font-light text-white/45">
-                {foto ? "Se ve mejor de frente y con luz." : "Una foto tuya, de frente, con buena luz."}
-              </span>
+              <button type="button" onClick={() => archivo.current?.click()} className={clasesBoton.borde}>
+                {foto ? "Cambiar por otra" : "Subir una foto"}
+              </button>
             </div>
           </div>
 
@@ -494,17 +512,6 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
                   Publicar en Instagram
                 </BotonRed>
               </div>
-            </div>
-          ) : null}
-          <p className="text-sm font-light leading-relaxed text-white/45">
-            Al guardar, el carnet queda en tu sesión y se usa en las misiones. Tu foto no se publica en
-            ningún lado sin que tú le des el botón.
-          </p>
-
-          {pie ? (
-            <div className="flex flex-col gap-4 border-t border-white/10 pt-6">
-              <p className="text-sm font-medium tracking-tight text-white/70">Tu entrada en el teléfono</p>
-              {pie}
             </div>
           ) : null}
         </div>

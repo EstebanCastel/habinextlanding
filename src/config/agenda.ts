@@ -67,6 +67,12 @@ export type Sesion = {
   id: string;
   salon: SalonId;
   titulo: string;
+  /**
+   * Hora de inicio «HH:MM» (Bogotá), solo cuando el equipo la confirme. La
+   * pantalla no la muestra todavía; la barra de «lo que sigue» sí la usa
+   * para saber cuál es la próxima sesión el día del evento.
+   */
+  desde?: string;
   /** Quién la dicta. Vacío cuando todavía se está cerrando. */
   ponente?: string;
   /** Empresa o cargo de quien dicta, cuando aporta. */
@@ -362,4 +368,48 @@ export const esSesion = (s: Sesion) => !s.tipo;
 /** El número de la sesión dentro de su salón (1, 2, 3…), sin contar pausas. */
 export function numeroDe(s: Sesion): number {
   return sesionesDe(s.salon).filter(esSesion).findIndex((x) => x.id === s.id) + 1;
+}
+
+// ---------- lo que sigue ----------
+
+export type Proximo =
+  | { tipo: "antes"; dias: number }
+  | { tipo: "hoy"; sesion: Sesion | null; arranca: boolean }
+  | { tipo: "despues" };
+
+const DIA_EVENTO = "2026-10-20";
+
+/** «YYYY-MM-DD» y «HH:MM» en hora de Bogotá, para no depender del reloj del servidor. */
+function enBogota(ahora: Date): { fecha: string; hora: string } {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(ahora);
+  const v = (t: string) => partes.find((x) => x.type === t)?.value ?? "00";
+  return { fecha: `${v("year")}-${v("month")}-${v("day")}`, hora: `${v("hour") === "24" ? "00" : v("hour")}:${v("minute")}` };
+}
+
+/**
+ * Qué viene: antes del evento, cuántos días faltan; el día del evento, la
+ * próxima sesión con hora confirmada o, si no hay horas, con qué arranca el
+ * salón principal; después, nada que anunciar.
+ */
+export function proximo(ahora = new Date()): Proximo {
+  const { fecha, hora } = enBogota(ahora);
+  if (fecha < DIA_EVENTO) {
+    const dias = Math.round((Date.parse(`${DIA_EVENTO}T00:00:00-05:00`) - Date.parse(`${fecha}T00:00:00-05:00`)) / 86_400_000);
+    return { tipo: "antes", dias };
+  }
+  if (fecha > DIA_EVENTO) return { tipo: "despues" };
+  const conHora = SESIONES.filter((s) => esSesion(s) && s.desde).sort((a, b) => a.desde!.localeCompare(b.desde!));
+  if (conHora.length) {
+    const siguiente = conHora.find((s) => s.desde! >= hora) ?? null;
+    return { tipo: "hoy", sesion: siguiente, arranca: false };
+  }
+  return { tipo: "hoy", sesion: sesionesDe("inspira").find(esSesion) ?? null, arranca: true };
 }

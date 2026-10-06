@@ -4,11 +4,9 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MISIONES, type Fase, type MisionId } from "@/config/experiencia";
 import type { Vista } from "@/lib/experiencia";
-import Boleta from "./Boleta";
 import Carnet from "./Carnet";
 import Mapa from "./Mapa";
 import Misiones from "./Misiones";
-import Wallet, { AvisoBilletera } from "./Wallet";
 import { useEntrada } from "./entrada";
 import { pedir } from "./util";
 
@@ -16,11 +14,10 @@ import { pedir } from "./util";
  * La raíz de cada experiencia: sostiene a la persona (`yo`) y qué misión
  * está abierta, y reparte eso entre las piezas de la pantalla.
  *
- * En el carnet, la pantalla va en orden de lo que la persona quiere saber:
- * primero su entrada (¿está confirmada?, ¿de qué tipo?), después dos pasos
- * para jugar: armar el carnet —que atrás lleva el QR y debajo las
- * billeteras— y publicarlo para sumar puntos. Acá no se vende nada: la
- * persona ya tiene su entrada y lo que quiere es usarla.
+ * En el carnet son dos pasos: armar el carnet —que atrás lleva el QR y, al
+ * lado del botón del QR, la billetera del aparato— y publicarlo para sumar
+ * puntos. Acá no se vende nada ni se explica el estado de la entrada: quien
+ * entró ya la tiene aprobada.
  */
 export default function Sala({
   modo,
@@ -42,15 +39,13 @@ export default function Sala({
 }) {
   const router = useRouter();
   const [yo, setYo] = useState<Vista | null>(inicial);
-  const { entrada, motivo, cargando } = useEntrada();
+  const { entrada, motivo } = useEntrada();
   const misiones = MISIONES.filter((m) => m.experiencia === modo).map((m) => m.id);
   const [abierta, setAbierta] = useState<MisionId | null>(() => {
     if (abrir && misiones.includes(abrir as MisionId)) return abrir as MisionId;
     if (li === "ok") return misiones.find((m) => MISIONES.find((x) => x.id === m)?.red === "linkedin" && !inicial?.misiones[m]) ?? null;
     return null;
   });
-  // Cada vez que sube, el carnet se gira al QR y la página baja hasta él.
-  const [pedidoQr, setPedidoQr] = useState(0);
 
   const asegurar = useCallback(async (): Promise<Vista> => {
     if (yo) return yo;
@@ -71,41 +66,15 @@ export default function Sala({
     [misiones, router]
   );
 
-  const verQr = useCallback(() => {
-    setPedidoQr((n) => n + 1);
-    document.getElementById("carnet")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
   if (modo === "mapa") return <Mapa yo={yo} fase={fase} alCambiar={setYo} />;
 
   return (
     <div className="flex flex-col gap-14">
       {modo === "carnet" ? (
         <>
-          <Boleta yo={yo} entrada={entrada} motivo={motivo} cargando={cargando} alVerQr={verQr} />
-
           <section id="carnet-paso" className="flex flex-col gap-8">
             <Paso numero={1} titulo="Arma tu carnet." nota="Tu foto y tu nombre al frente; atrás, tu entrada con el QR. Es la pieza que publicas." />
-            <Carnet
-              yo={yo}
-              alCambiar={setYo}
-              alPublicar={irAMision}
-              entrada={entrada}
-              motivo={motivo}
-              pedidoQr={pedidoQr}
-              pie={
-                <>
-                  <AvisoBilletera />
-                  <Wallet
-                    token={entrada?.token}
-                    listo={Boolean(entrada?.qr) && entrada?.etapa !== "rechazado"}
-                    disponible={billetera}
-                    tier={entrada?.tier ?? yo?.registro?.tier ?? "general"}
-                    alinear="inicio"
-                  />
-                </>
-              }
-            />
+            <Carnet yo={yo} alCambiar={setYo} alPublicar={irAMision} entrada={entrada} motivo={motivo} billetera={billetera} />
           </section>
 
 
