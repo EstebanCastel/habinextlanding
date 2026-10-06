@@ -21,8 +21,15 @@ entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
   entró, para publicar en un clic (`/api/experiencia/linkedin` exige sesión).
   Las APIs tampoco crean participantes anónimos: sin cookie responden 401.
   Límite: 12 intentos por IP y 6 por correo cada 15 minutos.
-- **1 · Tu carnet** (`/experiencia/carnet`): el editor del carnet y las
-  misiones «Cuéntalo en LinkedIn» y «Súbelo a tus historias». 45 puntos.
+- **1 · Tu carnet** (`/experiencia/carnet`): la carta de dos caras (carnet al
+  frente, QR atrás, asteriscos animados en pantalla), el formulario con un
+  solo botón «Guardar carnet» y, ya guardado, el bloque `Publicar.tsx`:
+  «Publicar en LinkedIn» publica de una con `textoVoy` y el carnet (si no
+  está conectado, va a `/api/experiencia/linkedin?volver=carnet-publicar` y
+  al volver con `?auto=publicar` publica solo una vez); «Publicar en
+  Instagram» abre la hoja de compartir con la historia y el texto copiado.
+  El carnet guardado se carga de `/api/experiencia/archivo?f=carnet:<formato>`
+  para verlo igual desde otro aparato. 45 puntos.
 - **2 · El mapa del tesoro** (`/experiencia/mapa`): el plano ilustrado del
   recinto (escenarios con tarima y sillas, hall con los stands y sus logos,
   acreditación, entrada, zona VIP, café) con dos rutas, la morada y la dorada,
