@@ -30,9 +30,14 @@ export const dynamic = "force-dynamic";
 const EXPERIENCIAS = new Set(["carnet", "mapa", "redes"]);
 
 function volverCon(base: string, params: Record<string, string>, ancla = "") {
-  const url = new URL(EXPERIENCIAS.has(ancla) ? `${base}/experiencia/${ancla}` : `${base}/experiencia`);
+  // `carnet-publicar`: la persona conectó LinkedIn para publicar su carnet
+  // ya mismo; el carnet lo publica solo al volver.
+  const aPublicar = ancla === "carnet-publicar";
+  const destino = aPublicar ? "carnet" : ancla;
+  const url = new URL(EXPERIENCIAS.has(destino) ? `${base}/experiencia/${destino}` : `${base}/experiencia`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  if (!EXPERIENCIAS.has(ancla)) url.hash = ancla;
+  if (aPublicar) url.searchParams.set("auto", "publicar");
+  if (!EXPERIENCIAS.has(destino)) url.hash = ancla;
   const res = NextResponse.redirect(url.toString(), { status: 303 });
   res.cookies.set(COOKIE_ESTADO, "", { path: "/api/experiencia/linkedin", maxAge: 0 });
   return res;

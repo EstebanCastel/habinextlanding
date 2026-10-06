@@ -375,6 +375,8 @@ export const PONENTES: Record<string, Ficha> = {
   "Dani Bravo": { foto: "/img/ponentes/dani-bravo.jpg", cargo: "Cofundador de Tribu IA" },
   "Germán Rueda": { foto: "/img/ponentes/german-rueda.jpg", cargo: "Habi" },
   "Edwin Alejo": { foto: "/img/ponentes/edwin-alejo.jpg", cargo: "VP de Franquicias · Habi" },
+  "Mateo Jaramillo": { foto: "/img/ponentes/mateo-jaramillo.jpg", cargo: "CEO de Grapez Studio" },
+  "Juanfe Quiñones": { foto: "/img/ponentes/juanfe-quinones.jpg", cargo: "IA generativa · Habi" },
   Auco: { logo: "/img/marcas/auco.png" },
   Wekall: { logo: "/img/marcas/wekall.svg" },
 };

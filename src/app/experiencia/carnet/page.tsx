@@ -17,7 +17,7 @@ const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
 export default async function PaginaCarnet({
   searchParams,
 }: {
-  searchParams: Promise<{ li?: string; abrir?: string; vista?: string }>;
+  searchParams: Promise<{ li?: string; abrir?: string; vista?: string; auto?: string }>;
 }) {
   const q = await searchParams;
   // `vista=1` deja revisar el carnet y la credencial sin sesión, en desarrollo.
@@ -44,6 +44,7 @@ export default async function PaginaCarnet({
         sitio={SITIO}
         li={q.li}
         abrir={q.abrir}
+        auto={q.auto}
         billetera={disponibilidad()}
       />
     </Marco>

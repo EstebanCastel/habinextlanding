@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { gsap, useGSAP } from "@/lib/gsap";
 import {
   aBlob,
+  ASTERISCO_PUNTOS,
   cargarFuentes,
   cargarImagen,
   cargarRecursos,
@@ -18,44 +19,34 @@ import {
   type Recursos,
 } from "@/lib/carnet";
 import type { Vista } from "@/lib/experiencia";
-import type { MisionId } from "@/config/experiencia";
 import Dot from "@/components/Dot";
-import { BotonRed } from "./Redes";
+import Publicar from "./Publicar";
 import Wallet, { AvisoBilletera, notaBilletera, useAparato } from "./Wallet";
 import type { EntradaVista } from "./entrada";
-import {
-  cargarImagenDeArchivo,
-  claseCampo,
-  clasesBoton,
-  compartirArchivos,
-  descargar,
-  pedir,
-  useMovil,
-} from "./util";
+import { cargarImagenDeArchivo, claseCampo, clasesBoton, compartirArchivos, descargar, pedir, useMovil } from "./util";
 
 /**
- * El editor del carnet. La persona escribe su nombre, sube su foto y la
- * acomoda; el carnet se redibuja con cada cambio. Al guardar se exportan los
- * dos formatos —publicación e historia— y se suben al servidor, y el que está
- * en pantalla se descarga o se comparte.
+ * El carnet: una carta con dos caras y un formulario.
  *
- * El carnet es una carta con dos caras: al frente la pieza que se publica y
- * atrás la entrada, con el QR de Luma. La carta flota, se inclina con el
- * mouse y un destello la recorre cada tanto, para que se vea viva; el giro
- * se dispara con el botón o desde «Ver mi QR» arriba.
+ * Al frente la pieza que se publica, con los dos asteriscos vivos encima
+ * del lienzo; atrás la entrada con el QR de Luma. La carta flota, se inclina
+ * con el mouse y un destello la recorre cada tanto. Quien ya guardó su
+ * carnet lo ve tal cual lo dejó, también desde otro aparato: la imagen
+ * guardada se trae del servidor hasta que suba otra foto.
+ *
+ * Un solo botón para guardar. Al guardar, el carnet se sube en sus dos
+ * formatos y se entrega al teléfono (hoja de compartir en el celular,
+ * descarga en el computador); y aparece el bloque para publicarlo.
  */
 
 type Props = {
   yo: Vista | null;
   alCambiar: (yo: Vista) => void;
-  alPublicar: (m: MisionId) => void;
-  /** La entrada de la persona, para el reverso. */
   entrada: EntradaVista | null;
   motivo: string;
-  /** Sube cada vez que, desde arriba, alguien pide ver el QR: la carta se gira sola. */
-  pedidoQr?: number;
-  /** Qué billeteras están configuradas en el servidor. */
   billetera: { apple: boolean; google: boolean };
+  li?: string;
+  auto?: string;
 };
 
 const FORMATOS: { id: Formato; texto: string; nota: string }[] = [
@@ -63,7 +54,7 @@ const FORMATOS: { id: Formato; texto: string; nota: string }[] = [
   { id: "story", texto: "Historia", nota: "9:16 · Instagram y WhatsApp" },
 ];
 
-export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, pedidoQr = 0, billetera }: Props) {
+export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, auto }: Props) {
   const [nombre, setNombre] = useState(yo?.nombre ?? "");
   const [apellido, setApellido] = useState(yo?.apellido ?? "");
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);
@@ -71,6 +62,7 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
   const [formato, setFormato] = useState<Formato>("feed");
   const [recursos, setRecursos] = useState<Record<Formato, Recursos> | null>(null);
   const [familia, setFamilia] = useState("Urbanist, system-ui, sans-serif");
+  const [guardado, setGuardado] = useState<Partial<Record<Formato, HTMLImageElement>>>({});
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,18 +70,13 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
   const [qrImg, setQrImg] = useState<HTMLImageElement | null>(null);
   const movil = useMovil();
 
-  // El pedido llega desde «Tu entrada»: se gira al QR sin buscar el botón.
-  const [pedidoVisto, setPedidoVisto] = useState(pedidoQr);
-  if (pedidoQr !== pedidoVisto) {
-    setPedidoVisto(pedidoQr);
-    if (pedidoQr > 0) setVolteado(true);
-  }
-
   const lienzo = useRef<HTMLCanvasElement>(null);
   const reverso = useRef<HTMLCanvasElement>(null);
   const escena = useRef<HTMLDivElement>(null);
   const carta = useRef<HTMLDivElement>(null);
   const brillo = useRef<HTMLDivElement>(null);
+  const astBlanco = useRef<SVGSVGElement>(null);
+  const astMorado = useRef<SVGSVGElement>(null);
   const archivo = useRef<HTMLInputElement>(null);
   const camara = useRef<HTMLInputElement>(null);
   const cuadro = useRef(0);
@@ -112,15 +99,37 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
     };
   }, []);
 
-  // Si conectó LinkedIn, su foto de perfil arranca puesta.
+  // El carnet ya guardado, para verlo igual desde cualquier aparato.
+  useEffect(() => {
+    const formatos = yo?.carnet?.formatos ?? [];
+    if (!formatos.length) return;
+    let vivo = true;
+    Promise.all(
+      formatos.map((f) =>
+        cargarImagen(`/api/experiencia/archivo?f=carnet:${f}&v=${encodeURIComponent(yo?.carnet?.renderizadoEn ?? "")}`)
+          .then((img) => [f, img] as const)
+          .catch(() => null)
+      )
+    ).then((pares) => {
+      if (!vivo) return;
+      const listo: Partial<Record<Formato, HTMLImageElement>> = {};
+      for (const par of pares) if (par) listo[par[0]] = par[1];
+      setGuardado(listo);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [yo?.carnet?.formatos, yo?.carnet?.renderizadoEn]);
+
+  // Si conectó LinkedIn y no tiene carnet, su foto de perfil arranca puesta.
   useEffect(() => {
     const fotoId = yo?.linkedin?.fotoId;
-    if (!fotoId || foto || fotoInicialCargada.current) return;
+    if (!fotoId || foto || yo?.carnet || fotoInicialCargada.current) return;
     fotoInicialCargada.current = true;
     cargarImagen(`/api/experiencia/archivo?f=${encodeURIComponent(fotoId)}`)
       .then((img) => setFoto((actual) => actual ?? img))
       .catch(() => null);
-  }, [yo?.linkedin?.fotoId, foto]);
+  }, [yo?.linkedin?.fotoId, yo?.carnet, foto]);
 
   // El QR de Luma se rasteriza una vez; nivel de corrección alto porque se
   // lee de una pantalla, a veces con brillo y con la mano temblando en fila.
@@ -139,16 +148,27 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
     };
   }, [entrada?.qr]);
 
+  // Sin foto nueva, se muestra el carnet guardado tal cual; con foto, el vivo.
+  const mostrandoGuardado = !foto && Boolean(guardado[formato]);
+
   // Redibujo del frente con cada cambio, agrupado por cuadro de animación.
   useEffect(() => {
     if (!recursos || !lienzo.current) return;
     cancelAnimationFrame(cuadro.current);
     const c = lienzo.current;
     cuadro.current = requestAnimationFrame(() => {
-      dibujar(c, { formato, nombre, apellido, foto, encuadre, recursos: recursos[formato], familia });
+      const listo = guardado[formato];
+      if (!foto && listo) {
+        const D = DISENO[formato];
+        c.width = D.w;
+        c.height = D.h;
+        c.getContext("2d")!.drawImage(listo, 0, 0, D.w, D.h);
+        return;
+      }
+      dibujar(c, { formato, nombre, apellido, foto, encuadre, recursos: recursos[formato], familia, sinAsteriscos: true });
     });
     return () => cancelAnimationFrame(cuadro.current);
-  }, [recursos, formato, nombre, apellido, foto, encuadre, familia]);
+  }, [recursos, formato, nombre, apellido, foto, encuadre, familia, guardado]);
 
   // El reverso cambia menos: nombre, formato y la entrada.
   const tier = entrada?.tier ?? yo?.registro?.tier ?? "general";
@@ -168,7 +188,7 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
     });
   }, [recursos, formato, nombre, apellido, tier, entrada, qrImg, motivo, familia]);
 
-  // --- la carta viva: flotación, destello y giro ---
+  // --- la carta viva: flotación, destello, giro y los asteriscos girando ---
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
@@ -179,10 +199,17 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
           { xPercent: -140, opacity: 0 },
           { xPercent: 140, opacity: 1, duration: 1.5, ease: "power1.inOut", repeat: -1, repeatDelay: 4 }
         );
+        // Los asteriscos giran despacio, uno hacia cada lado, y respiran. No
+        // existen mientras se muestra el carnet guardado (ya van pintados).
+        if (astBlanco.current && astMorado.current) {
+          gsap.to(astBlanco.current, { rotate: 360, duration: 46, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
+          gsap.to(astMorado.current, { rotate: -360, duration: 64, ease: "none", repeat: -1, transformOrigin: "50% 50%" });
+          gsap.to([astBlanco.current, astMorado.current], { scale: 1.07, duration: 2.8, ease: "sine.inOut", yoyo: true, repeat: -1, stagger: 1.2, transformOrigin: "50% 50%" });
+        }
       });
       return () => mm.revert();
     },
-    { scope: escena }
+    { scope: escena, dependencies: [mostrandoGuardado] }
   );
 
   useEffect(() => {
@@ -207,6 +234,7 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
   const elegirFoto = useCallback(async (f: File | undefined) => {
     if (!f) return;
     setError(null);
+    setAviso(null);
     try {
       const img = await cargarImagenDeArchivo(f);
       setFoto(img);
@@ -241,34 +269,47 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
     arrastre.current = null;
   };
 
-  async function guardar(accion: "descargar" | "compartir") {
-    if (!recursos || !lienzo.current) return;
-    if (!foto) return setError("Sube tu foto para armar el carnet.");
-    if (nombre.trim().length < 2) return setError("Escribe tu nombre.");
+  /** Entrega una imagen al teléfono o al computador: hoja de compartir o descarga. */
+  async function entregar(blob: Blob, nombreArchivo: string, titulo: string): Promise<boolean> {
+    if (movil) {
+      const r = await compartirArchivos([new File([blob], nombreArchivo, { type: "image/jpeg" })], titulo);
+      if (r !== "no-soportado") return r === "compartido";
+    }
+    descargar(blob, nombreArchivo);
+    return true;
+  }
+
+  async function guardar() {
+    if (!recursos) return;
     setError(null);
     setAviso(null);
+
+    // Ya guardado y sin cambios: solo se vuelve a entregar al teléfono.
+    if (mostrandoGuardado) {
+      const listo = guardado[formato]!;
+      const c = document.createElement("canvas");
+      c.width = listo.naturalWidth;
+      c.height = listo.naturalHeight;
+      c.getContext("2d")!.drawImage(listo, 0, 0);
+      await entregar(await aBlob(c, 0.92), `habi-next-carnet-${formato}.jpg`, "Mi carnet de Habi Next Colombia");
+      return;
+    }
+
+    if (!foto) return setError("Toma o sube tu foto para armar el carnet.");
+    if (nombre.trim().length < 2) return setError("Escribe tu nombre.");
     setOcupado(true);
     try {
-      // El formato en pantalla ya está dibujado; el otro se dibuja aparte.
-      const visible = await aBlob(lienzo.current, 0.92);
-      const nombreArchivo = `habi-next-carnet-${formato}.jpg`;
-
-      // Compartir va antes que subir: el sistema solo abre la hoja de
-      // compartir si pasa poco tiempo desde que la persona tocó el botón.
-      let entregado = false;
-      if (accion === "compartir") {
-        const r = await compartirArchivos([new File([visible], nombreArchivo, { type: "image/jpeg" })], "Mi carnet de Habi Next Colombia");
-        entregado = r === "compartido" || r === "cancelado";
-        if (r === "no-soportado") descargar(visible, nombreArchivo);
-      } else {
-        descargar(visible, nombreArchivo);
-        entregado = true;
+      // Las dos piezas finales, con los asteriscos pintados.
+      const salidas = {} as Record<Formato, Blob>;
+      for (const f of ["feed", "story"] as Formato[]) {
+        const aparte = document.createElement("canvas");
+        dibujar(aparte, { formato: f, nombre, apellido, foto, encuadre, recursos: recursos[f], familia });
+        salidas[f] = await aBlob(aparte, 0.92);
       }
 
-      const otro: Formato = formato === "feed" ? "story" : "feed";
-      const aparte = document.createElement("canvas");
-      dibujar(aparte, { formato: otro, nombre, apellido, foto, encuadre, recursos: recursos[otro], familia });
-      const salidas: Record<Formato, Blob> = { [formato]: visible, [otro]: await aBlob(aparte, 0.92) } as Record<Formato, Blob>;
+      // Primero al teléfono: la hoja de compartir solo abre si pasa poco
+      // tiempo desde que la persona tocó el botón.
+      const entregado = await entregar(salidas[formato], `habi-next-carnet-${formato}.jpg`, "Mi carnet de Habi Next Colombia");
 
       let ultimo: Vista | undefined;
       for (const f of ["feed", "story"] as Formato[]) {
@@ -281,11 +322,7 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
         ultimo = r.yo;
       }
       if (ultimo) alCambiar(ultimo);
-      setAviso(
-        entregado
-          ? "Listo: tu carnet quedó guardado. Sigue con las misiones para compartirlo."
-          : "Tu carnet quedó guardado. Abajo puedes compartirlo."
-      );
+      setAviso(entregado ? "Listo: tu carnet quedó guardado. Ahora publícalo." : "Tu carnet quedó guardado. Ahora publícalo.");
     } catch (e) {
       setError((e as Error).message || "Algo falló al guardar. Inténtalo otra vez.");
     } finally {
@@ -296,30 +333,36 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
   async function guardarQr() {
     if (!reverso.current) return;
     const blob = await aBlob(reverso.current, 0.92);
-    const archivoQr = new File([blob], "habi-next-entrada.jpg", { type: "image/jpeg" });
-    const r = await compartirArchivos([archivoQr], "Mi entrada a Habi Next Colombia");
-    if (r === "no-soportado") descargar(blob, "habi-next-entrada.jpg");
+    await entregar(blob, "habi-next-entrada.jpg", "Mi entrada a Habi Next Colombia");
   }
 
   const D = DISENO[formato];
+  const A = D.asteriscos;
   const hayQr = Boolean(entrada?.qr) && entrada?.etapa !== "rechazado";
   const aparato = useAparato();
+  const faltaBilletera = !(aparato === "android" ? billetera.google : aparato === "apple" ? billetera.apple : billetera.apple && billetera.google);
   const pista = volteado
     ? hayQr
       ? "Este es el QR que leen en la puerta. Toca la carta para volver al frente."
       : "Atrás va tu entrada: el QR aparece cuando esté confirmada."
-    : !hayQr || !(aparato === "android" ? billetera.google : aparato === "apple" ? billetera.apple : billetera.apple && billetera.google)
+    : !hayQr || faltaBilletera
       ? notaBilletera(hayQr, billetera, aparato)
       : foto
         ? "Arrastra la foto para acomodarla. El carnet sale en blanco y negro, como la pieza oficial."
         : "Al frente, tu carnet; atrás, tu entrada con el QR.";
+  const posicion = (cx: number) => ({
+    left: `${((cx - A.tam / 2) / D.w) * 100}%`,
+    top: `${((A.y - A.tam / 2) / D.h) * 100}%`,
+    width: `${(A.tam / D.w) * 100}%`,
+  });
 
   return (
     <section id="carnet" className="relative scroll-mt-24">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
-        {/* Vista previa: la carta con sus dos caras */}
-        <div className="lg:sticky lg:top-8">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16">
+        {/* La carta con sus dos caras. En celular va compacta para que el
+            formulario quede a la mano; en pantalla ancha, grande y fija. */}
+        <div className="lg:sticky lg:top-16">
+          <div className="mb-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
             {FORMATOS.map((f) => (
               <button
                 key={f.id}
@@ -339,16 +382,12 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
 
           <div
             ref={escena}
-            className="relative mx-auto select-none"
-            style={{ maxWidth: formato === "feed" ? "34rem" : "26rem", perspective: "1600px" }}
+            className={`relative mx-auto select-none ${formato === "feed" ? "max-w-[16rem] sm:max-w-[24rem] lg:max-w-[34rem]" : "max-w-[12rem] sm:max-w-[18rem] lg:max-w-[26rem]"}`}
+            style={{ perspective: "1600px" }}
             onMouseMove={seguirMouse}
             onMouseLeave={soltarMouse}
           >
-            <div
-              ref={carta}
-              className="relative w-full"
-              style={{ transformStyle: "preserve-3d", aspectRatio: `${D.w} / ${D.h}` }}
-            >
+            <div ref={carta} className="relative w-full" style={{ transformStyle: "preserve-3d", aspectRatio: `${D.w} / ${D.h}` }}>
               {/* Frente */}
               <div
                 className="absolute inset-0 overflow-hidden rounded-[22px] border border-white/10 bg-ink shadow-[0_40px_90px_-40px_rgba(128,46,246,0.55)]"
@@ -366,6 +405,27 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
                   style={{ touchAction: foto ? "none" : "auto" }}
                   aria-label="Vista previa de tu carnet"
                 />
+                {/* Los dos asteriscos, vivos. El guardado ya los trae pintados. */}
+                {!mostrandoGuardado ? (
+                  <>
+                    <span aria-hidden="true" className="pointer-events-none absolute aspect-square" style={posicion(A.blanco)}>
+                      <svg ref={astBlanco} viewBox="0 0 152.4 152.47" className="block h-full w-full overflow-visible">
+                        <polygon points={ASTERISCO_PUNTOS} fill="none" stroke="#ffffff" strokeWidth="2.8" strokeLinejoin="miter" />
+                      </svg>
+                    </span>
+                    <span aria-hidden="true" className="pointer-events-none absolute aspect-square" style={posicion(A.morado)}>
+                      <svg ref={astMorado} viewBox="0 0 152.4 152.47" className="block h-full w-full overflow-visible">
+                        <defs>
+                          <linearGradient id="carnet-ast-morado" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stopColor="#802ef6" />
+                            <stop offset="1" stopColor="#4b1a8b" />
+                          </linearGradient>
+                        </defs>
+                        <polygon points={ASTERISCO_PUNTOS} fill="url(#carnet-ast-morado)" />
+                      </svg>
+                    </span>
+                  </>
+                ) : null}
                 <div
                   ref={brillo}
                   className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent"
@@ -395,7 +455,7 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
             <button type="button" onClick={() => setVolteado((v) => !v)} className={`${clasesBoton.borde} !py-3`} aria-pressed={volteado}>
               {volteado ? "Ver el frente" : hayQr ? "Ver mi QR de entrada" : "Ver el reverso"}
             </button>
-            <Wallet token={entrada?.token} listo={hayQr} disponible={billetera} tier={entrada?.tier ?? yo?.registro?.tier ?? "general"} segunAparato conNota={false} />
+            <Wallet token={entrada?.token} listo={hayQr} disponible={billetera} tier={tier} segunAparato conNota={false} />
             {volteado && hayQr ? (
               <button type="button" onClick={guardarQr} className={clasesBoton.suave}>
                 Guardar el QR como imagen
@@ -413,25 +473,11 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="flex flex-col gap-2.5">
               <span className="text-sm font-medium tracking-tight text-white/65">Nombre</span>
-              <input
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                maxLength={40}
-                autoComplete="given-name"
-                placeholder="Felipe"
-                className={claseCampo}
-              />
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={40} autoComplete="given-name" placeholder="Felipe" className={claseCampo} />
             </label>
             <label className="flex flex-col gap-2.5">
               <span className="text-sm font-medium tracking-tight text-white/65">Apellido</span>
-              <input
-                value={apellido}
-                onChange={(e) => setApellido(e.target.value)}
-                maxLength={40}
-                autoComplete="family-name"
-                placeholder="Restrepo"
-                className={claseCampo}
-              />
+              <input value={apellido} onChange={(e) => setApellido(e.target.value)} maxLength={40} autoComplete="family-name" placeholder="Restrepo" className={claseCampo} />
             </label>
           </div>
 
@@ -447,10 +493,10 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
                   <path d="M4 8.5A2.5 2.5 0 016.5 6h1.2l1.1-1.6A1 1 0 019.6 4h4.8a1 1 0 01.8.4L16.3 6h1.2A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5v-8z" strokeLinejoin="round" />
                   <circle cx="12" cy="12.5" r="3.2" />
                 </svg>
-                {foto ? "Tomarme otra" : "Tomarme una foto"}
+                {foto || mostrandoGuardado ? "Tomarme otra" : "Tomarme una foto"}
               </button>
               <button type="button" onClick={() => archivo.current?.click()} className={clasesBoton.borde}>
-                {foto ? "Cambiar por otra" : "Subir una foto"}
+                {foto || mostrandoGuardado ? "Cambiar por otra" : "Subir una foto"}
               </button>
             </div>
           </div>
@@ -486,34 +532,18 @@ export default function Carnet({ yo, alCambiar, alPublicar, entrada, motivo, ped
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <button
-              type="button"
-              disabled={ocupado || !recursos}
-              onClick={() => guardar(movil ? "compartir" : "descargar")}
-              className={clasesBoton.solido}
-            >
-              {ocupado ? "Guardando…" : movil ? "Guardar y compartir" : "Guardar y descargar"}
+          <div>
+            <button type="button" disabled={ocupado || !recursos} onClick={guardar} className={`${clasesBoton.solido} w-full sm:w-auto`}>
+              {ocupado ? "Guardando…" : mostrandoGuardado ? (movil ? "Guardar en mi teléfono" : "Descargar mi carnet") : "Guardar carnet"}
             </button>
-            {movil ? (
-              <button type="button" disabled={ocupado || !recursos} onClick={() => guardar("descargar")} className={clasesBoton.borde}>
-                Solo descargar
-              </button>
+            {!mostrandoGuardado && !yo?.carnet ? (
+              <p className="mt-2 text-xs font-light text-white/45">
+                {movil ? "Se abre la hoja para guardarlo en tus fotos y queda listo para publicar." : "Se descarga y queda listo para publicar."}
+              </p>
             ) : null}
           </div>
-          {yo?.carnet ? (
-            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-sm font-medium tracking-tight text-white/70">Tu carnet ya está listo. Publícalo:</p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <BotonRed red="linkedin" onClick={() => alPublicar("linkedin_voy")}>
-                  Publicar en LinkedIn
-                </BotonRed>
-                <BotonRed red="instagram" onClick={() => alPublicar("instagram_voy")}>
-                  Publicar en Instagram
-                </BotonRed>
-              </div>
-            </div>
-          ) : null}
+
+          {yo?.carnet ? <Publicar yo={yo} tier={tier} li={li} auto={auto} alCambiar={alCambiar} /> : null}
         </div>
       </div>
     </section>

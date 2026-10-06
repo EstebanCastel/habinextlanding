@@ -131,6 +131,9 @@ const ASTERISCO = [
   142.98, 81.96, 142.98, 81.96, 90.16, 119.3, 127.51, 127.45, 119.36, 90.11, 82, 142.91, 82,
 ];
 
+/** Los mismos puntos como atributo `points` de un `<polygon>`, para animarlo encima del lienzo. */
+export const ASTERISCO_PUNTOS = ASTERISCO.join(" ");
+
 export function trazarAsterisco(ctx: CanvasRenderingContext2D, cx: number, cy: number, tam: number) {
   const k = tam / 152.4;
   ctx.beginPath();
@@ -216,6 +219,8 @@ export type OpcionesDeDibujo = {
   encuadre: Encuadre;
   recursos: Recursos;
   familia: string;
+  /** En pantalla los asteriscos van aparte, animados; en la imagen final, pintados. */
+  sinAsteriscos?: boolean;
 };
 
 export function dibujar(canvas: HTMLCanvasElement, o: OpcionesDeDibujo) {
@@ -308,17 +313,19 @@ export function dibujar(canvas: HTMLCanvasElement, o: OpcionesDeDibujo) {
 
   // --- los dos asteriscos ---
   const A = D.asteriscos;
-  trazarAsterisco(ctx, A.blanco, A.y, A.tam);
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = Math.max(3, A.tam * 0.018);
-  ctx.lineJoin = "miter";
-  ctx.stroke();
-  const degrade = ctx.createLinearGradient(A.morado - A.tam / 2, A.y - A.tam / 2, A.morado + A.tam / 2, A.y + A.tam / 2);
-  degrade.addColorStop(0, VIOLETA);
-  degrade.addColorStop(1, VIOLETA_OSCURO);
-  ctx.fillStyle = degrade;
-  trazarAsterisco(ctx, A.morado, A.y, A.tam);
-  ctx.fill();
+  if (!o.sinAsteriscos) {
+    trazarAsterisco(ctx, A.blanco, A.y, A.tam);
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = Math.max(3, A.tam * 0.018);
+    ctx.lineJoin = "miter";
+    ctx.stroke();
+    const degrade = ctx.createLinearGradient(A.morado - A.tam / 2, A.y - A.tam / 2, A.morado + A.tam / 2, A.y + A.tam / 2);
+    degrade.addColorStop(0, VIOLETA);
+    degrade.addColorStop(1, VIOLETA_OSCURO);
+    ctx.fillStyle = degrade;
+    trazarAsterisco(ctx, A.morado, A.y, A.tam);
+    ctx.fill();
+  }
 
   // --- el nombre ---
   const maximo = w - D.margen * 2;
