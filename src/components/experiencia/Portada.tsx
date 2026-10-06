@@ -78,7 +78,7 @@ export default function Portada({
                     )}
                   </>
                 ) : (
-                  <>Tu avance se guarda cuando entras: correo y cédula, o LinkedIn.</>
+                  <>Entra con el correo y la cédula de tu entrada para jugar y guardar tu avance.</>
                 )}
               </p>
             </div>

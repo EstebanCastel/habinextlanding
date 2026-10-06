@@ -40,6 +40,7 @@ export async function POST(request: Request) {
   if (!tipo || tipo.tipo !== "image/jpeg") return error("El carnet tiene que ser una imagen JPG.");
 
   const sesion = await participanteOCrear();
+  if (!sesion) return error("Entra con tu correo y cédula para continuar.", 401);
   const id = sesion.participante.id;
 
   await guardarArchivo(rutaDeCarnet(id, formato), bytes, "image/jpeg");

@@ -316,17 +316,17 @@ export async function porCorreo(email: string): Promise<Participante | null> {
 
 export type Entrada =
   | { ok: true; participante: Participante; nuevo: boolean }
-  | { ok: false; motivo: "cedula" | "linkedin" | "datos" };
+  | { ok: false; motivo: "cedula" | "datos" | "sin-entrada" | "pendiente" };
 
 /**
- * Entra con correo y cédula.
+ * Entra con correo y cédula: los mismos de la entrada en Luma.
  *
- * El correo dice quién es; la cédula es la clave. La primera vez que alguien
- * entra, la cédula que escribe queda fijada (con hash) y, si su registro de
- * Luma no tenía cédula, se le completa: es el mismo dato que se coteja en la
- * puerta. Si el correo pertenece a alguien que entró con LinkedIn y nunca
- * fijó cédula, se le pide entrar con LinkedIn: no se deja que un tercero
- * «reclame» esa cuenta con un número inventado.
+ * La experiencia es para quien ya tiene su entrada, así que la puerta es la
+ * boletería: tiene que existir un registro **aprobado** con ese correo, y la
+ * cédula tiene que ser la que quedó en Luma. Si en Luma no quedó cédula (el
+ * formulario no la exigía al principio), la primera que escriba la persona
+ * se guarda en el registro y desde ahí es la que vale, también en la puerta.
+ * El hash en `credencial` se refresca en cada entrada: Luma manda.
  */
 export async function entrar(datos: { email: string; cedula: string }): Promise<Entrada> {
   const email = normalizarCorreo(datos.email);
@@ -334,33 +334,39 @@ export async function entrar(datos: { email: string; cedula: string }): Promise<
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || cedula.length < 6 || cedula.length > 12) {
     return { ok: false, motivo: "datos" };
   }
+
+  const registros = (await todosLosRegistros().catch(() => []))
+    .filter((r) => normalizarCorreo(r.luma.email) === email && r.etapa !== "rechazado")
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+  const mio = registros.find((r) => r.etapa === "aprobado");
+  if (!mio) return { ok: false, motivo: registros.length ? "pendiente" : "sin-entrada" };
+  if (mio.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
+
   const hash = hashCedula(email, cedula);
   const ahora = new Date().toISOString();
+  const registro = { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: ahora };
+  const partes = (mio.luma.nombre ?? "").trim().split(/\s+/).filter(Boolean);
 
   const existente = await porCorreo(email);
   if (existente) {
-    if (existente.credencial) {
-      if (!igualSeguro(existente.credencial.cedulaHash, hash)) return { ok: false, motivo: "cedula" };
-      const p = await cambiar(existente.id, (q) => ({ ...q, credencial: { ...q.credencial!, ultimaEntrada: ahora } }));
-      return { ok: true, participante: p ?? existente, nuevo: false };
-    }
-    if (existente.linkedin) return { ok: false, motivo: "linkedin" };
     const p = await cambiar(existente.id, (q) =>
-      anotar({ ...q, credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora } }, "fijó su cédula como clave")
+      anotar(
+        {
+          ...q,
+          email,
+          credencial: { email, cedulaHash: hash, creadaEn: q.credencial?.creadaEn ?? ahora, ultimaEntrada: ahora },
+          registro: q.registro?.token === mio.token ? { ...q.registro, etapa: mio.etapa } : registro,
+        },
+        "entró con correo y cédula",
+        `${mio.tier} · ${mio.etapa}`
+      )
     );
+    if (!mio.luma.cedula) await fijarCedulaEnLuma(mio.token, cedula);
     return { ok: true, participante: p ?? existente, nuevo: false };
   }
 
-  // Sin participante todavía: se busca su registro de boletería por correo.
-  const registros = await todosLosRegistros().catch(() => []);
-  const mio = registros
-    .filter((r) => normalizarCorreo(r.luma.email) === email && r.etapa !== "rechazado")
-    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))[0];
-  if (mio?.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
-
   const base = await crear();
   await escribir(rutaIndiceCorreo(email), { id: base.id, en: ahora });
-  const partes = (mio?.luma.nombre ?? "").trim().split(/\s+/).filter(Boolean);
   const p = await cambiar(base.id, (q) =>
     anotar(
       {
@@ -369,17 +375,19 @@ export async function entrar(datos: { email: string; cedula: string }): Promise<
         nombre: partes[0] ?? q.nombre,
         apellido: partes.length > 1 ? partes.slice(partes.length > 2 ? 2 : 1).join(" ") || partes[1] : q.apellido,
         credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora },
-        ...(mio ? { registro: { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: ahora } } : {}),
+        registro,
       },
       "entró con correo y cédula",
-      mio ? `${mio.tier} · ${mio.etapa}` : "sin registro de boletería"
+      `${mio.tier} · ${mio.etapa}`
     )
   );
-  // Si Luma no tenía su cédula, la que fijó acá sirve para la puerta.
-  if (mio && !mio.luma.cedula) {
-    await anotarRegistro(mio.token, "cédula fijada desde la experiencia", (r) => ({ luma: { ...r.luma, cedula } })).catch(() => null);
-  }
+  if (!mio.luma.cedula) await fijarCedulaEnLuma(mio.token, cedula);
   return { ok: true, participante: p ?? base, nuevo: true };
+}
+
+/** Si Luma no tenía su cédula, la que fijó acá sirve para la puerta. */
+async function fijarCedulaEnLuma(token: string, cedula: string): Promise<void> {
+  await anotarRegistro(token, "cédula fijada desde la experiencia", (r) => ({ luma: { ...r.luma, cedula } })).catch(() => null);
 }
 
 // ---------- el mapa ----------
@@ -474,18 +482,19 @@ export async function conectarLinkedIn(datos: {
   const { idSesion, perfil, accessToken, expiraEnSegundos } = datos;
   const ahora = new Date().toISOString();
 
-  const previo = await porLinkedIn(perfil.sub);
+  // LinkedIn no es una forma de entrar: se conecta a la sesión de quien ya
+  // entró con correo y cédula, para publicar en un clic. Sin sesión, no hay
+  // a quién conectarlo.
   const actual = idSesion ? await porId(idSesion) : null;
+  if (!actual) throw new Error("sin-sesion");
+  const previo = await porLinkedIn(perfil.sub);
 
-  let destino = previo ?? actual ?? (await crear());
-  if (!previo) await escribir(rutaIndiceLinkedIn(perfil.sub), { id: destino.id, en: ahora });
-  // El correo de LinkedIn también apunta a esta persona, para que después
-  // pueda entrar con correo y cédula desde otro aparato.
-  if (perfil.email && !(await leer(rutaIndiceCorreo(perfil.email)))) {
-    await escribir(rutaIndiceCorreo(perfil.email), { id: destino.id, en: ahora }).catch(() => null);
-  }
-
-  const fusionar = previo && actual && previo.id !== actual.id ? actual : null;
+  let destino = actual;
+  // El índice de LinkedIn apunta siempre a la sesión actual: si esta cuenta
+  // estaba pegada a un participante viejo (antes LinkedIn sí entraba), su
+  // avance se trae acá.
+  if (!previo || previo.id !== actual.id) await escribir(rutaIndiceLinkedIn(perfil.sub), { id: actual.id, en: ahora });
+  const fusionar = previo && previo.id !== actual.id ? previo : null;
 
   const resultado = await cambiar(destino.id, (p) => {
     let q: Participante = {

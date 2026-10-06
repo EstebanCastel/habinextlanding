@@ -54,6 +54,7 @@ export async function POST(request: Request) {
   if (requiereEvento && fase() !== "evento") return error("Esto se abre el día del evento, el 20 de octubre.", 403);
 
   const sesion = await participanteOCrear();
+  if (!sesion) return error("Entra con tu correo y cédula para continuar.", 401);
   const p = sesion.participante;
   if (clase === "foto" && p.fotos.filter((f) => f.clase === "foto").length >= LIMITES.fotos) {
     return error(`Ya subiste ${LIMITES.fotos} fotos, que es el máximo.`, 409);

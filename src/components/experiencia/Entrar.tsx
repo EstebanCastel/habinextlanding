@@ -1,21 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Dot from "@/components/Dot";
 import type { Vista } from "@/lib/experiencia";
-import { BotonRed } from "./Redes";
 import { claseCampo, clasesBoton, ErrorDePeticion, pedirJson } from "./util";
 
 /**
- * La ventana de entrada. Correo y cédula, o LinkedIn. Se abre encima de la
- * portada cuando alguien toca una experiencia sin haber entrado, y al entrar
- * lo lleva a esa misma experiencia.
+ * La ventana de entrada: el correo y la cédula de la entrada en Luma. Solo
+ * entra quien ya tiene su entrada aprobada. Se abre encima de la portada
+ * cuando alguien toca una experiencia sin haber entrado, y al entrar lo lleva
+ * a esa misma experiencia.
  */
 
 const MENSAJES: Record<string, string> = {
   datos: "Revisa el correo y la cédula: la cédula va solo en números.",
-  cedula: "Esa cédula no coincide con la que quedó fijada para este correo.",
-  linkedin: "Este correo entró con LinkedIn. Usa el botón de LinkedIn.",
+  cedula: "Esa cédula no coincide con la de tu entrada en Luma.",
+  "sin-entrada": "No encontramos una entrada aprobada con ese correo. Entra con el correo con el que compraste.",
+  pendiente: "Tu entrada todavía no está aprobada. Apenas confirmemos tu pago podrás entrar.",
   limite: "Demasiados intentos. Espera unos minutos.",
 };
 
@@ -42,9 +44,6 @@ export default function Entrar({
     if (abierta && !d.open) d.showModal();
     if (!abierta && d.open) d.close();
   }, [abierta]);
-
-  const slug = destino.replace(/^\/experiencia\/?/, "") || "";
-  const linkedin = `/api/experiencia/linkedin?volver=${encodeURIComponent(slug)}`;
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -75,10 +74,9 @@ export default function Entrar({
               <Dot className="h-1.5 w-1.5" />
               Habi Next
             </p>
-            <h2 className="text-2xl font-semibold leading-tight tracking-tight">Entra para guardar tu avance</h2>
+            <h2 className="text-2xl font-semibold leading-tight tracking-tight">Entra con tu entrada</h2>
             <p className="mt-2 text-sm font-light leading-relaxed text-white/55">
-              Con el correo con el que te registraste y tu cédula como clave. La primera vez que entras, la cédula que
-              escribas queda fijada.
+              El correo y la cédula con los que te registraste en Luma. Solo entra quien ya tiene su entrada aprobada.
             </p>
           </div>
           <button
@@ -129,16 +127,12 @@ export default function Entrar({
         <button type="submit" disabled={ocupado} className={clasesBoton.solido}>
           {ocupado ? "Entrando…" : "Entrar"}
         </button>
-
-        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-white/35">
-          <span className="h-px flex-1 bg-white/10" />o<span className="h-px flex-1 bg-white/10" />
-        </div>
-
-        <BotonRed red="linkedin" href={linkedin}>
-          Entrar con LinkedIn
-        </BotonRed>
         <p className="text-center text-xs font-light leading-relaxed text-white/40">
-          Con LinkedIn además podrás publicar tu carnet en un clic.
+          ¿Todavía no tienes entrada?{" "}
+          <Link href="/#boleteria" className="text-violet-soft underline underline-offset-4 hover:text-white">
+            Cómprala aquí
+          </Link>
+          .
         </p>
       </form>
     </dialog>

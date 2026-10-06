@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import {
   COOKIE_SESION,
   configurada,
-  crear,
   firmarSesion,
   idDeSesion,
   opcionesDeCookie,
@@ -87,11 +86,14 @@ export async function vincularRegistroSiFalta(p: Participante): Promise<Particip
   return (await porId(p.id)) ?? p;
 }
 
-/** El participante de la cookie, o uno nuevo si todavía no tiene. */
-export async function participanteOCrear(): Promise<Sesion> {
+/**
+ * El participante de la cookie. Antes, sin cookie, se creaba uno nuevo al
+ * vuelo; ya no: en la experiencia solo hay gente que entró con el correo y
+ * la cédula de su entrada, así que sin sesión no hay a quién atribuirle nada.
+ */
+export async function participanteOCrear(): Promise<Sesion | null> {
   const actual = await participanteActual();
-  if (actual) return { participante: actual, nueva: false };
-  return { participante: await crear(), nueva: true };
+  return actual ? { participante: actual, nueva: false } : null;
 }
 
 /** Responde JSON y, si la sesión es nueva, deja la cookie puesta. */

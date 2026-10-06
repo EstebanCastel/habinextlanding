@@ -14,5 +14,6 @@ export async function POST(request: Request) {
   if (!mismoOrigen(request)) return error("origen no permitido", 403);
   if (!dentroDelLimite(`yo:${ipDe(request)}`, 30, 10 * 60_000)) return error("Demasiados intentos.", 429);
   const sesion = await participanteOCrear();
+  if (!sesion) return error("Entra con tu correo y cédula para continuar.", 401);
   return responder({ ok: true, yo: vistaDe(sesion.participante) }, sesion);
 }

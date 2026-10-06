@@ -92,6 +92,7 @@ export async function GET(request: Request) {
     res.cookies.set(COOKIE_SESION, firmarSesion(p.id), opcionesDeCookie());
     return res;
   } catch (error) {
+    if ((error as Error).message === "sin-sesion") return volverCon(base, { li: "sin-sesion", entrar: "/experiencia/carnet" });
     console.error("[experiencia] LinkedIn falló:", (error as Error).message);
     return volverCon(base, { li: "fallo" }, volver);
   }

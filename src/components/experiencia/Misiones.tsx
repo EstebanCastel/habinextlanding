@@ -65,6 +65,7 @@ const AVISOS_LI: Record<string, { texto: string; malo?: boolean }> = {
   estado: { texto: "La conexión con LinkedIn no cuadró. Inténtalo de nuevo.", malo: true },
   fallo: { texto: "LinkedIn no respondió bien. Inténtalo en un momento.", malo: true },
   "sin-configurar": { texto: "La conexión con LinkedIn no está activa todavía.", malo: true },
+  "sin-sesion": { texto: "Entra con tu correo y cédula antes de conectar LinkedIn.", malo: true },
 };
 
 const fecha = (iso: string) =>
@@ -915,7 +916,7 @@ export default function Misiones({ yo, fase, sitio, li, alCambiar, asegurar, abi
               </form>
             ) : (
               <a href="/api/experiencia/linkedin?volver=misiones" className="text-sm text-white/55 underline underline-offset-4 transition-colors hover:text-white">
-                Conectar LinkedIn para guardar mi avance
+                Conectar LinkedIn para publicar en un clic
               </a>
             )}
             {yo?.registro ? (

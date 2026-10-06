@@ -30,6 +30,7 @@ export async function POST(request: Request) {
   if (esMision(cuerpo.mision) && misionBloqueada(cuerpo.mision)) return error("Esa experiencia todavía no está abierta.", 403);
 
   const sesion = await participanteOCrear();
+  if (!sesion) return error("Entra con tu correo y cédula para continuar.", 401);
   const id = sesion.participante.id;
   const ahora = new Date().toISOString();
   const detalle = limpiar(cuerpo.detalle, 80) || undefined;

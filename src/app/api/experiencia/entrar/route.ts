@@ -3,8 +3,9 @@ import { COOKIE_SESION, entrar, firmarSesion, opcionesDeCookie, vistaDe } from "
 import { dentroDelLimite, error, ipDe, mismoOrigen, sitio } from "@/lib/experiencia-http";
 
 /**
- * Entrar con correo y cédula. La cédula es la clave: un número corto, así que
- * el límite de intentos es lo que impide adivinarla, por IP y por correo.
+ * Entrar con correo y cédula: los de la entrada aprobada en Luma. La cédula
+ * es la clave: un número corto, así que el límite de intentos es lo que
+ * impide adivinarla, por IP y por correo.
  *
  * Responde JSON al formulario de la página (que navega después) y con un
  * redirect al formulario sin JavaScript.
@@ -15,10 +16,12 @@ export const dynamic = "force-dynamic";
 
 const MENSAJES: Record<string, string> = {
   datos: "Revisa el correo y la cédula: la cédula va solo en números.",
-  cedula: "Esa cédula no coincide con la que quedó fijada para este correo.",
-  linkedin: "Este correo entró con LinkedIn. Entra con el botón de LinkedIn.",
+  cedula: "Esa cédula no coincide con la de tu entrada en Luma.",
+  "sin-entrada": "No encontramos una entrada aprobada con ese correo. Entra con el correo con el que compraste.",
+  pendiente: "Tu entrada todavía no está aprobada. Apenas confirmemos tu pago podrás entrar.",
   limite: "Demasiados intentos. Espera unos minutos.",
 };
+const ESTADOS: Record<string, number> = { cedula: 401, "sin-entrada": 404, pendiente: 403, datos: 400 };
 
 function destinoSeguro(v: unknown): string {
   const d = String(v ?? "");
@@ -63,7 +66,7 @@ export async function POST(request: Request) {
   const r = await entrar({ email, cedula });
   if (!r.ok) {
     await new Promise((res) => setTimeout(res, 500));
-    return fallar(r.motivo, r.motivo === "cedula" ? 401 : 400);
+    return fallar(r.motivo, ESTADOS[r.motivo] ?? 400);
   }
 
   const res = quiereJson

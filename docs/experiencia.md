@@ -11,15 +11,15 @@ La portada (`/experiencia`) muestra el puntaje, el podio de los tres
 primeros y tres tarjetas. Tocar una tarjeta sin sesión abre la ventana de
 entrada; al entrar se cae en esa experiencia y la sesión se mantiene 180 días.
 
-- **Entrar** (`POST /api/experiencia/entrar`): correo y cédula como clave, o
-  LinkedIn. La cédula se guarda como hash con sal en `credencial`; la primera
-  vez queda fijada, y si el registro de Luma no tenía cédula, se le completa.
-  La entrada de boletería se enlaza por correo **y** cédula
-  (`vincularRegistro`): si el registro de Luma trae cédula, tiene que
-  coincidir con la fijada; si la persona entró con LinkedIn, vale el correo
-  que LinkedIn verificó. Un registro sin cédula se enlaza a quien fijó su
-  clave con ese correo (riesgo residual: quien conozca el correo y entre
-  antes que el dueño; queda anotado en la bitácora).
+- **Entrar** (`POST /api/experiencia/entrar`): solo con el correo y la cédula
+  de la entrada **aprobada** en Luma (`entrar()` en `src/lib/experiencia.ts`).
+  Sin registro aprobado no se entra (`sin-entrada` / `pendiente`); si el
+  registro trae cédula, tiene que coincidir (`cedula`); si no la trae, la
+  primera que escriba la persona se guarda en el registro y desde ahí vale
+  también en la puerta. El hash en `credencial` se refresca en cada entrada.
+  LinkedIn ya no es una forma de entrar: se conecta a la sesión de quien ya
+  entró, para publicar en un clic (`/api/experiencia/linkedin` exige sesión).
+  Las APIs tampoco crean participantes anónimos: sin cookie responden 401.
   Límite: 12 intentos por IP y 6 por correo cada 15 minutos.
 - **1 · Tu carnet** (`/experiencia/carnet`): el editor del carnet y las
   misiones «Cuéntalo en LinkedIn» y «Súbelo a tus historias». 45 puntos.
