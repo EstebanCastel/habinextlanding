@@ -164,6 +164,21 @@ nunca dos en dos minutos) para no volverse spam.
   llegan por `/i/<id>` traen `utm_source=experiencia` y `utm_content=<id>`, y
   los registros de Luma guardan ese `utm_content` en `luma.contenido`.
 
+## La agenda: «me interesa» y las fichas de ponentes
+
+Cada sesión tiene un corazón («me interesa»): se guarda en `agenda` del
+participante (`POST /api/experiencia/agenda`, exige sesión) y el conteo por
+sesión vive en `experiencia/agenda-interes.json` (`marcarInteres`,
+`interesPorSesion`). No da puntos; sirve para que la persona arme su día
+(filtro «Las que me interesan») y para ver qué charlas tienen expectativa.
+
+Las fichas de quienes dictan están en `PONENTES` (`src/config/agenda.ts`),
+con la foto en blanco y negro en `public/img/ponentes/<slug>.jpg` (600×600,
+hecha con `magick … -colorspace Gray`) y el cargo; las marcas llevan `logo`.
+Quien no tiene ficha sale con iniciales. Las fotos se tomaron de fuentes
+públicas (prensa, webs de sus empresas): si un ponente manda la suya, se
+reemplaza el archivo con el mismo nombre.
+
 ## La barra fija y los términos
 
 Todas las pantallas (`Marco.tsx`) llevan arriba `Barra.tsx`: a la izquierda

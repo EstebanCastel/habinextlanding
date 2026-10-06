@@ -62,8 +62,7 @@ export default async function Pagina({
       }
       bajada={
         <>
-          Tu carnet, el mapa del tesoro del recinto y lo que cuentes en tus redes. Todo suma puntos, y los que más sumen se
-          llevan una sorpresa el 20 de octubre. Por ahora está abierto el carnet; lo demás se abre más adelante.
+          Suma puntos, gánate sorpresas el 20 de octubre y lleva la agenda del día en el bolsillo.
         </>
       }
     >

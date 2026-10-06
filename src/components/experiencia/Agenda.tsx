@@ -1,10 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Asterisk from "@/components/Asterisk";
 import { gsap, useGSAP } from "@/lib/gsap";
-import { SALONES, esSesion, numeroDe, salonDe, sesionesDe, type Salon, type SalonId, type Sesion } from "@/config/agenda";
+import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionesDe, type Salon, type SalonId, type Sesion } from "@/config/agenda";
+import type { Vista } from "@/lib/experiencia";
+import { pedirJson } from "./util";
 
 /**
  * El programa del día, como un cartel y no como una tabla.
@@ -15,13 +18,63 @@ import { SALONES, esSesion, numeroDe, salonDe, sesionesDe, type Salon, type Salo
  * que un reloj que después se desdice. Lo que sí se sabe es qué viene
  * primero y qué viene después, y eso es lo que se lee.
  *
+ * Cada sesión se puede marcar con «me interesa»: la persona arma su día y el
+ * equipo ve qué charlas tienen más expectativa. No da puntos.
+ *
  * En celular los dos salones no caben a la vez y se elige uno; en pantalla
  * ancha se ven los dos, que es como se decide a cuál entrar.
  */
 
-export default function Agenda() {
+type Intereses = {
+  gustan: Set<string>;
+  conteos: Record<string, number>;
+  alternar: (s: Sesion) => void;
+  ocupada: string | null;
+};
+
+export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | null; conteos: Record<string, number> }) {
+  const router = useRouter();
   const [abierta, setAbierta] = useState<Sesion | null>(null);
   const [salonMovil, setSalonMovil] = useState<SalonId>("inspira");
+  const [soloMias, setSoloMias] = useState(false);
+  const [gustan, setGustan] = useState<Set<string>>(() => new Set(yo?.agenda ?? []));
+  const [conteos, setConteos] = useState(conteosIniciales);
+  const [ocupada, setOcupada] = useState<string | null>(null);
+
+  const alternar = async (s: Sesion) => {
+    if (!yo) {
+      router.push(`/experiencia?entrar=${encodeURIComponent("/experiencia/agenda")}`);
+      return;
+    }
+    if (ocupada) return;
+    const gusta = !gustan.has(s.id);
+    // Se pinta de una vez y se confirma con el servidor; si falla, se devuelve.
+    setGustan((prev) => {
+      const n = new Set(prev);
+      if (gusta) n.add(s.id);
+      else n.delete(s.id);
+      return n;
+    });
+    setConteos((c) => ({ ...c, [s.id]: Math.max(0, (c[s.id] ?? 0) + (gusta ? 1 : -1)) }));
+    setOcupada(s.id);
+    try {
+      const r = await pedirJson<{ ok: boolean; yo: Vista; conteos: Record<string, number> }>("/api/experiencia/agenda", { sesion: s.id, gusta });
+      setGustan(new Set(r.yo.agenda));
+      setConteos(r.conteos);
+    } catch {
+      setGustan((prev) => {
+        const n = new Set(prev);
+        if (gusta) n.delete(s.id);
+        else n.add(s.id);
+        return n;
+      });
+      setConteos((c) => ({ ...c, [s.id]: Math.max(0, (c[s.id] ?? 0) + (gusta ? -1 : 1)) }));
+    } finally {
+      setOcupada(null);
+    }
+  };
+
+  const intereses: Intereses = { gustan, conteos, alternar, ocupada };
 
   return (
     <div>
@@ -45,14 +98,29 @@ export default function Agenda() {
         </div>
       </div>
 
+      {/* Lo mío: el filtro de las que marqué. */}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setSoloMias((v) => !v)}
+          aria-pressed={soloMias}
+          disabled={gustan.size === 0}
+          className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+            soloMias ? "border-violet bg-violet text-white" : "border-white/15 text-white/70 hover:border-white/35 hover:text-white"
+          }`}
+        >
+          <Corazon lleno={soloMias} className="h-4 w-4" />
+          Las que me interesan
+          <span className="rounded-full bg-white/15 px-1.5 text-[11px] font-bold tabular-nums">{gustan.size}</span>
+        </button>
+        <span className="text-xs font-light text-white/45">
+          {yo ? "Toca el corazón de una sesión para armar tu día." : "Entra para marcar las que te interesan."}
+        </span>
+      </div>
+
       <div className="grid gap-12 md:grid-cols-2 md:gap-8 lg:gap-14">
         {SALONES.map((salon) => (
-          <Columna
-            key={salon.id}
-            salon={salon}
-            oculta={salonMovil !== salon.id}
-            onAbrir={setAbierta}
-          />
+          <Columna key={salon.id} salon={salon} oculta={salonMovil !== salon.id} soloMias={soloMias} intereses={intereses} onAbrir={setAbierta} />
         ))}
       </div>
 
@@ -61,8 +129,38 @@ export default function Agenda() {
         una sesión para ver el salón por dentro y lo que te llevas de ella.
       </p>
 
-      {abierta ? <Panel sesion={abierta} onCerrar={() => setAbierta(null)} /> : null}
+      {abierta ? <Panel sesion={abierta} intereses={intereses} onCerrar={() => setAbierta(null)} /> : null}
     </div>
+  );
+}
+
+function Corazon({ lleno, className = "" }: { lleno: boolean; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill={lleno ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.6 4.5 7.2 4.5c2 0 3.5 1.1 4.8 2.7 1.3-1.6 2.8-2.7 4.8-2.7 3.6 0 5.8 3.5 4.5 6.8C19.5 15.9 12 20.5 12 20.5z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** El corazón de una sesión, con cuánta gente la marcó. */
+function MeInteresa({ sesion, intereses, grande = false }: { sesion: Sesion; intereses: Intereses; grande?: boolean }) {
+  const gusta = intereses.gustan.has(sesion.id);
+  const n = intereses.conteos[sesion.id] ?? 0;
+  return (
+    <button
+      type="button"
+      onClick={() => intereses.alternar(sesion)}
+      aria-pressed={gusta}
+      aria-label={gusta ? "Ya no me interesa" : "Me interesa"}
+      disabled={intereses.ocupada === sesion.id}
+      className={`inline-flex items-center gap-1.5 rounded-full border transition-colors disabled:opacity-60 ${
+        grande ? "px-4 py-2 text-sm" : "h-8 px-2.5 text-xs"
+      } ${gusta ? "border-violet bg-violet text-white" : "border-white/15 text-white/70 hover:border-violet/60 hover:text-white"}`}
+    >
+      <Corazon lleno={gusta} className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} />
+      {grande ? <span>{gusta ? "Te interesa" : "Me interesa"}</span> : null}
+      {n > 0 ? <span className="font-semibold tabular-nums">{n}</span> : null}
+    </button>
   );
 }
 
@@ -72,26 +170,30 @@ export default function Agenda() {
  * que está señalizado en piso; se repite acá para que la gente lo reconozca
  * al llegar.
  */
-function Columna({ salon, oculta, onAbrir }: { salon: Salon; oculta: boolean; onAbrir: (s: Sesion) => void }) {
-  const sesiones = sesionesDe(salon.id);
-  const total = sesiones.filter(esSesion).length;
+function Columna({
+  salon,
+  oculta,
+  soloMias,
+  intereses,
+  onAbrir,
+}: {
+  salon: Salon;
+  oculta: boolean;
+  soloMias: boolean;
+  intereses: Intereses;
+  onAbrir: (s: Sesion) => void;
+}) {
+  const todas = sesionesDe(salon.id);
+  const sesiones = soloMias ? todas.filter((s) => esSesion(s) && intereses.gustan.has(s.id)) : todas;
+  const total = todas.filter(esSesion).length;
 
   return (
     <section className={`${oculta ? "hidden md:block" : ""}`} aria-labelledby={`salon-${salon.id}`}>
       <div className="relative overflow-hidden rounded-[28px] border border-white/12">
         <div className="relative aspect-[16/9] w-full sm:aspect-[2/1]">
-          <Image
-            src={salon.imagen}
-            alt={`Render del ${salon.nombre}`}
-            fill
-            sizes="(min-width: 768px) 50vw, 100vw"
-            className="object-cover"
-          />
+          <Image src={salon.imagen} alt={`Render del ${salon.nombre}`} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/5" />
-          <Asterisk
-            color="var(--violet)"
-            className="agenda-giro pointer-events-none absolute -right-10 -top-10 h-40 w-40 opacity-30 mix-blend-screen sm:h-48 sm:w-48"
-          />
+          <Asterisk color="var(--violet)" className="agenda-giro pointer-events-none absolute -right-10 -top-10 h-40 w-40 opacity-30 mix-blend-screen sm:h-48 sm:w-48" />
         </div>
         <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-5 sm:p-6">
           <span className="text-6xl font-bold leading-none tracking-tighter text-white sm:text-7xl">{salon.numero}</span>
@@ -108,16 +210,22 @@ function Columna({ salon, oculta, onAbrir }: { salon: Salon; oculta: boolean; on
         </div>
       </div>
 
-      <ol className="mt-4 flex flex-col gap-3">
-        {sesiones.map((s) => (
-          <TarjetaSesion key={s.id} sesion={s} onAbrir={() => onAbrir(s)} />
-        ))}
-      </ol>
+      {sesiones.length ? (
+        <ol className="mt-4 flex flex-col gap-3">
+          {sesiones.map((s) => (
+            <TarjetaSesion key={s.id} sesion={s} intereses={intereses} onAbrir={() => onAbrir(s)} />
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-4 rounded-[22px] border border-dashed border-white/12 px-5 py-6 text-sm font-light text-white/45">
+          Todavía no marcaste ninguna sesión en {salon.rotulo}.
+        </p>
+      )}
     </section>
   );
 }
 
-/** «Juanfe Quiñones» → «JQ»; «Anderson · Hipoteca» → «A». Para el círculo del ponente. */
+/** «Juanfe Quiñones» → «JQ»; «Anderson · Hipoteca» → «A». Para el cuadro sin foto. */
 function iniciales(nombre: string): string {
   const limpio = nombre.split("·")[0].replace(/\(.*?\)/g, "").trim();
   const partes = limpio.split(/\s+/).filter((p) => p && !/^(y|o|de|del|la|el)$/i.test(p));
@@ -127,22 +235,75 @@ function iniciales(nombre: string): string {
     .join("");
 }
 
-function Ponente({ nombre, detalle }: { nombre: string; detalle?: string }) {
+/**
+ * Quien dicta: la foto en blanco y negro, como el carnet, y debajo el nombre
+ * grande. Las marcas van con su logo; quien no tiene foto, con sus iniciales.
+ */
+function Ponente({ nombre, detalle, parte }: { nombre: string; detalle?: string; parte?: string }) {
+  const [quien, extra] = nombre.split("·").map((t) => t.trim());
+  const ficha = fichaDe(quien);
+  const cargo = detalle ?? ficha?.cargo ?? extra;
   return (
-    <span className="inline-flex items-center gap-2">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-violet/40 bg-violet-shade text-[10px] font-bold tracking-wide text-violet-soft">
-        {iniciales(nombre)}
-      </span>
-      <span className="text-sm text-white/80">
-        {nombre}
-        {detalle ? <span className="font-light text-white/45"> · {detalle}</span> : null}
+    <span className="flex w-[7.5rem] flex-col items-start gap-2 sm:w-[8.5rem]">
+      {ficha?.foto ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ficha.foto} alt="" width={160} height={160} loading="lazy" className="h-20 w-20 rounded-2xl border border-white/10 object-cover grayscale sm:h-24 sm:w-24" />
+      ) : ficha?.logo ? (
+        <span className="grid h-20 w-20 place-items-center rounded-2xl border border-white/10 p-3 sm:h-24 sm:w-24" style={{ background: ficha.fondo ?? "#ffffff" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ficha.logo} alt="" className="max-h-full max-w-full object-contain" loading="lazy" />
+        </span>
+      ) : (
+        <span className="grid h-20 w-20 place-items-center rounded-2xl border border-violet/40 bg-violet-shade text-xl font-bold tracking-wide text-violet-soft sm:h-24 sm:w-24">
+          {iniciales(quien)}
+        </span>
+      )}
+      <span className="flex flex-col">
+        {parte ? <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-soft">{parte}</span> : null}
+        <span className="text-[15px] font-semibold leading-tight tracking-tight text-white">{quien}</span>
+        {cargo ? <span className="text-xs font-light leading-snug text-white/50">{cargo}</span> : null}
       </span>
     </span>
   );
 }
 
+/** Los ponentes de una sesión, en fila. */
+function Ponentes({ sesion: s }: { sesion: Sesion }) {
+  if (s.partes) {
+    return (
+      <span className="mt-4 flex flex-wrap gap-x-4 gap-y-4">
+        {s.partes.map((p) => (
+          <Ponente key={p.titulo} nombre={p.ponente} detalle={p.detalle} parte={p.titulo} />
+        ))}
+      </span>
+    );
+  }
+  if (s.ponentes) {
+    return (
+      <span className="mt-4 flex flex-wrap gap-x-4 gap-y-4">
+        {s.ponentes.map((p) => (
+          <Ponente key={p} nombre={p} />
+        ))}
+      </span>
+    );
+  }
+  if (s.ponente) {
+    return (
+      <span className="mt-4 block">
+        <Ponente nombre={s.ponente} detalle={s.detallePonente} />
+      </span>
+    );
+  }
+  return (
+    <span className="mt-4 inline-flex items-center gap-3 text-sm text-white/45">
+      <span className="grid h-12 w-12 place-items-center rounded-2xl border border-dashed border-white/25 text-base text-white/40">?</span>
+      Ponente por confirmar
+    </span>
+  );
+}
+
 /** Una sesión como tarjeta. Las pausas no son tarjetas: son un respiro entre dos. */
-function TarjetaSesion({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => void }) {
+function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; intereses: Intereses; onAbrir: () => void }) {
   if (s.tipo) {
     return (
       <li className="flex items-center gap-3 px-2 py-2">
@@ -161,47 +322,26 @@ function TarjetaSesion({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => 
   }
 
   const n = String(numeroDe(s)).padStart(2, "0");
+  const gusta = intereses.gustan.has(s.id);
   return (
-    <li>
+    <li className="relative">
       <button
         type="button"
         onClick={onAbrir}
-        className="group relative block w-full overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-5 pr-14 text-left transition-colors hover:border-violet/60 hover:bg-violet/[0.06] focus-visible:border-violet/60 focus-visible:outline-none sm:p-6 sm:pr-16"
+        className={`group relative block w-full overflow-hidden rounded-[22px] border bg-white/[0.03] p-5 pb-16 text-left transition-colors hover:bg-violet/[0.06] focus-visible:outline-none sm:p-6 sm:pb-16 ${
+          gusta ? "border-violet/50" : "border-white/10 hover:border-violet/60 focus-visible:border-violet/60"
+        }`}
       >
         {/* El número, grande y en marca de agua: ordena sin pedir atención. */}
         <span aria-hidden="true" className="pointer-events-none absolute -right-1 -top-3 font-mono text-[4.5rem] font-bold leading-none tracking-tighter text-white/[0.05] transition-colors group-hover:text-violet/[0.14]">
           {n}
         </span>
         <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">SESIÓN {n}</span>
-        <span className="mt-1.5 block text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
+        <span className="mt-1.5 block pr-8 text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
 
-        {s.partes ? (
-          <span className="mt-3 flex flex-col gap-1.5">
-            {s.partes.map((p) => (
-              <span key={p.titulo} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                <span className="font-medium text-white/85">{p.titulo}</span>
-                <span className="font-light text-white/50">{p.ponente}</span>
-              </span>
-            ))}
-          </span>
-        ) : s.ponentes ? (
-          <span className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-            {s.ponentes.map((p) => (
-              <Ponente key={p} nombre={p} />
-            ))}
-          </span>
-        ) : s.ponente ? (
-          <span className="mt-3 block">
-            <Ponente nombre={s.ponente} detalle={s.detallePonente} />
-          </span>
-        ) : (
-          <span className="mt-3 inline-flex items-center gap-2 text-sm text-white/45">
-            <span className="grid h-7 w-7 place-items-center rounded-full border border-dashed border-white/25 text-[10px] text-white/40">?</span>
-            Ponente por confirmar
-          </span>
-        )}
+        <Ponentes sesion={s} />
 
-        {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
+        {s.resumen ? <span className="mt-4 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
 
         <span className="absolute bottom-5 right-5 grid h-8 w-8 place-items-center rounded-full border border-white/15 text-white/60 transition-colors group-hover:border-violet group-hover:bg-violet group-hover:text-white sm:bottom-6 sm:right-6">
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4} aria-hidden="true">
@@ -209,6 +349,10 @@ function TarjetaSesion({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => 
           </svg>
         </span>
       </button>
+      {/* El corazón va fuera del botón de la tarjeta: un botón no puede contener otro. */}
+      <span className="absolute bottom-5 left-5 sm:bottom-6 sm:left-6">
+        <MeInteresa sesion={s} intereses={intereses} />
+      </span>
     </li>
   );
 }
@@ -218,7 +362,7 @@ function TarjetaSesion({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => 
  * orden a propósito — la pregunta que la gente hace antes de moverse es «¿a
  * cuál salón voy?», y la foto la responde sin leer.
  */
-function Panel({ sesion, onCerrar }: { sesion: Sesion; onCerrar: () => void }) {
+function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Intereses; onCerrar: () => void }) {
   const salon = salonDe(sesion.salon);
   const dialogo = useRef<HTMLDialogElement>(null);
   const caja = useRef<HTMLDivElement>(null);
@@ -242,8 +386,6 @@ function Panel({ sesion, onCerrar }: { sesion: Sesion; onCerrar: () => void }) {
     });
     return () => mm.revert();
   });
-
-  const quien = sesion.ponentes?.join(" · ") ?? sesion.ponente ?? (sesion.porConfirmar ? "Ponente por confirmar" : null);
 
   return (
     <dialog
@@ -284,27 +426,14 @@ function Panel({ sesion, onCerrar }: { sesion: Sesion; onCerrar: () => void }) {
             SESIÓN {String(n).padStart(2, "0")} DE {String(total).padStart(2, "0")} · {salon.rotulo.toUpperCase()}
           </p>
           <h3 id={`sesion-${sesion.id}`} data-linea className="mt-1.5 text-3xl font-bold leading-tight tracking-tighter">{sesion.titulo}</h3>
-          {quien ? (
-            <p data-linea className="mt-2 text-base font-light text-white/60">
-              {quien}
-              {sesion.detallePonente && !sesion.partes ? <span className="text-white/40"> · {sesion.detallePonente}</span> : null}
-            </p>
-          ) : null}
 
-          {sesion.partes ? (
-            <ol className="mt-5 flex flex-col gap-2 border-l border-violet/40 pl-4">
-              {sesion.partes.map((p, i) => (
-                <li data-linea key={p.titulo} className="flex flex-wrap items-baseline gap-x-2 text-[15px]">
-                  <span className="font-mono text-[11px] tabular-nums text-violet-soft">{i + 1}</span>
-                  <span className="font-medium">{p.titulo}</span>
-                  <span className="font-light text-white/55">
-                    {p.ponente}
-                    {p.detalle ? <span className="text-white/35"> · {p.detalle}</span> : null}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          ) : null}
+          <div data-linea className="mt-4">
+            <MeInteresa sesion={sesion} intereses={intereses} grande />
+          </div>
+
+          <div data-linea>
+            <Ponentes sesion={sesion} />
+          </div>
 
           {sesion.contenido?.length ? (
             <>

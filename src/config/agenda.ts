@@ -139,7 +139,8 @@ export const SESIONES: Sesion[] = [
       { titulo: "Mi Red", ponente: "Agustín Iglesias" },
       { titulo: "Habi Capital", ponente: "Martín Oviedo" },
       { titulo: "Habi Credit", ponente: "Gabriel Morris" },
-      { titulo: "Franquicias", ponente: "Edwin Alejo o Matías" },
+      // La hoja dice «Edwin Alejo o Matías»; va Edwin mientras el equipo lo cierra.
+      { titulo: "Franquicias", ponente: "Edwin Alejo" },
     ],
     contenido: [
       "Dónde está parada Habi hoy en Colombia y en México, con las cifras reales del año.",
@@ -355,6 +356,33 @@ export const SESIONES: Sesion[] = [
     ],
   },
 ];
+
+/**
+ * Las fichas de quienes dictan: foto en blanco y negro (como el carnet) y
+ * cargo. La llave es el nombre tal como aparece en las sesiones. Quien no
+ * esté acá sale con sus iniciales; las marcas salen con su logo.
+ */
+export type Ficha = { foto?: string; cargo?: string; logo?: string; fondo?: string };
+
+export const PONENTES: Record<string, Ficha> = {
+  "Sebastián Noguera": { foto: "/img/ponentes/sebastian-noguera.jpg", cargo: "Cofundador y presidente de Habi" },
+  "Pipe Restrepo": { foto: "/img/ponentes/pipe-restrepo.jpg", cargo: "VP de Growth · Habi" },
+  "Camilo Olarte": { foto: "/img/ponentes/camilo-olarte.jpg", cargo: "Cofundador de LOKL" },
+  "Agustín Iglesias": { foto: "/img/ponentes/agustin-iglesias.jpg", cargo: "Mi Red · Habi" },
+  "Martín Oviedo": { foto: "/img/ponentes/martin-oviedo.jpg", cargo: "Habi Capital" },
+  "Gabriel Morris": { foto: "/img/ponentes/gabriel-morris.jpg", cargo: "Habi Credit" },
+  "Mabel Quintero": { foto: "/img/ponentes/mabel-quintero.jpg", cargo: "Fundadora de Finconsciente" },
+  "Dani Bravo": { foto: "/img/ponentes/dani-bravo.jpg", cargo: "Cofundador de Tribu IA" },
+  "Germán Rueda": { foto: "/img/ponentes/german-rueda.jpg", cargo: "Habi" },
+  "Edwin Alejo": { foto: "/img/ponentes/edwin-alejo.jpg", cargo: "VP de Franquicias · Habi" },
+  Auco: { logo: "/img/marcas/auco.png" },
+  Wekall: { logo: "/img/marcas/wekall.svg" },
+};
+
+/** La ficha de un nombre tal como aparece en la sesión («Anderson · Hipoteca» busca «Anderson»). */
+export function fichaDe(nombre: string): Ficha | undefined {
+  return PONENTES[nombre] ?? PONENTES[nombre.split("·")[0].trim()];
+}
 
 /** Las sesiones de un salón, en el orden del programa. */
 export const sesionesDe = (salon: SalonId) => SESIONES.filter((s) => s.salon === salon);

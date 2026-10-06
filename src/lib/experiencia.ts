@@ -99,6 +99,8 @@ export type Participante = {
   invitacion: { clics: number; ultimoClic?: string };
   /** Qué robots de redes vinieron a buscar la vista previa de su carnet, y cuándo. */
   vistasPrevias: Record<string, string>;
+  /** Las sesiones de la agenda que marcó como «me interesa», con la fecha. */
+  agenda?: Record<string, string>;
   bitacora: { en: string; que: string; detalle?: string }[];
   creadoEn: string;
   actualizadoEn: string;
@@ -661,6 +663,8 @@ export type Vista = {
   frase?: string;
   invitacion: Participante["invitacion"];
   vistasPrevias: Record<string, string>;
+  /** Ids de las sesiones que le interesan. */
+  agenda: string[];
   puntos: number;
   nivel: string;
 };
@@ -689,9 +693,49 @@ export function vistaDe(p: Participante): Vista {
     frase: p.frase,
     invitacion: p.invitacion,
     vistasPrevias: p.vistasPrevias,
+    agenda: Object.keys(p.agenda ?? {}),
     puntos: puntos(p),
     nivel: nivel(p),
   };
+}
+
+// ---------- la agenda: «me interesa» ----------
+
+const RUTA_INTERES = "experiencia/agenda-interes.json";
+type Interes = { actualizadoEn: string; conteos: Record<string, number> };
+
+/** Cuánta gente marcó cada sesión. Un solo documento, como el ranking. */
+export async function interesPorSesion(): Promise<Record<string, number>> {
+  const d = await leer<Interes>(RUTA_INTERES);
+  return d?.conteos ?? {};
+}
+
+/**
+ * Marca o desmarca una sesión. El conteo global se toca solo cuando cambia
+ * de verdad el estado de la persona, para que repetir el toque no infle nada.
+ */
+export async function marcarInteres(id: string, sesionId: string, gusta: boolean): Promise<{ participante: Participante | null; conteos: Record<string, number> }> {
+  let cambio = 0;
+  const participante = await cambiar(id, (p) => {
+    const actual = { ...(p.agenda ?? {}) };
+    const tenia = Boolean(actual[sesionId]);
+    if (gusta && !tenia) {
+      actual[sesionId] = new Date().toISOString();
+      cambio = 1;
+    } else if (!gusta && tenia) {
+      delete actual[sesionId];
+      cambio = -1;
+    }
+    return cambio ? { ...p, agenda: actual } : p;
+  });
+  if (cambio) {
+    await modificar<Interes>(RUTA_INTERES, (d) => {
+      const conteos = { ...(d?.conteos ?? {}) };
+      conteos[sesionId] = Math.max(0, (conteos[sesionId] ?? 0) + cambio);
+      return { actualizadoEn: new Date().toISOString(), conteos };
+    }).catch(() => null);
+  }
+  return { participante, conteos: await interesPorSesion() };
 }
 
 // ---------- panel ----------
