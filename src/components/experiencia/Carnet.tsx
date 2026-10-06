@@ -382,7 +382,7 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
 
           <div
             ref={escena}
-            className={`relative mx-auto select-none ${formato === "feed" ? "max-w-[16rem] sm:max-w-[24rem] lg:max-w-[34rem]" : "max-w-[12rem] sm:max-w-[18rem] lg:max-w-[26rem]"}`}
+            className={`relative mx-auto select-none ${formato === "feed" ? "max-w-[21rem] sm:max-w-[26rem] lg:max-w-[34rem]" : "max-w-[15rem] sm:max-w-[19rem] lg:max-w-[26rem]"}`}
             style={{ perspective: "1600px" }}
             onMouseMove={seguirMouse}
             onMouseLeave={soltarMouse}
