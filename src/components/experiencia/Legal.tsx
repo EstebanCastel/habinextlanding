@@ -1,11 +1,9 @@
 /**
- * Los términos de la experiencia, plegados al pie de cada pantalla.
- *
- * Van en un `<details>` para que no compitan con el contenido, pero estén a
- * un toque: qué datos se guardan, para qué, qué pasa con la foto y las
- * publicaciones, cómo funciona el ranking y cómo ejercer los derechos de
- * habeas data. Es texto de la casa; lo que cambie en la operación se cambia
- * acá, en un solo lugar.
+ * Los términos de la experiencia, al pie de cada pantalla, debajo del pie
+ * de la landing: en columnas y en letra chica, siempre a la vista. Qué datos
+ * se guardan, para qué, qué pasa con la foto y las publicaciones, cómo
+ * funciona el ranking y cómo ejercer los derechos de habeas data. Es texto
+ * de la casa; lo que cambie en la operación se cambia acá, en un solo lugar.
  */
 
 const POLITICA_HABI = "https://habi.co/politica-de-tratamiento-de-datos";
@@ -91,45 +89,43 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
 
 export default function Legal() {
   return (
-    <section className="relative z-10 mx-auto max-w-[1400px] px-5 pb-10 sm:px-8 md:px-14 lg:px-20" aria-label="Términos y privacidad de la experiencia">
-      <details className="group rounded-2xl border border-white/10 bg-white/[0.02] open:bg-white/[0.03]">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm text-white/55 transition-colors hover:text-white/85 [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center gap-2.5">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" strokeLinejoin="round" />
-              <path d="M9.5 12l1.8 1.8L15 10.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Términos, privacidad y uso de tu imagen
-          </span>
-          <span className="flex items-center gap-3 text-xs font-light text-white/35">
-            <span className="hidden sm:inline">Versión del {VERSION}</span>
-            <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-        </summary>
-        <div className="grid gap-8 border-t border-white/10 px-5 py-6 text-sm font-light leading-relaxed text-white/60 md:grid-cols-2 md:gap-x-12">
-          {SECCIONES.map((s) => (
-            <div key={s.titulo} className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold tracking-tight text-white/85">{s.titulo}</h3>
-              {s.parrafos.map((t) => (
-                <p key={t}>{t}</p>
-              ))}
-            </div>
-          ))}
-          <p className="text-xs text-white/40 md:col-span-2">
-            Versión del {VERSION}. Estos términos complementan la{" "}
-            <a href={POLITICA_HABI} target="_blank" rel="noopener noreferrer" className="text-violet-soft underline underline-offset-4 hover:text-white">
-              política de tratamiento de datos de Habi
-            </a>
-            . ¿Dudas?{" "}
-            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="text-violet-soft underline underline-offset-4 hover:text-white">
-              Escríbenos por WhatsApp
-            </a>
-            .
-          </p>
-        </div>
-      </details>
+    <section aria-label="Términos y privacidad de la experiencia" className="border-t border-white/10 pt-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 className="flex items-center gap-2.5 text-sm font-semibold tracking-tight text-white/85">
+          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-violet-soft" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" strokeLinejoin="round" />
+            <path d="M9.5 12l1.8 1.8L15 10.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Términos, privacidad y uso de tu imagen
+        </h2>
+        <p className="text-xs font-light text-white/40">Versión del {VERSION}</p>
+      </div>
+
+      {/* En columnas y en letra chica: es el pie de página, no la lectura principal. */}
+      <div className="mt-5 gap-x-10 text-[12px] font-light leading-relaxed text-white/50 md:columns-2 lg:columns-3">
+        {SECCIONES.map((s) => (
+          <div key={s.titulo} className="mb-5 break-inside-avoid">
+            <h3 className="mb-1 text-[12px] font-semibold text-white/75">{s.titulo}</h3>
+            {s.parrafos.map((t) => (
+              <p key={t} className="mb-1.5">
+                {t}
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-2 text-xs font-light text-white/40">
+        Estos términos complementan la{" "}
+        <a href={POLITICA_HABI} target="_blank" rel="noopener noreferrer" className="text-violet-soft underline underline-offset-4 hover:text-white">
+          política de tratamiento de datos de Habi
+        </a>
+        . ¿Dudas?{" "}
+        <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="text-violet-soft underline underline-offset-4 hover:text-white">
+          Escríbenos por WhatsApp
+        </a>
+        .
+      </p>
     </section>
   );
 }

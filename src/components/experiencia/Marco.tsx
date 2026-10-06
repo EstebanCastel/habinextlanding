@@ -10,8 +10,9 @@ import Legal from "./Legal";
 /**
  * El marco de las páginas de la experiencia: la barra fija con lo que viene
  * y los puntos, la cabecera con la marca, el regreso a las tres tarjetas y el
- * estado de la sesión, los términos plegados y el pie de la landing. Todo lo
- * que está adentro es lo que cambia entre experiencias.
+ * estado de la sesión, y el pie de la landing con los términos de la
+ * experiencia debajo de todo. Todo lo que está adentro es lo que cambia
+ * entre experiencias.
  */
 export default function Marco({
   yo,
@@ -81,8 +82,7 @@ export default function Marco({
 
       <div className="relative z-10 mx-auto max-w-[1400px] px-5 pb-16 sm:px-8 md:px-14 md:pb-20 lg:px-20">{children}</div>
 
-      <Legal />
-      <Footer />
+      <Footer extra={<Legal />} />
     </main>
   );
 }

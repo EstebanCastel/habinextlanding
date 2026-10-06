@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { EVENT, LINKS } from "@/config/event";
 
-export default function Footer() {
+export default function Footer({ extra }: { extra?: React.ReactNode } = {}) {
   return (
     <footer className="s-night w-full border-t border-white/12 px-5 py-12 sm:px-8 md:px-14 lg:px-20">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-8 md:flex-row md:items-center md:justify-between">
@@ -53,6 +53,8 @@ export default function Footer() {
         © {new Date().getFullYear()} Habi. El pago se procesa en Wompi y la entrada llega por Luma. Los precios
         aumentan por etapas y los cupos VIP son limitados.
       </p>
+      {/* Lo que una página quiera dejar al pie, debajo de todo: los términos de la experiencia, por ejemplo. */}
+      {extra ? <div className="mx-auto mt-10 max-w-[1400px]">{extra}</div> : null}
     </footer>
   );
 }
