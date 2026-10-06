@@ -128,7 +128,11 @@ export default function Entrar({
           {ocupado ? "Entrando…" : "Entrar"}
         </button>
         <p className="text-center text-xs font-light leading-relaxed text-white/40">
-          ¿Todavía no tienes entrada?{" "}
+          Al entrar aceptas los{" "}
+          <Link href="/experiencia/terminos" className="text-violet-soft underline underline-offset-4 hover:text-white">
+            términos de la experiencia
+          </Link>
+          . ¿Todavía no tienes entrada?{" "}
           <Link href="/#boleteria" className="text-violet-soft underline underline-offset-4 hover:text-white">
             Cómprala aquí
           </Link>

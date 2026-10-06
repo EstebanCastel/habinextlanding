@@ -1,9 +1,9 @@
 /**
- * Los términos de la experiencia, al pie de cada pantalla, debajo del pie
- * de la landing: en columnas y en letra chica, siempre a la vista. Qué datos
- * se guardan, para qué, qué pasa con la foto y las publicaciones, cómo
- * funciona el ranking y cómo ejercer los derechos de habeas data. Es texto
- * de la casa; lo que cambie en la operación se cambia acá, en un solo lugar.
+ * Los términos de la experiencia: una página propia (/experiencia/terminos)
+ * enlazada desde el pie y desde la ventana de entrada. Qué datos se guardan,
+ * para qué, qué pasa con la foto y las publicaciones, cómo funciona el
+ * ranking y cómo ejercer los derechos de habeas data. Es texto de la casa;
+ * lo que cambie en la operación se cambia acá, en un solo lugar.
  */
 
 const POLITICA_HABI = "https://habi.co/politica-de-tratamiento-de-datos";
@@ -87,36 +87,30 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
   },
 ];
 
+export { VERSION };
+
 export default function Legal() {
   return (
-    <section aria-label="Términos y privacidad de la experiencia" className="border-t border-white/10 pt-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="flex items-center gap-2.5 text-sm font-semibold tracking-tight text-white/85">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-violet-soft" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-            <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" strokeLinejoin="round" />
-            <path d="M9.5 12l1.8 1.8L15 10.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Términos, privacidad y uso de tu imagen
-        </h2>
-        <p className="text-xs font-light text-white/40">Versión del {VERSION}</p>
-      </div>
-
-      {/* En columnas y en letra chica: es el pie de página, no la lectura principal. */}
-      <div className="mt-5 gap-x-10 text-[12px] font-light leading-relaxed text-white/50 md:columns-2 lg:columns-3">
-        {SECCIONES.map((s) => (
-          <div key={s.titulo} className="mb-5 break-inside-avoid">
-            <h3 className="mb-1 text-[12px] font-semibold text-white/75">{s.titulo}</h3>
-            {s.parrafos.map((t) => (
-              <p key={t} className="mb-1.5">
-                {t}
-              </p>
-            ))}
-          </div>
+    <article className="max-w-3xl">
+      <nav aria-label="Secciones" className="mb-10 flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/45">
+        {SECCIONES.map((s, i) => (
+          <a key={s.titulo} href={`#t-${i + 1}`} className="transition-colors hover:text-white">
+            {s.titulo}
+          </a>
         ))}
-      </div>
-
-      <p className="mt-2 text-xs font-light text-white/40">
-        Estos términos complementan la{" "}
+      </nav>
+      {SECCIONES.map((s, i) => (
+        <section key={s.titulo} id={`t-${i + 1}`} className="mb-9 scroll-mt-24">
+          <h2 className="mb-3 text-xl font-semibold tracking-tight text-white">{s.titulo}</h2>
+          {s.parrafos.map((t) => (
+            <p key={t} className="mb-3 text-base font-light leading-relaxed text-white/70">
+              {t}
+            </p>
+          ))}
+        </section>
+      ))}
+      <p className="mt-12 border-t border-white/10 pt-6 text-sm font-light text-white/50">
+        Versión del {VERSION}. Estos términos complementan la{" "}
         <a href={POLITICA_HABI} target="_blank" rel="noopener noreferrer" className="text-violet-soft underline underline-offset-4 hover:text-white">
           política de tratamiento de datos de Habi
         </a>
@@ -126,6 +120,6 @@ export default function Legal() {
         </a>
         .
       </p>
-    </section>
+    </article>
   );
 }
