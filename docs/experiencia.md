@@ -200,11 +200,11 @@ reemplaza el archivo con el mismo nombre.
 Todas las pantallas (`Marco.tsx`) llevan arriba `Barra.tsx`: a la izquierda
 `proximo()` de `src/config/agenda.ts` (días que faltan; el día del evento, la
 próxima sesión con `desde` o con qué arranca Inspira), que abre la agenda; a
-la derecha los puntos sobre `PUNTOS_TOTALES`. Al pie, `Legal.tsx`: los
-términos de la experiencia plegados en un `<details>` (datos, foto y
-publicaciones, imagen en el evento, ranking y premio, entrada y QR,
-conservación de seis meses, derechos de la Ley 1581). El texto vive en
-`SECCIONES` con su `VERSION`.
+la derecha los puntos sobre `PUNTOS_TOTALES`. Al pie, dentro del `Footer`
+(`extra`), `Legal.tsx`: los términos de la experiencia a la vista, en
+columnas y letra chica (datos, foto y publicaciones, imagen en el evento,
+ranking y premio, entrada y QR, conservación de seis meses, derechos de la
+Ley 1581). El texto vive en `SECCIONES` con su `VERSION`.
 
 ## Probar las misiones del evento antes del 20
 
