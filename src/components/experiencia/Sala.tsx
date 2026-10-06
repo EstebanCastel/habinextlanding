@@ -4,13 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MISIONES, type Fase, type MisionId } from "@/config/experiencia";
 import type { Vista } from "@/lib/experiencia";
-import { ENCUADRE_INICIAL, type Encuadre } from "@/lib/carnet";
 import Boleta from "./Boleta";
 import Carnet from "./Carnet";
-import Credencial from "./Credencial";
 import Mapa from "./Mapa";
 import Misiones from "./Misiones";
 import Vip from "./Vip";
+import Wallet, { AvisoBilletera } from "./Wallet";
 import { useEntrada } from "./entrada";
 import { pedir } from "./util";
 
@@ -19,9 +18,9 @@ import { pedir } from "./util";
  * está abierta, y reparte eso entre las piezas de la pantalla.
  *
  * En el carnet, la pantalla va en orden de lo que la persona quiere saber:
- * primero su entrada (¿está confirmada?, ¿de qué tipo?, ¿cómo la llevo?),
- * después los tres pasos para jugar, numerados: armar el carnet, la
- * credencial con el QR, y publicarlo para sumar puntos.
+ * primero su entrada (¿está confirmada?, ¿de qué tipo?), después dos pasos
+ * para jugar: armar el carnet —que atrás lleva el QR y debajo las
+ * billeteras— y publicarlo para sumar puntos.
  */
 export default function Sala({
   modo,
@@ -47,13 +46,6 @@ export default function Sala({
   const router = useRouter();
   const [yo, setYo] = useState<Vista | null>(inicial);
   const { entrada, motivo, cargando } = useEntrada();
-  const [pieza, setPieza] = useState<{
-    nombre: string;
-    apellido: string;
-    foto: HTMLImageElement | null;
-    encuadre: Encuadre;
-  }>({ nombre: inicial?.nombre ?? "", apellido: inicial?.apellido ?? "", foto: null, encuadre: ENCUADRE_INICIAL });
-  const recogerPieza = useCallback((d: typeof pieza) => setPieza(d), []);
   const esGeneral = useMemo(() => (entrada?.tier ?? "general") === "general", [entrada]);
   const misiones = MISIONES.filter((m) => m.experiencia === modo).map((m) => m.id);
   const [abierta, setAbierta] = useState<MisionId | null>(() => {
@@ -61,7 +53,7 @@ export default function Sala({
     if (li === "ok") return misiones.find((m) => MISIONES.find((x) => x.id === m)?.red === "linkedin" && !inicial?.misiones[m]) ?? null;
     return null;
   });
-  // Cada vez que sube, la credencial se gira al QR y la página baja hasta ella.
+  // Cada vez que sube, el carnet se gira al QR y la página baja hasta él.
   const [pedidoQr, setPedidoQr] = useState(0);
 
   const asegurar = useCallback(async (): Promise<Vista> => {
@@ -85,7 +77,7 @@ export default function Sala({
 
   const verQr = useCallback(() => {
     setPedidoQr((n) => n + 1);
-    document.getElementById("credencial")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("carnet")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   if (modo === "mapa") return <Mapa yo={yo} fase={fase} alCambiar={setYo} />;
@@ -94,27 +86,29 @@ export default function Sala({
     <div className="flex flex-col gap-14">
       {modo === "carnet" ? (
         <>
-          <Boleta yo={yo} entrada={entrada} motivo={motivo} cargando={cargando} billetera={billetera} alVerQr={verQr} />
+          <Boleta yo={yo} entrada={entrada} motivo={motivo} cargando={cargando} alVerQr={verQr} />
 
           <section id="carnet-paso" className="flex flex-col gap-8">
-            <Paso numero={1} titulo="Arma tu carnet." nota="Tu foto y tu nombre. Es la pieza que publicas y la misma foto que va en tu credencial." />
-            <Carnet yo={yo} alCambiar={setYo} alPublicar={irAMision} alPreparar={recogerPieza} />
-          </section>
-
-          {/* La credencial del evento: la misma foto, en la pieza que se
-              cuelga del cordón y que lleva el QR de entrada al respaldo. */}
-          <section id="credencial" className="flex scroll-mt-24 flex-col gap-8">
-            <Paso numero={2} titulo="Tu credencial." nota="La escarapela del evento, con tus datos de un lado y el QR de entrada del otro. Tócala para girarla." />
-            <Credencial
+            <Paso numero={1} titulo="Arma tu carnet." nota="Tu foto y tu nombre al frente; atrás, tu entrada con el QR. Es la pieza que publicas." />
+            <Carnet
               yo={yo}
-              foto={pieza.foto}
-              encuadre={pieza.encuadre}
-              nombre={pieza.nombre}
-              apellido={pieza.apellido}
+              alCambiar={setYo}
+              alPublicar={irAMision}
               entrada={entrada}
               motivo={motivo}
-              cargando={cargando}
               pedidoQr={pedidoQr}
+              pie={
+                <>
+                  <AvisoBilletera />
+                  <Wallet
+                    token={entrada?.token}
+                    listo={Boolean(entrada?.qr) && entrada?.etapa !== "rechazado"}
+                    disponible={billetera}
+                    tier={entrada?.tier ?? yo?.registro?.tier ?? "general"}
+                    alinear="inicio"
+                  />
+                </>
+              }
             />
           </section>
 
@@ -128,7 +122,7 @@ export default function Sala({
           ) : null}
 
           <section id="misiones-paso" className="flex flex-col gap-8">
-            <Paso numero={3} titulo="Publícalo y suma puntos." nota="Tres misiones: guardar el carnet, contarlo en LinkedIn y subirlo a tus historias." />
+            <Paso numero={2} titulo="Publícalo y suma puntos." nota="Tres misiones: guardar el carnet, contarlo en LinkedIn y subirlo a tus historias. Cada una tiene su botón." />
             <Misiones
               yo={yo}
               fase={fase}

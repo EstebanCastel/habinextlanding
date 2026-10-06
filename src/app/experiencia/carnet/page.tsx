@@ -40,7 +40,7 @@ export default async function PaginaCarnet({
           Tu <span className="font-bold">carnet.</span>
         </>
       }
-      bajada="Primero tu entrada: si está confirmada, de qué tipo es y cómo la guardas en el teléfono. Después, tres pasos para jugar: tu carnet, tu credencial y publicarlo."
+      bajada="Primero tu entrada: si está confirmada y de qué tipo es. Después, dos pasos para jugar: arma tu carnet, que atrás lleva tu QR, y publícalo."
     >
       <Sala
         modo="carnet"

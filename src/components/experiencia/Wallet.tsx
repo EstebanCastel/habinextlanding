@@ -108,11 +108,14 @@ export default function Wallet({
   listo,
   disponible,
   tier,
+  alinear = "centro",
 }: {
   token?: string;
   listo: boolean;
   disponible: { apple: boolean; google: boolean };
   tier: Tier;
+  /** Centrado bajo una pieza, o pegado a la izquierda dentro de un formulario. */
+  alinear?: "centro" | "inicio";
 }) {
   const aparato = useSyncExternalStore(nada, familia, () => "otro");
 
@@ -126,9 +129,10 @@ export default function Wallet({
   else if (!disponible.google) nota = "Google Wallet estará disponible muy pronto.";
   else nota = "Guarda tu entrada en el teléfono: el QR es el mismo que leen en la puerta.";
 
+  const alInicio = alinear === "inicio";
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex flex-wrap items-center justify-center gap-3">
+    <div className={`flex flex-col gap-3 ${alInicio ? "items-start" : "items-center"}`}>
+      <div className={`flex flex-wrap items-center gap-3 ${alInicio ? "" : "justify-center"}`}>
         {orden.map((destino) => (
           <Distintivo
             key={destino}
@@ -138,7 +142,7 @@ export default function Wallet({
           />
         ))}
       </div>
-      <p className="max-w-sm text-center text-xs font-light text-white/55">{nota}</p>
+      <p className={`max-w-sm text-xs font-light text-white/55 ${alInicio ? "" : "text-center"}`}>{nota}</p>
     </div>
   );
 }

@@ -173,9 +173,12 @@ subida responde «Las fotos se suben desde el día del evento».
 
 ## Billetera (Apple Wallet y Google Wallet)
 
-La franja «Tu entrada», arriba de `/experiencia/carnet`
-(`src/components/experiencia/Boleta.tsx`), ofrece guardar la entrada en el
-teléfono con los distintivos oficiales (`src/components/experiencia/Wallet.tsx`). Son enlaces a
+El carnet (`src/components/experiencia/Carnet.tsx`) es una carta de dos
+caras: al frente la pieza que se publica y atrás la entrada con el QR de
+Luma (`dibujarReverso` en `src/lib/carnet.ts`); «Ver mi QR» en la franja
+«Tu entrada» (`Boleta.tsx`) la gira. Debajo del botón de guardar van los
+distintivos oficiales para llevarla al teléfono
+(`src/components/experiencia/Wallet.tsx`). Son enlaces a
 `GET /api/entrada/apple?t=<token>` y `GET /api/entrada/google?t=<token>`: en
 iPhone, Safari abre la hoja «Agregar a Wallet» al navegar al `.pkpass`; para
 Google el endpoint redirige al enlace de guardar. El pase lleva el **mismo QR

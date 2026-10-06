@@ -458,3 +458,133 @@ export function aBlob(canvas: HTMLCanvasElement, calidad = 0.92): Promise<Blob> 
     canvas.toBlob((b) => (b ? resolver(b) : rechazar(new Error("no se pudo exportar"))), "image/jpeg", calidad);
   });
 }
+
+// ---------- el reverso: la entrada ----------
+
+export type OpcionesDeReverso = {
+  formato: Formato;
+  nombre: string;
+  apellido: string;
+  tier: "general" | "vip";
+  /** El QR de Luma ya rasterizado; null mientras no haya entrada emitida. */
+  qr: HTMLImageElement | null;
+  correo?: string;
+  cedula?: string;
+  /** Qué falta para que haya QR, en palabras para la persona. */
+  aviso?: string;
+  recursos: Recursos;
+  familia: string;
+};
+
+/**
+ * La cara de atrás del carnet: la entrada. El mismo lenguaje del frente —la
+ * noche, la trama de puntos, el lockup y el pie— pero con el QR de Luma en el
+ * centro, que es lo que lee la puerta. Sin QR todavía, el recuadro dice qué
+ * falta en vez de quedar en blanco.
+ */
+export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) {
+  const D = DISENO[o.formato];
+  canvas.width = D.w;
+  canvas.height = D.h;
+  const ctx = canvas.getContext("2d")!;
+  const { w, h } = D;
+
+  ctx.fillStyle = "#050208";
+  ctx.fillRect(0, 0, w, h);
+  const brillo = ctx.createRadialGradient(w * 0.5, h * 0.42, 40, w * 0.5, h * 0.42, w * 0.9);
+  brillo.addColorStop(0, "rgba(128,46,246,0.18)");
+  brillo.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = brillo;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = "rgba(128,46,246,0.35)";
+  for (let y = D.puntos.paso / 2; y < h; y += D.puntos.paso) {
+    for (let x = D.puntos.paso / 2; x < w; x += D.puntos.paso) {
+      ctx.beginPath();
+      ctx.arc(x, y, D.puntos.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  const lockupH = (D.lockup.w * 260) / 780;
+  ctx.drawImage(o.recursos.lockup, D.lockup.x, D.lockup.y, D.lockup.w, lockupH);
+  ctx.textBaseline = "alphabetic";
+
+  // --- rótulo ---
+  const arriba = D.lockup.y + lockupH + (o.formato === "story" ? 120 : 70);
+  ctx.fillStyle = VIOLETA;
+  ctx.font = `700 ${Math.round(w * 0.022)}px ${o.familia}`;
+  const rotulo = o.tier === "vip" ? "TU ENTRADA VIP" : "TU ENTRADA GENERAL";
+  const esp = w * 0.022 * 0.3;
+  dibujarEspaciado(ctx, rotulo, w / 2 - anchoEspaciado(ctx, rotulo, esp) / 2, arriba, esp);
+
+  // --- el QR, en blanco y con aire: es lo que lee el lector ---
+  const lado = Math.round(w * 0.6);
+  const Q = { x: (w - lado) / 2, y: arriba + 44, s: lado, r: Math.round(lado * 0.06) };
+  ctx.fillStyle = "#ffffff";
+  redondeado(ctx, Q.x, Q.y, Q.s, Q.s, Q.r);
+  ctx.fill();
+  if (o.qr) {
+    const p = Math.round(lado * 0.07);
+    ctx.drawImage(o.qr, Q.x + p, Q.y + p, Q.s - p * 2, Q.s - p * 2);
+  } else {
+    ctx.fillStyle = "rgba(5,2,8,0.5)";
+    ctx.font = `300 ${Math.round(w * 0.026)}px ${o.familia}`;
+    ctx.textAlign = "center";
+    const lineas = renglones(ctx, o.aviso ?? "Tu QR aparece cuando tu entrada esté confirmada", Q.s - lado * 0.2);
+    const salto = w * 0.036;
+    lineas.forEach((l, i) => ctx.fillText(l, w / 2, Q.y + Q.s / 2 - ((lineas.length - 1) * salto) / 2 + i * salto + salto * 0.3));
+    ctx.textAlign = "left";
+  }
+
+  // --- nombre ---
+  ctx.textAlign = "center";
+  const completo = `${o.nombre} ${o.apellido}`.trim().toUpperCase() || "TU NOMBRE";
+  ctx.fillStyle = "#ffffff";
+  const tNombre = ajustar(ctx, completo, 700, Math.round(w * 0.046), o.familia, w - D.margen * 2, 0.04);
+  ctx.font = `700 ${tNombre}px ${o.familia}`;
+  const yNombre = Q.y + Q.s + (o.formato === "story" ? 110 : 86);
+  ctx.fillText(completo, w / 2, yNombre);
+
+  let y = yNombre + w * 0.04;
+  if (o.cedula) {
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = `300 ${Math.round(w * 0.024)}px ${o.familia}`;
+    ctx.fillText(`CC ${o.cedula}`, w / 2, y);
+    y += w * 0.034;
+  }
+  if (o.correo) {
+    ctx.fillStyle = "rgba(255,255,255,0.38)";
+    ctx.font = `300 ${Math.round(w * 0.022)}px ${o.familia}`;
+    ctx.fillText(o.correo, w / 2, y);
+    y += w * 0.034;
+  }
+
+  // --- los datos del día ---
+  const yLinea = y + w * 0.02;
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(D.margen + 40, yLinea);
+  ctx.lineTo(w - D.margen - 40, yLinea);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `600 ${Math.round(w * 0.027)}px ${o.familia}`;
+  ctx.fillText("Martes 20 de octubre de 2026", w / 2, yLinea + w * 0.05);
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.font = `300 ${Math.round(w * 0.025)}px ${o.familia}`;
+  ctx.fillText("Centro de Convenciones Av. 68 · Bogotá", w / 2, yLinea + w * 0.088);
+  ctx.textAlign = "left";
+
+  // --- UN EVENTO DE habi, igual que al frente ---
+  const P = D.pie;
+  const logoW = P.logoH;
+  const logoX = w - D.margen - logoW;
+  const logoY = P.y - P.logoH + P.tam * 0.35;
+  ctx.drawImage(o.recursos.habi, logoX, logoY, logoW, P.logoH);
+  ctx.font = `500 ${P.tam}px ${o.familia}`;
+  const texto = "UN EVENTO DE";
+  const anchoTexto = anchoEspaciado(ctx, texto, P.tam * 0.22);
+  ctx.fillStyle = "#ffffff";
+  dibujarEspaciado(ctx, texto, logoX - 28 - anchoTexto, logoY + P.logoH / 2 + P.tam * 0.36, P.tam * 0.22);
+}

@@ -9,11 +9,11 @@ import { SALONES, esSesion, numeroDe, salonDe, sesionesDe, type Salon, type Salo
 /**
  * El programa del día, como un cartel y no como una tabla.
  *
- * Son dos salones, uno al lado del otro, y en cada uno las sesiones cuelgan
- * de un hilo —el mismo hilo que recorre la landing— en el orden en que
- * pasan. No hay horas a propósito: el equipo las está cerrando y es mejor
- * un programa sin reloj que un reloj que después se desdice. Lo que sí se
- * sabe es qué viene primero y qué viene después, y eso es lo que se lee.
+ * Son dos salones, uno al lado del otro: la foto del escenario arriba y,
+ * debajo, cada sesión como una tarjeta en el orden en que pasa. No hay horas
+ * a propósito: el equipo las está cerrando y es mejor un programa sin reloj
+ * que un reloj que después se desdice. Lo que sí se sabe es qué viene
+ * primero y qué viene después, y eso es lo que se lee.
  *
  * En celular los dos salones no caben a la vez y se elige uno; en pantalla
  * ancha se ven los dos, que es como se decide a cuál entrar.
@@ -67,9 +67,10 @@ export default function Agenda() {
 }
 
 /**
- * Un salón: la foto del escenario con su número de tótem, y debajo el hilo
- * con las sesiones. El número grande es el que está señalizado en piso; se
- * repite acá para que la gente lo reconozca al llegar.
+ * Un salón: la foto del escenario con su número de tótem, y debajo las
+ * sesiones como tarjetas, en el orden del programa. El número grande es el
+ * que está señalizado en piso; se repite acá para que la gente lo reconozca
+ * al llegar.
  */
 function Columna({ salon, oculta, onAbrir }: { salon: Salon; oculta: boolean; onAbrir: (s: Sesion) => void }) {
   const sesiones = sesionesDe(salon.id);
@@ -101,69 +102,81 @@ function Columna({ salon, oculta, onAbrir }: { salon: Salon; oculta: boolean; on
             </h2>
             <p className="truncate text-sm font-light text-white/55">{salon.claim}</p>
           </div>
+          <span className="ml-auto hidden shrink-0 rounded-full border border-white/15 bg-night/60 px-3 py-1 text-[11px] font-semibold tabular-nums text-white/70 backdrop-blur sm:inline-flex">
+            {total} sesiones
+          </span>
         </div>
       </div>
 
-      <p className="mt-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.26em] text-white/40">
-        <span className="h-px w-6 bg-violet" />
-        {total} sesiones · en orden
-      </p>
-
-      {/* El hilo: una línea vertical y, colgando de ella, cada sesión. */}
-      <ol className="relative mt-5 flex flex-col">
-        <span aria-hidden="true" className="absolute bottom-6 left-[11px] top-3 w-px bg-gradient-to-b from-violet via-violet/50 to-transparent" />
+      <ol className="mt-4 flex flex-col gap-3">
         {sesiones.map((s) => (
-          <Nodo key={s.id} sesion={s} onAbrir={() => onAbrir(s)} />
+          <TarjetaSesion key={s.id} sesion={s} onAbrir={() => onAbrir(s)} />
         ))}
       </ol>
     </section>
   );
 }
 
-/** Una sesión colgada del hilo. Las pausas son nudos: más chicos y sin abrir. */
-function Nodo({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => void }) {
+/** «Juanfe Quiñones» → «JQ»; «Anderson · Hipoteca» → «A». Para el círculo del ponente. */
+function iniciales(nombre: string): string {
+  const limpio = nombre.split("·")[0].replace(/\(.*?\)/g, "").trim();
+  const partes = limpio.split(/\s+/).filter((p) => p && !/^(y|o|de|del|la|el)$/i.test(p));
+  return partes
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
+}
+
+function Ponente({ nombre, detalle }: { nombre: string; detalle?: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-violet/40 bg-violet-shade text-[10px] font-bold tracking-wide text-violet-soft">
+        {iniciales(nombre)}
+      </span>
+      <span className="text-sm text-white/80">
+        {nombre}
+        {detalle ? <span className="font-light text-white/45"> · {detalle}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+/** Una sesión como tarjeta. Las pausas no son tarjetas: son un respiro entre dos. */
+function TarjetaSesion({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => void }) {
   if (s.tipo) {
     return (
-      <li className="relative grid grid-cols-[1.5rem_1fr] gap-x-4 py-4">
-        <span aria-hidden="true" className="relative z-10 mt-[3px] grid h-[23px] w-[23px] place-items-center">
-          <span className={`h-2.5 w-2.5 rounded-full border ${s.tipo === "pausa" ? "border-white/35 bg-night" : "border-dashed border-white/30 bg-night"}`} />
+      <li className="flex items-center gap-3 px-2 py-2">
+        <span aria-hidden="true" className="h-px flex-1 border-t border-dashed border-white/15" />
+        <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/45">
+          {s.tipo === "pausa" ? (
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M4 9h12v6a4 4 0 01-4 4H8a4 4 0 01-4-4V9zM16 10h2a2 2 0 010 4h-2M7 5v2M11 4v3" strokeLinecap="round" />
+            </svg>
+          ) : null}
+          {s.titulo}
         </span>
-        <div className="flex items-center gap-3 self-center">
-          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/40">{s.titulo}</span>
-          <span className="h-px flex-1 border-t border-dashed border-white/12" />
-          {s.resumen ? <span className="hidden text-xs font-light text-white/35 sm:inline">{s.resumen}</span> : null}
-        </div>
+        <span aria-hidden="true" className="h-px flex-1 border-t border-dashed border-white/15" />
       </li>
     );
   }
 
-  const n = numeroDe(s);
+  const n = String(numeroDe(s)).padStart(2, "0");
   return (
-    <li className="relative grid grid-cols-[1.5rem_1fr] gap-x-4 py-5">
-      <span aria-hidden="true" className="relative z-10 mt-[7px] grid h-[23px] w-[23px] place-items-center">
-        <span className="h-[23px] w-[23px] rounded-full border border-violet/60 bg-night shadow-[0_0_0_4px_rgba(128,46,246,0.14)]">
-          <span className="block h-full w-full scale-[0.42] rounded-full bg-violet" />
-        </span>
-      </span>
+    <li>
       <button
         type="button"
         onClick={onAbrir}
-        className="group -my-2 -ml-2 flex flex-col items-start gap-1.5 rounded-2xl py-2 pl-2 pr-3 text-left transition-colors hover:bg-white/[0.035] focus-visible:bg-white/[0.035] focus-visible:outline-none"
+        className="group relative block w-full overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-5 pr-14 text-left transition-colors hover:border-violet/60 hover:bg-violet/[0.06] focus-visible:border-violet/60 focus-visible:outline-none sm:p-6 sm:pr-16"
       >
-        <span className="flex items-center gap-2.5">
-          <span className="font-mono text-[11px] font-medium tabular-nums tracking-[0.18em] text-violet-soft">{String(n).padStart(2, "0")}</span>
-          {s.porConfirmar ? (
-            <span className="rounded-full border border-dashed border-white/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
-              Por confirmar
-            </span>
-          ) : null}
+        {/* El número, grande y en marca de agua: ordena sin pedir atención. */}
+        <span aria-hidden="true" className="pointer-events-none absolute -right-1 -top-3 font-mono text-[4.5rem] font-bold leading-none tracking-tighter text-white/[0.05] transition-colors group-hover:text-violet/[0.14]">
+          {n}
         </span>
-        <span className="text-xl font-semibold leading-[1.15] tracking-tight transition-colors group-hover:text-violet-soft sm:text-[1.45rem]">
-          {s.titulo}
-        </span>
+        <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">SESIÓN {n}</span>
+        <span className="mt-1.5 block text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
 
         {s.partes ? (
-          <span className="mt-1.5 flex flex-col gap-1 border-l border-violet/40 pl-3.5">
+          <span className="mt-3 flex flex-col gap-1.5">
             {s.partes.map((p) => (
               <span key={p.titulo} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                 <span className="font-medium text-white/85">{p.titulo}</span>
@@ -172,21 +185,29 @@ function Nodo({ sesion: s, onAbrir }: { sesion: Sesion; onAbrir: () => void }) {
             ))}
           </span>
         ) : s.ponentes ? (
-          <span className="mt-1 flex flex-wrap gap-1.5">
+          <span className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
             {s.ponentes.map((p) => (
-              <span key={p} className="rounded-full border border-white/12 bg-white/[0.03] px-2.5 py-1 text-xs font-light text-white/70">
-                {p}
-              </span>
+              <Ponente key={p} nombre={p} />
             ))}
           </span>
         ) : s.ponente ? (
-          <span className="text-sm text-white/65">
-            {s.ponente}
-            {s.detallePonente ? <span className="font-light text-white/40"> · {s.detallePonente}</span> : null}
+          <span className="mt-3 block">
+            <Ponente nombre={s.ponente} detalle={s.detallePonente} />
           </span>
-        ) : null}
+        ) : (
+          <span className="mt-3 inline-flex items-center gap-2 text-sm text-white/45">
+            <span className="grid h-7 w-7 place-items-center rounded-full border border-dashed border-white/25 text-[10px] text-white/40">?</span>
+            Ponente por confirmar
+          </span>
+        )}
 
-        {s.resumen ? <span className="text-sm font-light leading-snug text-white/45">{s.resumen}</span> : null}
+        {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
+
+        <span className="absolute bottom-5 right-5 grid h-8 w-8 place-items-center rounded-full border border-white/15 text-white/60 transition-colors group-hover:border-violet group-hover:bg-violet group-hover:text-white sm:bottom-6 sm:right-6">
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
       </button>
     </li>
   );

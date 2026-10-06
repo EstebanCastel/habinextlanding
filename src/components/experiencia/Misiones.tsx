@@ -15,6 +15,7 @@ import {
   type Fase,
   type Mision,
   type MisionId,
+  type Red,
 } from "@/config/experiencia";
 import { aBlob, cargarFuentes, cargarRecursos, dibujarFrase, familiaDeFuente } from "@/lib/carnet";
 import type { Vista } from "@/lib/experiencia";
@@ -704,6 +705,21 @@ function PanelFrase({ yo, sitio, alCambiar }: { yo: Vista | null; sitio: string;
 
 // ---------- la lista ----------
 
+/**
+ * El verbo de cada misión, a la vista. Antes había que tocar la fila para
+ * descubrir qué hacer; ahora el botón dice qué pasa y abre el paso siguiente.
+ */
+const ACCION: Record<MisionId, { texto: string; red?: Red }> = {
+  carnet: { texto: "Armar mi carnet" },
+  linkedin_voy: { texto: "Publicar en LinkedIn", red: "linkedin" },
+  instagram_voy: { texto: "Subir a mis historias", red: "instagram" },
+  invitar: { texto: "Invitar por WhatsApp", red: "whatsapp" },
+  fotos: { texto: "Subir mis fotos" },
+  linkedin_fotos: { texto: "Publicar en LinkedIn", red: "linkedin" },
+  instagram_fotos: { texto: "Compartir en Instagram", red: "instagram" },
+  frase: { texto: "Escribir mi frase" },
+};
+
 function Tarjeta({
   m,
   indice,
@@ -721,6 +737,25 @@ function Tarjeta({
   hechaEn?: string;
   children: React.ReactNode;
 }) {
+  const accion = ACCION[m.id];
+  const esCarnet = m.id === "carnet";
+  const boton =
+    estado === "cerrada" ? null : esCarnet ? (
+      estado === "hecha" ? null : (
+        <a href="#carnet" className={`${clasesBoton.borde} !px-5 !py-2.5 !text-sm`}>
+          {accion.texto}
+        </a>
+      )
+    ) : accion.red ? (
+      <BotonRed red={accion.red} onClick={alAbrir} className="!px-5 !py-2.5 !text-sm">
+        {estado === "hecha" ? (abierta ? "Cerrar" : "Volver a publicar") : accion.texto}
+      </BotonRed>
+    ) : (
+      <button type="button" onClick={alAbrir} className={`${clasesBoton.borde} !px-5 !py-2.5 !text-sm`}>
+        {estado === "hecha" ? (abierta ? "Cerrar" : "Ver") : accion.texto}
+      </button>
+    );
+
   return (
     <li
       className={`rounded-[26px] border transition-colors ${
@@ -731,39 +766,47 @@ function Tarjeta({
             : "border-white/12 bg-white/[0.03]"
       }`}
     >
-      <button
-        type="button"
-        onClick={alAbrir}
-        aria-expanded={abierta}
-        disabled={estado === "cerrada"}
-        className="flex w-full items-start gap-4 p-5 text-left disabled:cursor-not-allowed md:items-center md:gap-6 md:p-6"
-      >
-        <span
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-base font-bold tabular-nums ${
-            estado === "hecha" ? "bg-violet text-white" : estado === "cerrada" ? "border border-white/10 text-white/30" : "border border-white/20 text-white/80"
-          }`}
+      <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:gap-6 md:p-6">
+        <button
+          type="button"
+          onClick={esCarnet || estado === "cerrada" ? undefined : alAbrir}
+          aria-expanded={esCarnet ? undefined : abierta}
+          disabled={estado === "cerrada"}
+          className={`flex min-w-0 flex-1 items-start gap-4 text-left ${esCarnet || estado === "cerrada" ? "cursor-default" : ""} disabled:cursor-not-allowed`}
         >
-          {estado === "hecha" ? "✓" : indice}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className={`text-lg font-semibold tracking-tight md:text-xl ${estado === "cerrada" ? "text-white/45" : "text-white"}`}>
-              {m.titulo}
+          <span
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-base font-bold tabular-nums ${
+              estado === "hecha" ? "bg-violet text-white" : estado === "cerrada" ? "border border-white/10 text-white/30" : "border border-white/20 text-white/80"
+            }`}
+          >
+            {estado === "hecha" ? "✓" : indice}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className={`text-lg font-semibold tracking-tight md:text-xl ${estado === "cerrada" ? "text-white/45" : "text-white"}`}>
+                {m.titulo}
+              </span>
+              {m.red ? <Chip red={m.red} className={estado === "cerrada" ? "opacity-40 grayscale" : ""} /> : null}
+              {estado === "hecha" ? (
+                <span className="rounded-full bg-violet/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-soft">Hecha</span>
+              ) : null}
             </span>
-            {m.red ? <Chip red={m.red} className={estado === "cerrada" ? "opacity-40 grayscale" : ""} /> : null}
+            <span className={`mt-1 block text-sm font-light md:text-base ${estado === "cerrada" ? "text-white/35" : "text-white/60"}`}>
+              {estado === "cerrada" ? "Se abre el 20 de octubre, el día del evento." : estado === "hecha" && hechaEn ? `Hecha el ${fecha(hechaEn)}.` : m.resumen}
+            </span>
           </span>
-          <span className={`mt-1 block text-sm font-light md:text-base ${estado === "cerrada" ? "text-white/35" : "text-white/60"}`}>
-            {estado === "cerrada" ? "Se abre el 20 de octubre, el día del evento." : estado === "hecha" && hechaEn ? `Hecha el ${fecha(hechaEn)}.` : m.resumen}
+        </button>
+        <div className="flex items-center justify-between gap-4 md:justify-end md:gap-6">
+          {boton}
+          <span className="shrink-0 text-right">
+            <span className={`block text-xl font-bold tabular-nums tracking-tight md:text-2xl ${estado === "hecha" ? "text-violet-soft" : "text-white/70"}`}>
+              +{m.puntos}
+            </span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">puntos</span>
           </span>
-        </span>
-        <span className="shrink-0 text-right">
-          <span className={`block text-xl font-bold tabular-nums tracking-tight md:text-2xl ${estado === "hecha" ? "text-violet-soft" : "text-white/70"}`}>
-            +{m.puntos}
-          </span>
-          <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">puntos</span>
-        </span>
-      </button>
-      {abierta && estado !== "cerrada" ? <div className="border-t border-white/10 p-5 md:p-6">{children}</div> : null}
+        </div>
+      </div>
+      {abierta && estado !== "cerrada" && !esCarnet ? <div className="border-t border-white/10 p-5 md:p-6">{children}</div> : null}
     </li>
   );
 }

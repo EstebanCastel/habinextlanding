@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Asterisk from "@/components/Asterisk";
 import type { Vista } from "@/lib/experiencia";
-import Wallet, { AvisoBilletera } from "./Wallet";
 import type { EntradaVista } from "./entrada";
 import { clasesBoton } from "./util";
 
@@ -14,22 +13,20 @@ import { clasesBoton } from "./util";
  * la página, detrás de una tarjeta que había que girar. Lo que de verdad
  * quiere saber quien compró es si su entrada está confirmada, de qué tipo es
  * y cómo la lleva en el teléfono. Eso va acá arriba, en una sola franja: el
- * tipo de entrada, el estado, el QR a un toque y las dos billeteras. Lo que
- * siga abajo —el carnet, la credencial, las misiones— ya es para jugar.
+ * tipo de entrada, el estado y el QR a un toque. Las billeteras van en el
+ * carnet, debajo del botón de guardar, que es donde la persona termina.
  */
 export default function Boleta({
   yo,
   entrada,
   motivo,
   cargando,
-  billetera,
   alVerQr,
 }: {
   yo: Vista | null;
   entrada: EntradaVista | null;
   motivo: string;
   cargando: boolean;
-  billetera: { apple: boolean; google: boolean };
   alVerQr: () => void;
 }) {
   if (cargando) {
@@ -65,7 +62,7 @@ export default function Boleta({
   } else if (confirmada) {
     titulo = `Confirmada${esVip ? ", y es VIP." : "."}`;
     texto =
-      "El QR que va al respaldo de tu credencial es el mismo que leen en la puerta: te lo mandó Luma al correo y también vive aquí. Guárdalo en el teléfono para no buscarlo el día del evento.";
+      "El QR que va atrás de tu carnet es el mismo que leen en la puerta: te lo mandó Luma al correo y también vive aquí. Abajo puedes guardarlo en Apple Wallet o Google Wallet.";
   } else if (pagada) {
     titulo = etapa === "comprobante_recibido" ? "Recibimos tu comprobante." : "Recibida, falta el QR.";
     texto = motivo || entrada.motivo || "Estamos confirmando tu pago. Tu QR aparece aquí apenas quede listo.";
@@ -142,10 +139,6 @@ export default function Boleta({
         </div>
       </div>
 
-      <div className="relative mt-6 flex flex-col gap-4 border-t border-white/10 pt-6 empty:hidden">
-        <AvisoBilletera />
-        {entrada && !rechazada ? <Wallet token={entrada.token} listo={confirmada} disponible={billetera} tier={entrada.tier} /> : null}
-      </div>
     </section>
   );
 }
