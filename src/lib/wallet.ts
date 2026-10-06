@@ -110,15 +110,30 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
     locations: [{ latitude: 4.66016, longitude: -74.0993, relevantText: `Estás en ${EVENT.venue}` }],
     // El mensaje del código es el QR de Luma tal cual: es lo que lee la puerta.
     barcodes: [{ format: "PKBarcodeFormatQR", message: e.qr, messageEncoding: "iso-8859-1", altText: etiquetaTier(e.tier) }],
+    // Lo que Wallet usa para sugerir el pase a la hora y en el lugar del evento.
+    semantics: {
+      eventType: "PKEventTypeGeneric",
+      eventName: EVENT.fullName,
+      eventStartDate: EVENT.startsAt,
+      venueName: EVENT.venue,
+      venueLocation: { latitude: 4.66016, longitude: -74.0993 },
+      attendeeName: e.nombre,
+    },
+    // Con `strip.png` la tarjeta lleva la franja de marca debajo de la
+    // cabecera, y el campo principal —el nombre de la persona— se pinta sobre
+    // la parte oscura de la franja. El tipo de entrada va arriba a la derecha.
     eventTicket: {
       headerFields: [{ key: "tier", label: "ENTRADA", value: etiquetaTier(e.tier) }],
-      primaryFields: [{ key: "evento", label: "EVENTO", value: EVENT.fullName }],
+      primaryFields: [{ key: "nombre", label: "ASISTENTE", value: e.nombre }],
       secondaryFields: [
-        { key: "nombre", label: "ASISTENTE", value: e.nombre },
-        { key: "fecha", label: "FECHA", value: "20 oct 2026" },
+        { key: "evento", label: "EVENTO", value: EVENT.fullName },
+        { key: "fecha", label: "FECHA", value: "Mar 20 oct 2026", textAlignment: "PKTextAlignmentRight" },
       ],
       // Sin hora: el horario del día todavía se está cerrando.
-      auxiliaryFields: [{ key: "sede", label: "LUGAR", value: EVENT.venue }],
+      auxiliaryFields: [
+        { key: "sede", label: "LUGAR", value: EVENT.venue },
+        { key: "ciudad", label: "CIUDAD", value: EVENT.city, textAlignment: "PKTextAlignmentRight" },
+      ],
       backFields: [
         { key: "correo", label: "Correo", value: e.correo },
         ...(e.cedula ? [{ key: "cedula", label: "Documento", value: e.cedula }] : []),
