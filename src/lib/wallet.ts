@@ -120,19 +120,17 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
       attendeeName: e.nombre,
     },
     // Con `strip.png` la tarjeta lleva la franja de marca debajo de la
-    // cabecera, y el campo principal —el nombre de la persona— se pinta sobre
-    // la parte oscura de la franja. El tipo de entrada va arriba a la derecha.
+    // cabecera: la fecha, Bogotá y los asteriscos van pintados ahí. No hay
+    // campo principal a propósito: Wallet lo pinta enorme sobre la franja y
+    // un nombre largo se montaba sobre los asteriscos. El nombre va debajo,
+    // a tamaño normal; el tipo de entrada arriba a la derecha.
     eventTicket: {
       headerFields: [{ key: "tier", label: "ENTRADA", value: etiquetaTier(e.tier) }],
-      primaryFields: [{ key: "nombre", label: "ASISTENTE", value: e.nombre }],
-      secondaryFields: [
-        { key: "evento", label: "EVENTO", value: EVENT.fullName },
-        { key: "fecha", label: "FECHA", value: "Mar 20 oct 2026", textAlignment: "PKTextAlignmentRight" },
-      ],
+      secondaryFields: [{ key: "nombre", label: "ASISTENTE", value: e.nombre }],
       // Sin hora: el horario del día todavía se está cerrando.
       auxiliaryFields: [
-        { key: "sede", label: "LUGAR", value: EVENT.venue },
-        { key: "ciudad", label: "CIUDAD", value: EVENT.city, textAlignment: "PKTextAlignmentRight" },
+        { key: "sede", label: "LUGAR", value: "Centro de Convenciones Av. 68" },
+        { key: "fecha", label: "FECHA", value: "20 oct 2026", textAlignment: "PKTextAlignmentRight" },
       ],
       backFields: [
         { key: "correo", label: "Correo", value: e.correo },
