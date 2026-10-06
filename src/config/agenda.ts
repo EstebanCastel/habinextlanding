@@ -277,7 +277,8 @@ export const SESIONES: Sesion[] = [
     id: "asistente-claude",
     salon: "taller",
     titulo: "Crea tu asistente personal con Claude",
-    ponentes: ["Juanfe Quiñones", "Carlos M."],
+    // La hoja trae también a «Carlos M.»; va solo Juanfe hasta tener el nombre completo.
+    ponente: "Juanfe Quiñones",
     resumen: "Sales del evento con tu asistente funcionando.",
     contenido: [
       "Cómo se le enseña a un asistente tu forma de trabajar, tus inmuebles y tus clientes.",
@@ -308,7 +309,9 @@ export const SESIONES: Sesion[] = [
     id: "conversatorio-brokers",
     salon: "taller",
     titulo: "Conversatorio: los mejores brokers",
-    ponentes: ["Anderson · Hipoteca", "Vivienda · por confirmar", "Germán Rueda · entrevista"],
+    // Entrevista Germán Rueda; los brokers (Anderson por hipoteca y uno de vivienda) se confirman.
+    ponente: "Germán Rueda",
+    detallePonente: "Entrevista · Habi",
     resumen: "Los que más venden, contando cómo lo hacen.",
     contenido: [
       "Cómo organizan su semana los asesores que cierran todos los meses.",

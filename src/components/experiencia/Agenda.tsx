@@ -264,61 +264,91 @@ function Relleno({ q, className = "" }: { q: Quien; className?: string }) {
   );
 }
 
+/** Posiciones de la «bolsa» de logos: tiradas una encima de otra, con giro y solape. */
+const BOLSA: Record<number, { left: string; top: string; rotate: number; w: string }[]> = {
+  1: [{ left: "18%", top: "20%", rotate: -6, w: "64%" }],
+  2: [
+    { left: "0%", top: "6%", rotate: -8, w: "58%" },
+    { left: "40%", top: "40%", rotate: 6, w: "56%" },
+  ],
+  4: [
+    { left: "2%", top: "6%", rotate: -9, w: "52%" },
+    { left: "42%", top: "2%", rotate: 10, w: "48%" },
+    { left: "8%", top: "50%", rotate: -4, w: "50%" },
+    { left: "44%", top: "46%", rotate: 7, w: "50%" },
+  ],
+};
+const bolsaDe = (n: number) => BOLSA[n] ?? BOLSA[4];
+
 /**
- * El lado derecho de la tarjeta: la foto de quien dicta, tan alta como la
- * tarjeta y degradada hacia el texto, con el nombre abajo. Con varias
- * personas van apiladas; sin nadie confirmado, el hueco lo dice.
+ * La capa visual de la tarjeta, a la derecha y debajo del texto, para que
+ * tarjeta y foto sean una sola cosa: la foto se funde hacia el texto con un
+ * degradado largo y el nombre va abajo. Las marcas van sin nombre, con sus
+ * logos grandes tirados en una bolsa, uno encima de otro. Sin nadie
+ * confirmado, el logo de Habi.
  */
-function LadoDerecho({ s }: { s: Sesion }) {
+function CapaVisual({ s }: { s: Sesion }) {
   const lista = gente(s);
+  const marcas = lista.filter((q) => q.ficha?.logo);
+  const personas = lista.filter((q) => !q.ficha?.logo);
+  // La máscara funde la foto hacia el texto; el velo de encima apaga sus
+  // bordes de arriba y de la derecha, para que una foto con fondo claro no se
+  // lea como un recorte pegado sobre la tarjeta.
+  const fundido = {
+    maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.85) 55%, black 100%)",
+    WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.85) 55%, black 100%)",
+  } as const;
+  const velo = { background: "radial-gradient(ellipse 78% 105% at 58% 62%, rgba(5,2,8,0) 42%, rgba(5,2,8,0.55) 75%, rgba(5,2,8,0.95) 100%)" } as const;
+
   if (!lista.length) {
     return (
-      <span className="relative flex h-full flex-col items-center justify-center gap-2 border-l border-dashed border-white/10 text-white/35">
-        <span className="grid h-14 w-14 place-items-center rounded-2xl border border-dashed border-white/20 text-xl">?</span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Por confirmar</span>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-[52%]" style={fundido}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/logo.png" alt="" loading="lazy" className="absolute right-[12%] top-1/2 w-[46%] -translate-y-1/2 opacity-80" />
       </span>
     );
   }
-  if (lista.length === 1) {
-    const q = lista[0];
+
+  if (!personas.length) {
     return (
-      <span className="relative block h-full">
-        {q.ficha?.foto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={q.ficha.foto}
-            alt=""
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover object-top grayscale"
-            style={{ maskImage: "linear-gradient(to right, transparent 0%, black 45%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 45%)" }}
-          />
-        ) : (
-          <Relleno q={q} className="absolute inset-0 h-full w-full" />
-        )}
-        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-night via-night/80 to-transparent px-4 pb-4 pt-10">
-          <span className="block text-[15px] font-semibold leading-tight tracking-tight text-white sm:text-base">{q.nombre}</span>
-          {q.cargo ? <span className="mt-0.5 block text-[11px] font-light leading-snug text-white/55">{q.cargo}</span> : null}
-        </span>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-[48%]">
+        {marcas.slice(0, 4).map((q, i) => {
+          const bolsa = bolsaDe(Math.min(marcas.length, 4));
+          const pos = bolsa[i % bolsa.length];
+          return (
+            <span
+              key={q.nombre}
+              className="absolute grid aspect-[5/4] place-items-center rounded-2xl border border-white/10 p-4 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.9)]"
+              style={{ left: pos.left, top: pos.top, width: pos.w, transform: `rotate(${pos.rotate}deg)`, background: q.ficha?.fondo ?? "#ffffff", zIndex: i + 1 }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={q.ficha!.logo} alt="" loading="lazy" className="max-h-full max-w-full object-contain" />
+            </span>
+          );
+        })}
       </span>
     );
   }
+
+  const q = personas.find((x) => x.ficha?.foto) ?? personas[0];
   return (
-    <span className="relative flex h-full flex-col justify-center gap-2 border-l border-white/[0.06] bg-white/[0.02] p-3">
-      {lista.slice(0, 4).map((q) => (
-        <span key={q.nombre} className="flex items-center gap-2.5">
-          {q.ficha?.foto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={q.ficha.foto} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-xl object-cover object-top grayscale" />
-          ) : (
-            <Relleno q={q} className="h-10 w-10 shrink-0 rounded-xl !p-1.5 !text-xs" />
-          )}
-          <span className="min-w-0">
-            <span className="block truncate text-[13px] font-semibold leading-tight">{q.nombre}</span>
-            {q.cargo ? <span className="block truncate text-[10px] font-light text-white/50">{q.cargo}</span> : null}
-          </span>
-        </span>
-      ))}
-    </span>
+    <>
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-[58%]" style={fundido}>
+        {q.ficha?.foto ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={q.ficha.foto} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-[60%_top] grayscale" />
+            <span className="absolute inset-0" style={velo} />
+          </>
+        ) : (
+          <span className="absolute inset-0 grid place-items-center text-5xl font-bold tracking-wide text-violet-soft/60">{iniciales(q.nombre)}</span>
+        )}
+      </span>
+      <span className="pointer-events-none absolute bottom-0 right-0 w-[58%] bg-gradient-to-t from-night via-night/85 to-transparent px-5 pb-5 pt-10 text-right sm:px-6 sm:pb-6">
+        <span className="block text-[15px] font-semibold leading-tight tracking-tight text-white sm:text-base">{q.nombre}</span>
+        {q.cargo ? <span className="mt-0.5 block text-[11px] font-light leading-snug text-white/55">{q.cargo}</span> : null}
+      </span>
+    </>
   );
 }
 
@@ -348,16 +378,16 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
       <button
         type="button"
         onClick={onAbrir}
-        className={`group grid min-h-[13.5rem] w-full grid-cols-[1fr_10rem] overflow-hidden rounded-[22px] border bg-white/[0.03] text-left transition-colors hover:bg-violet/[0.06] focus-visible:outline-none sm:grid-cols-[1fr_12rem] ${
+        className={`group relative block min-h-[14rem] w-full overflow-hidden rounded-[22px] border bg-white/[0.03] text-left transition-colors hover:bg-violet/[0.06] focus-visible:outline-none ${
           gusta ? "border-violet/50" : "border-white/10 hover:border-violet/60 focus-visible:border-violet/60"
         }`}
       >
-        <span className="flex flex-col p-5 pb-16 sm:p-6 sm:pb-16">
+        <CapaVisual s={s} />
+        <span className="relative z-10 flex w-[64%] flex-col p-5 pb-16 sm:w-[60%] sm:p-6 sm:pb-16">
           <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">SESIÓN {n}</span>
           <span className="mt-1.5 block text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
           {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
         </span>
-        <LadoDerecho s={s} />
       </button>
       {/* El corazón va fuera del botón de la tarjeta: un botón no puede contener otro. */}
       <span className="absolute bottom-5 left-5 sm:bottom-6 sm:left-6">
