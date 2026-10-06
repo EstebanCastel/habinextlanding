@@ -5,6 +5,7 @@ import Footer from "@/components/sections/Footer";
 import { EVENT } from "@/config/event";
 import type { Vista } from "@/lib/experiencia";
 import Barra from "./Barra";
+import BotonEntrar from "./BotonEntrar";
 
 /**
  * El marco de las páginas de la experiencia: la barra fija con lo que viene
@@ -62,9 +63,9 @@ export default function Marco({
               </form>
             </>
           ) : (
-            <Link href="/experiencia?entrar=/experiencia" className="rounded-full bg-violet px-5 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-violet-press sm:text-sm md:px-7 md:text-base">
+            <BotonEntrar className="rounded-full bg-violet px-5 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-violet-press sm:text-sm md:px-7 md:text-base">
               Entrar
-            </Link>
+            </BotonEntrar>
           )}
         </div>
       </header>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PUNTOS_TOTALES } from "@/config/experiencia";
 import { proximo, salonDe } from "@/config/agenda";
 import type { Vista } from "@/lib/experiencia";
+import BotonEntrar from "./BotonEntrar";
 
 /**
  * La barra fija de la experiencia: a la izquierda, qué viene en el evento;
@@ -49,9 +50,9 @@ export default function Barra({ yo }: { yo: Vista | null }) {
             </span>
           </Link>
         ) : (
-          <Link href="/experiencia?entrar=%2Fexperiencia" className="shrink-0 text-[13px] font-semibold text-violet-soft transition-colors hover:text-white sm:text-sm">
+          <BotonEntrar className="shrink-0 text-[13px] font-semibold text-violet-soft transition-colors hover:text-white sm:text-sm">
             Entra y suma puntos
-          </Link>
+          </BotonEntrar>
         )}
       </div>
     </div>

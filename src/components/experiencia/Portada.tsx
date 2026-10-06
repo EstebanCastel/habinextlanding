@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Dot from "@/components/Dot";
 import { BLOQUEADAS, EXPERIENCIAS, PUNTOS_TOTALES, bloqueada, type ExperienciaId } from "@/config/experiencia";
 import type { Podio as Filas, Vista } from "@/lib/experiencia";
+import { EVENTO_ENTRAR } from "./BotonEntrar";
 import Entrar from "./Entrar";
 import Podio from "./Podio";
 import { puntosEn } from "./puntaje";
@@ -41,6 +42,26 @@ export default function Portada({
   });
 
   const pedirEntrada = (destino: string) => setModal({ abierta: true, destino });
+
+  // «Entrar» desde la cabecera o la barra fija cuando ya se está en la
+  // portada: llega como evento, porque navegar a la misma página no vuelve a
+  // montar nada.
+  useEffect(() => {
+    const abrir = (e: Event) => {
+      if (yo) return;
+      pedirEntrada((e as CustomEvent<string>).detail || "/experiencia");
+    };
+    window.addEventListener(EVENTO_ENTRAR, abrir);
+    return () => window.removeEventListener(EVENTO_ENTRAR, abrir);
+  }, [yo]);
+
+  // Y si cambia `?entrar=` estando montada (navegación suave entre rutas de
+  // la experiencia), también se abre.
+  const [entrarVisto, setEntrarVisto] = useState(entrar);
+  if (entrar !== entrarVisto) {
+    setEntrarVisto(entrar);
+    if (entrar && !yo) setModal({ abierta: true, destino: entrar });
+  }
   const cierreAviso = cerrada ? BLOQUEADAS[cerrada] : undefined;
   const avisoCerrada = cierreAviso ? EXPERIENCIAS.find((e) => e.id === cerrada) : null;
 
