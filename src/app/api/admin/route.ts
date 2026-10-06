@@ -9,7 +9,7 @@ import {
   pendientesDePago,
   type Canal,
 } from "@/lib/recuperacion";
-import { cambiarEstado, crear as crearCodigo } from "@/lib/codigos";
+import { borrarCodigo, cambiarEstado, crear as crearCodigo } from "@/lib/codigos";
 import { crear as crearEnlace } from "@/lib/enlaces";
 import { anotar, porToken, todos as todosLosRegistros } from "@/lib/registros";
 import { anotar as anotarParticipante, cambiar as cambiarParticipante, esId } from "@/lib/experiencia";
@@ -37,10 +37,27 @@ function sitio(): string {
   return process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
 }
 
-function volver(mensaje: string) {
-  return NextResponse.redirect(`${sitio()}/admin?aviso=${encodeURIComponent(mensaje)}`, {
-    status: 303,
-  });
+/**
+ * Vuelve a la página del panel desde la que se hizo la acción, con el aviso.
+ * El panel ya no es una sola página: quien desactiva un código desde
+ * /admin/codigos tiene que aterrizar ahí y no en la portada.
+ */
+function volver(request: Request, mensaje: string) {
+  const destino = new URL("/admin", sitio());
+  try {
+    const ref = new URL(request.headers.get("referer") ?? "");
+    const propio = [new URL(sitio()).host, new URL(request.url).host];
+    if (propio.includes(ref.host) && ref.pathname.startsWith("/admin")) {
+      // Misma ruta y mismos filtros, búsqueda y página: quien desactiva tres
+      // códigos seguidos en la página 4 no tiene que volver a buscarla.
+      destino.pathname = ref.pathname;
+      destino.search = ref.search;
+    }
+  } catch {
+    /* sin referer válido: a la portada */
+  }
+  destino.searchParams.set("aviso", mensaje);
+  return NextResponse.redirect(destino.toString(), { status: 303 });
 }
 
 export async function POST(request: Request) {
@@ -81,7 +98,8 @@ export async function POST(request: Request) {
   if (accion === "crear-codigo") {
     const vence = String(form.get("vence") ?? "").trim();
     const res = await crearCodigo({
-      codigo: String(form.get("codigo") ?? ""),
+      // Vacío = se genera uno; así el panel crea códigos sueltos sin inventarlos a mano.
+      codigo: String(form.get("codigo") ?? "").trim() || undefined,
       sirvePara: (["general", "vip", "ambos"] as const).includes(
         String(form.get("sirve") ?? "") as "general" | "vip" | "ambos"
       )
@@ -91,19 +109,34 @@ export async function POST(request: Request) {
       // El día que se elige vale entero: vence al final de esa jornada en
       // Bogotá, no a la medianoche del día anterior en UTC.
       venceEl: vence ? `${vence}T23:59:59-05:00` : null,
-      nota: String(form.get("nota") ?? "").trim() || undefined,
+      // Con nota siempre: la importación borra los códigos del lote original que
+      // quedan sin dueño, y uno creado a mano no es del lote.
+      nota: String(form.get("nota") ?? "").trim() || "Creado a mano en el panel",
     });
-    return volver(res.nota);
+    return volver(request, res.nota);
   }
 
   if (accion === "codigo-estado") {
     const codigo = String(form.get("codigo") ?? "");
     const activar = String(form.get("activo") ?? "") === "1";
     const ok = await cambiarEstado(codigo, activar);
-    return volver(
+    return volver(request, 
       ok
         ? `${codigo.toUpperCase()} quedó ${activar ? "activo" : "desactivado"}`
         : "No encontramos ese código"
+    );
+  }
+
+  if (accion === "codigo-borrar") {
+    const codigo = String(form.get("codigo") ?? "");
+    const res = await borrarCodigo(codigo);
+    return volver(
+      request,
+      res === "borrado"
+        ? `${codigo.toUpperCase()} se borró`
+        : res === "redimido"
+          ? `${codigo.toUpperCase()} ya lo usó alguien: no se borra`
+          : "No encontramos ese código"
     );
   }
 
@@ -128,7 +161,7 @@ export async function POST(request: Request) {
           }
         : {}),
     });
-    return volver(res.nota);
+    return volver(request, res.nota);
   }
 
   // ---------- experiencia: restablecer la clave de alguien ----------
@@ -137,13 +170,13 @@ export async function POST(request: Request) {
   if (accion === "experiencia-reset-clave") {
     if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
     const id = String(form.get("id") ?? "");
-    if (!esId(id)) return volver("Participante inválido#experiencia");
+    if (!esId(id)) return volver(request, "Participante inválido#experiencia");
     const p = await cambiarParticipante(id, (q) => {
       const { credencial: _quitada, ...resto } = q;
       void _quitada;
       return anotarParticipante(resto as typeof q, "clave restablecida desde el panel");
     });
-    return volver(p ? `Clave borrada para ${p.email ?? p.nombre ?? id}: al volver a entrar fija su cédula de nuevo.#experiencia` : "No encontramos ese participante#experiencia");
+    return volver(request, p ? `Clave borrada para ${p.email ?? p.nombre ?? id}: al volver a entrar fija su cédula de nuevo.#experiencia` : "No encontramos ese participante#experiencia");
   }
 
   // ---------- recuperación de pago ----------
@@ -154,19 +187,19 @@ export async function POST(request: Request) {
 
     if (accion === "recuperar-continuar") {
       const id = String(form.get("campana") ?? "");
-      if (!id) return volver("No sé qué campaña continuar" + ancla);
+      if (!id) return volver(request, "No sé qué campaña continuar" + ancla);
       after(() => correrCampana(id).catch((e: Error) => console.error("[recuperacion] continuar:", e.message)));
-      return volver("Continuando la campaña. Recarga en un minuto para ver el avance." + ancla);
+      return volver(request, "Continuando la campaña. Recarga en un minuto para ver el avance." + ancla);
     }
 
-    if (!canales.length) return volver("Elige al menos un canal" + ancla);
+    if (!canales.length) return volver(request, "Elige al menos un canal" + ancla);
     const registros = await todosLosRegistros();
     const pendientes = pendientesDePago(registros);
 
     if (accion === "recuperar-probar") {
       const tier = String(form.get("tier") ?? "general") === "vip" ? "vip" : "general";
       const muestra = pendientes.find((r) => r.tier === tier) ?? pendientes[0];
-      if (!muestra) return volver("No hay ningún pendiente con el que armar la prueba" + ancla);
+      if (!muestra) return volver(request, "No hay ningún pendiente con el que armar la prueba" + ancla);
       const telefono = (process.env.WHATSAPP_ESCALAMIENTO || "").replace(/\D/g, "") || undefined;
       const email = process.env.CAMPANA_REPLY_TO || undefined;
       const res = await enviarRecordatorio(muestra, canales, { telefono, email });
@@ -174,15 +207,15 @@ export async function POST(request: Request) {
         const x = res[c];
         return `${c}: ${x?.ok ? "enviado" : x?.omitido || x?.error || "sin resultado"}`;
       });
-      return volver(`Prueba con los datos de ${muestra.luma.nombreCorto} (${tier}) → ${partes.join(" · ")}` + ancla);
+      return volver(request, `Prueba con los datos de ${muestra.luma.nombreCorto} (${tier}) → ${partes.join(" · ")}` + ancla);
     }
 
     // recuperar-enviar
-    if (String(form.get("seguro") ?? "") !== "1") return volver("Marca la casilla de confirmación para enviar" + ancla);
-    if (!pendientes.length) return volver("No hay pendientes a quienes recordarles" + ancla);
+    if (String(form.get("seguro") ?? "") !== "1") return volver(request, "Marca la casilla de confirmación para enviar" + ancla);
+    if (!pendientes.length) return volver(request, "No hay pendientes a quienes recordarles" + ancla);
     const campana = await crearCampana(canales, pendientes.map((r) => r.token));
     after(() => correrCampana(campana.id).catch((e: Error) => console.error("[recuperacion] campaña:", e.message)));
-    return volver(
+    return volver(request, 
       `Campaña en marcha: ${pendientes.length} personas por ${canales.join(", ")}. Recarga en un par de minutos para ver el avance.` + ancla
     );
   }
@@ -191,7 +224,7 @@ export async function POST(request: Request) {
   if (accion === "alta-luma-pagados") {
     if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
     const lista = (await todosLosRegistros()).filter((r) => !r.luma.guestId && r.etapa === "pago_confirmado");
-    if (!lista.length) return volver("No hay pagos pendientes de alta");
+    if (!lista.length) return volver(request, "No hay pagos pendientes de alta");
     const notas: string[] = [];
     for (const r of lista) {
       const alta = await darDeAltaEnLuma(r, "panel · pago confirmado por Wompi");
@@ -200,17 +233,17 @@ export async function POST(request: Request) {
         notas.push(`${alta.nota} · ${c.nota}`);
       } else notas.push(alta.nota);
     }
-    return volver(`${lista.length} ${lista.length === 1 ? "alta" : "altas"}: ${notas.join(" | ")}`.slice(0, 900));
+    return volver(request, `${lista.length} ${lista.length === 1 ? "alta" : "altas"}: ${notas.join(" | ")}`.slice(0, 900));
   }
 
   const token = String(form.get("token") ?? "");
   const registro = token ? await porToken(token) : null;
-  if (!registro) return volver("No encontramos ese registro");
+  if (!registro) return volver(request, "No encontramos ese registro");
 
   if (accion === "alta-luma") {
     if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
     const verificado = registro.etapa === "pago_confirmado" || String(form.get("verificado") ?? "") === "1";
-    if (!verificado) return volver("Marca que viste el pago en Wompi antes de dar de alta");
+    if (!verificado) return volver(request, "Marca que viste el pago en Wompi antes de dar de alta");
     if (registro.etapa !== "pago_confirmado") {
       await anotar(registro.token, "pago verificado a mano en Wompi", (r) => ({
         etapa: "pago_confirmado" as const,
@@ -218,20 +251,20 @@ export async function POST(request: Request) {
       }));
     }
     const alta = await darDeAltaEnLuma((await porToken(registro.token)) ?? registro, "panel · alta manual");
-    if (!alta.ok) return volver(alta.nota);
+    if (!alta.ok) return volver(request, alta.nota);
     const c = await confirmarEntrada(registro.token);
-    return volver(`${alta.nota} · ${c.nota}`);
+    return volver(request, `${alta.nota} · ${c.nota}`);
   }
 
   if (accion === "confirmar-entrada") {
     if (!(await haySesion())) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
     const c = await confirmarEntrada(registro.token);
-    return volver(c.nota);
+    return volver(request, c.nota);
   }
 
   // ---------- reenviar el mensaje ----------
   if (accion === "reenviar") {
-    if (!registro.telefono) return volver("Ese registro no tiene un celular usable");
+    if (!registro.telefono) return volver(request, "Ese registro no tiene un celular usable");
 
     // `darLaBienvenida` no reescribe si ya se mandó, así que se limpia la marca
     // para forzar el reenvío: es justo lo que se le pide al botón.
@@ -242,7 +275,7 @@ export async function POST(request: Request) {
     if (refrescado) await darLaBienvenida(refrescado);
 
     const final = await porToken(registro.token);
-    return volver(
+    return volver(request, 
       final?.whatsapp.enviadoEn && !final.whatsapp.error
         ? `Mensaje reenviado a ${registro.luma.nombre}`
         : `No se pudo reenviar: ${final?.whatsapp.error ?? "sin detalle"}`
@@ -251,14 +284,14 @@ export async function POST(request: Request) {
 
   // ---------- pasar a VIP a mano ----------
   if (accion === "pasar-a-vip") {
-    if (registro.tier === "vip") return volver("Esa persona ya es VIP");
+    if (registro.tier === "vip") return volver(request, "Esa persona ya es VIP");
     const res = await pasarAVip(registro);
-    return volver(
+    return volver(request, 
       res.ok
         ? `${registro.luma.nombre} pasó a VIP y ya tiene su link de pago`
         : `No se pudo pasar a VIP: ${res.nota}`
     );
   }
 
-  return volver("Acción desconocida");
+  return volver(request, "Acción desconocida");
 }

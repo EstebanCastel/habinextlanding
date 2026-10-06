@@ -11,11 +11,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "no autorizado" }, { status: 401 });
   }
   const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
-  const filtro = new URL(request.url).searchParams.get("estado");
+  const q = new URL(request.url).searchParams;
+  const filtro = q.get("estado");
+  const entrada = q.get("entrada");
 
   let lista = await todos();
   if (filtro === "redimidos") lista = lista.filter((c) => c.usos > 0);
   if (filtro === "disponibles") lista = lista.filter((c) => c.usos === 0);
+  if (filtro === "asignados") lista = lista.filter((c) => c.asignado && c.usos === 0);
+  if (filtro === "sin-asignar") lista = lista.filter((c) => !c.asignado && c.usos === 0);
+  if (filtro === "desactivados") lista = lista.filter((c) => !c.activo);
+  if (entrada === "vip") lista = lista.filter((c) => c.sirvePara !== "general");
+  if (entrada === "general") lista = lista.filter((c) => c.sirvePara !== "vip");
 
   const hoy = new Date().toISOString().slice(0, 10);
   return new NextResponse(aCsv(lista, sitio), {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import Asterisk from "@/components/Asterisk";
 import Dot from "@/components/Dot";
 import { EVENT, TICKETS } from "@/config/event";
+import { conEstado, traer as traerCodigo } from "@/lib/codigos";
 
 /**
  * Redención de códigos de invitación: la puerta de los invitados de la casa.
@@ -63,8 +64,21 @@ export default async function Codigo({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const q = await searchParams;
-  const tier = q.tier === "vip" ? "vip" : "general";
+  // Si el código vino asignado a alguien en la lista del equipo, el formulario
+  // llega con sus datos puestos y la persona solo confirma. Lo que escriba
+  // manda: los datos de la lista son un punto de partida, no una verdad. Solo
+  // se prellena si el código todavía sirve: uno desactivado o vencido no
+  // tiene por qué seguir enseñando los datos de nadie.
+  const asignadoA = q.codigo && !q.nombre ? (await traerCodigo(q.codigo).catch(() => null)) : null;
+  const vigente = asignadoA ? conEstado(asignadoA) : null;
+  const pre = vigente && vigente.utilizable && vigente.asignado ? vigente.asignado : null;
+  // La entrada sale de la dirección y, si no viene, del código: un invitado
+  // VIP que abre el link sin ?tier= no tiene que aterrizar en General.
+  const tier =
+    q.tier === "vip" || q.tier === "general" ? q.tier : vigente?.sirvePara === "vip" ? "vip" : "general";
   const ticket = TICKETS.find((t) => t.id === tier)!;
+  // El campo lleva el +57 fijo: se prellena el número local, sin indicativo.
+  const celularPre = pre?.telefono ? pre.telefono.replace(/\D/g, "").replace(/^57(?=\d{10}$)/, "") : "";
 
   if (q.listo === "1") {
     return (
@@ -153,7 +167,7 @@ export default async function Codigo({
           <input
             name="nombre"
             required
-            defaultValue={q.nombre ?? ""}
+            defaultValue={q.nombre ?? (pre ? [pre.nombre, pre.apellido].filter(Boolean).join(" ") : "")}
             autoComplete="name"
             placeholder="Ana Gómez"
             className={campo}
@@ -166,7 +180,7 @@ export default async function Codigo({
             name="email"
             type="email"
             required
-            defaultValue={q.email ?? ""}
+            defaultValue={q.email ?? pre?.email ?? ""}
             autoComplete="email"
             inputMode="email"
             placeholder="ana@inmobiliaria.com"
@@ -209,7 +223,7 @@ export default async function Codigo({
               name="telefono"
               type="tel"
               required
-              defaultValue={q.telefono ?? ""}
+              defaultValue={q.telefono ?? celularPre}
               autoComplete="tel-national"
               inputMode="numeric"
               pattern="[0-9 ]{10,13}"
