@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MISIONES, type Fase, type MisionId } from "@/config/experiencia";
 import type { Vista } from "@/lib/experiencia";
@@ -8,7 +8,6 @@ import Boleta from "./Boleta";
 import Carnet from "./Carnet";
 import Mapa from "./Mapa";
 import Misiones from "./Misiones";
-import Vip from "./Vip";
 import Wallet, { AvisoBilletera } from "./Wallet";
 import { useEntrada } from "./entrada";
 import { pedir } from "./util";
@@ -20,7 +19,8 @@ import { pedir } from "./util";
  * En el carnet, la pantalla va en orden de lo que la persona quiere saber:
  * primero su entrada (¿está confirmada?, ¿de qué tipo?), después dos pasos
  * para jugar: armar el carnet —que atrás lleva el QR y debajo las
- * billeteras— y publicarlo para sumar puntos.
+ * billeteras— y publicarlo para sumar puntos. Acá no se vende nada: la
+ * persona ya tiene su entrada y lo que quiere es usarla.
  */
 export default function Sala({
   modo,
@@ -29,7 +29,6 @@ export default function Sala({
   sitio,
   li,
   abrir,
-  vip,
   billetera = { apple: false, google: false },
 }: {
   modo: "carnet" | "mapa" | "redes";
@@ -38,15 +37,12 @@ export default function Sala({
   sitio: string;
   li?: string;
   abrir?: string;
-  /** Precios del VIP, calculados en el servidor con la etapa vigente. */
-  vip?: { diferencia: string; precio: string; etiqueta: string };
   /** Qué billeteras están configuradas en el servidor. */
   billetera?: { apple: boolean; google: boolean };
 }) {
   const router = useRouter();
   const [yo, setYo] = useState<Vista | null>(inicial);
   const { entrada, motivo, cargando } = useEntrada();
-  const esGeneral = useMemo(() => (entrada?.tier ?? "general") === "general", [entrada]);
   const misiones = MISIONES.filter((m) => m.experiencia === modo).map((m) => m.id);
   const [abierta, setAbierta] = useState<MisionId | null>(() => {
     if (abrir && misiones.includes(abrir as MisionId)) return abrir as MisionId;
@@ -112,14 +108,6 @@ export default function Sala({
             />
           </section>
 
-          {vip && !cargando && entrada && entrada.etapa !== "rechazado" && esGeneral ? (
-            <Vip
-              diferencia={vip.diferencia}
-              precio={vip.precio}
-              etiqueta={vip.etiqueta}
-              yaPagada={entrada?.etapa === "aprobado" || entrada?.etapa === "pago_confirmado"}
-            />
-          ) : null}
 
           <section id="misiones-paso" className="flex flex-col gap-8">
             <Paso numero={2} titulo="Publícalo y suma puntos." nota="Tres misiones: guardar el carnet, contarlo en LinkedIn y subirlo a tus historias. Cada una tiene su botón." />

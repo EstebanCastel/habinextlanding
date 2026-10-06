@@ -7,7 +7,6 @@ import { fase } from "@/lib/experiencia";
 import { exigirSesion } from "@/lib/experiencia-sesion";
 import { participanteActual } from "@/lib/experiencia-http";
 import { vistaDe } from "@/lib/experiencia";
-import { diferenciaVip, precioVigente } from "@/lib/registros";
 import { disponibilidad } from "@/lib/wallet";
 
 export const metadata: Metadata = { title: `Tu carnet · ${EVENT.fullName}`, robots: { index: false, follow: false } };
@@ -28,9 +27,6 @@ export default async function PaginaCarnet({
         .then((p) => (p ? vistaDe(p) : null))
         .catch(() => null)
     : await exigirSesion("/experiencia/carnet");
-  // Los precios se calculan acá y no en el navegador: la etapa vigente depende
-  // del reloj del servidor, no del que tenga la persona en su teléfono.
-  const tarifaVip = precioVigente("vip");
   return (
     <Marco
       yo={yo}
@@ -49,7 +45,6 @@ export default async function PaginaCarnet({
         sitio={SITIO}
         li={q.li}
         abrir={q.abrir}
-        vip={{ diferencia: diferenciaVip(), precio: tarifaVip.precio, etiqueta: tarifaVip.etiqueta }}
         billetera={disponibilidad()}
       />
     </Marco>
