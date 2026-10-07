@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { redimirCodigo } from "@/lib/bot";
+import { COOKIE_SESION, entrar, firmarSesion, opcionesDeCookie } from "@/lib/experiencia";
 import { normalizarCedula, normalizarTelefono, type Tier } from "@/lib/registros";
 
 /**
@@ -84,7 +85,18 @@ export async function POST(request: Request) {
   try {
     const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}`, cedula });
     if (!res.ok) return volver({ ...conservar, error: res.nota });
-    return volver({ listo: "1", tier, email });
+    // Con la entrada ya en Luma, la persona sigue de una a la experiencia y
+    // entra sin volver a escribir nada: el correo y la cédula son los mismos
+    // que acaba de dar. Si por lo que sea la sesión no se puede abrir, cae en
+    // la portada con la ventana de entrar lista.
+    const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+    const sesion = await entrar({ email, cedula }).catch(() => null);
+    if (!sesion?.ok) {
+      return NextResponse.redirect(`${sitio}/experiencia?entrar=${encodeURIComponent("/experiencia")}`, { status: 303 });
+    }
+    const salida = NextResponse.redirect(`${sitio}/experiencia`, { status: 303 });
+    salida.cookies.set(COOKIE_SESION, firmarSesion(sesion.participante.id), opcionesDeCookie());
+    return salida;
   } catch (error) {
     console.error("[codigo] fallo al redimir:", (error as Error).message);
     return volver({ ...conservar, error: "Algo se nos rompió. Inténtalo de nuevo en un momento." });
