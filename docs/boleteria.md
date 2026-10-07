@@ -125,6 +125,23 @@ correo y celular, y su entrada sale en el acto:
    **es** la entrada con el QR, y la persona la está esperando en ese momento.
 3. Se crea el registro directo en etapa `aprobado`, con precio `$0` y el código
    con el que entró, y se le manda un WhatsApp de bienvenida sin link de pago.
+4. Desde el 7 de octubre de 2026 la persona no ve una pantalla de «Listo»: con
+   el mismo correo y cédula que acaba de escribir se le abre la sesión de la
+   experiencia (`entrar()` + cookie `hn_exp`) y cae en `/experiencia`. Si la
+   sesión no se puede abrir, cae en la portada con la ventana de entrar lista.
+
+### La invitación por WhatsApp
+
+A los invitados de la lista del equipo se les manda el código por WhatsApp con
+su pieza personalizada como cabecera y dos botones: «Activar mi código»
+(`/codigo`, `?tier=vip` para los VIP) y «Crear mi escarapela» (`/experiencia`).
+Meta tiene que bajar la imagen de una URL pública y el store es privado, así
+que la pieza se guarda en `invitaciones/<CÓDIGO>.jpg` y se sirve desde
+`GET /api/invitacion/<código>?k=<firma>` (`src/lib/invitaciones.ts`: HMAC del
+código con `EXPERIENCIA_SECRET`); sin la firma, 404. El motor del envío vive
+fuera del repo (`~/envios-habinext-codigos`). Ojo con el copy: Meta rechaza al
+instante cualquier plantilla donde «código» o «clave» acompañe a la variable
+(lo lee como un mensaje de autenticación); por eso dice «esta es tu invitación».
 
 Es el único camino en que alguien queda aprobado sin que una persona lo mire, y
 se sostiene porque **el código es la autorización**: alguien del equipo lo creó
