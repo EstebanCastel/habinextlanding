@@ -127,8 +127,11 @@ correo y celular, y su entrada sale en el acto:
    con el que entró, y se le manda un WhatsApp de bienvenida sin link de pago.
 4. Desde el 7 de octubre de 2026 la persona no ve una pantalla de «Listo»: con
    el mismo correo y cédula que acaba de escribir se le abre la sesión de la
-   experiencia (`entrar()` + cookie `hn_exp`) y cae en `/experiencia`. Si la
-   sesión no se puede abrir, cae en la portada con la ventana de entrar lista.
+   experiencia (`entrar()` con el token del registro recién creado, leído
+   directo y no por el listado del almacén, + cookie `hn_exp`) y cae en
+   `/experiencia/carnet` para armar su carnet de una vez. Si la sesión no se
+   puede abrir, cae en la portada con la ventana de entrar lista. Probado en
+   producción el 7 de octubre con una redención real.
 
 ### La invitación por WhatsApp
 
