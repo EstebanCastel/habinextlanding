@@ -333,15 +333,29 @@ function CapaVisual({ s }: { s: Sesion }) {
   const q = personas.find((x) => x.ficha?.foto) ?? personas[0];
   return (
     <>
-      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-[58%]" style={fundido}>
+      {/* El fundido va sobre la foto misma y no sobre la capa: en escritorio la
+          foto no llena la capa y, con el fundido en la capa, su borde izquierdo
+          quedaba a la vista en las fotos de fondo claro. */}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-[58%]">
         {q.ficha?.foto ? (
           <>
+            {/* En celular la tarjeta es alta y angosta: la foto se recorta a los
+                lados y `foco` dice qué parte dejar a la vista. De `sm` en
+                adelante la tarjeta es ancha y baja, y recortarla por arriba
+                dejaba las caras hundidas: ahí la foto va completa, cuadrada,
+                pegada a la derecha y a la altura de la tarjeta. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={q.ficha.foto} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-[60%_top] grayscale" />
+            <img
+              src={q.ficha.foto}
+              alt=""
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover object-[var(--foco)_top] grayscale sm:left-auto sm:aspect-square sm:w-auto sm:object-center"
+              style={{ ...fundido, "--foco": q.ficha.foco ?? "60%" } as React.CSSProperties}
+            />
             <span className="absolute inset-0" style={velo} />
           </>
         ) : (
-          <span className="absolute inset-0 grid place-items-center text-5xl font-bold tracking-wide text-violet-soft/60">{iniciales(q.nombre)}</span>
+          <span className="absolute inset-0 grid place-items-center text-5xl font-bold tracking-wide text-violet-soft/60" style={fundido}>{iniciales(q.nombre)}</span>
         )}
       </span>
       <span className="pointer-events-none absolute bottom-0 right-0 w-[58%] bg-gradient-to-t from-night via-night/85 to-transparent px-5 pb-5 pt-10 text-right sm:px-6 sm:pb-6">
