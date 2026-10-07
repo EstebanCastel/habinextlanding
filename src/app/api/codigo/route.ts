@@ -85,16 +85,21 @@ export async function POST(request: Request) {
   try {
     const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}`, cedula });
     if (!res.ok) return volver({ ...conservar, error: res.nota });
-    // Con la entrada ya en Luma, la persona sigue de una a la experiencia y
+    // Con la entrada ya en Luma, la persona sigue de una a armar su carnet y
     // entra sin volver a escribir nada: el correo y la cédula son los mismos
-    // que acaba de dar. Si por lo que sea la sesión no se puede abrir, cae en
-    // la portada con la ventana de entrar lista.
+    // que acaba de dar, y el token apunta a su registro recién creado. Si por
+    // lo que sea la sesión no se puede abrir, cae en la portada con la ventana
+    // de entrar lista.
     const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
-    const sesion = await entrar({ email, cedula }).catch(() => null);
+    const sesion = await entrar({ email, cedula, token: res.token }).catch((error) => {
+      console.error("[codigo] no se pudo abrir la sesión:", (error as Error).message);
+      return null;
+    });
     if (!sesion?.ok) {
-      return NextResponse.redirect(`${sitio}/experiencia?entrar=${encodeURIComponent("/experiencia")}`, { status: 303 });
+      console.error("[codigo] sin sesión tras redimir:", sesion?.motivo ?? "error");
+      return NextResponse.redirect(`${sitio}/experiencia?entrar=${encodeURIComponent("/experiencia/carnet")}`, { status: 303 });
     }
-    const salida = NextResponse.redirect(`${sitio}/experiencia`, { status: 303 });
+    const salida = NextResponse.redirect(`${sitio}/experiencia/carnet`, { status: 303 });
     salida.cookies.set(COOKIE_SESION, firmarSesion(sesion.participante.id), opcionesDeCookie());
     return salida;
   } catch (error) {

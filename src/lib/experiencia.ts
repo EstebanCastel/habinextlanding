@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { cookies } from "next/headers";
 import { borrar, crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
 import { hmacHex, igualSeguro } from "./seguridad";
-import { anotar as anotarRegistro, todos as todosLosRegistros, type Etapa, type Tier } from "./registros";
+import { anotar as anotarRegistro, porToken as registroPorToken, todos as todosLosRegistros, type Etapa, type Registro, type Tier } from "./registros";
 import type { Perfil } from "./linkedin";
 import { EVENT } from "@/config/event";
 import {
@@ -330,18 +330,28 @@ export type Entrada =
  * se guarda en el registro y desde ahí es la que vale, también en la puerta.
  * El hash en `credencial` se refresca en cada entrada: Luma manda.
  */
-export async function entrar(datos: { email: string; cedula: string }): Promise<Entrada> {
+export async function entrar(datos: { email: string; cedula: string; token?: string }): Promise<Entrada> {
   const email = normalizarCorreo(datos.email);
   const cedula = datos.cedula.replace(/\D/g, "");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || cedula.length < 6 || cedula.length > 12) {
     return { ok: false, motivo: "datos" };
   }
 
-  const registros = (await todosLosRegistros().catch(() => []))
-    .filter((r) => normalizarCorreo(r.luma.email) === email && r.etapa !== "rechazado")
-    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
-  const mio = registros.find((r) => r.etapa === "aprobado");
-  if (!mio) return { ok: false, motivo: registros.length ? "pendiente" : "sin-entrada" };
+  // Quien acaba de redimir un código trae el token de su registro: se lee
+  // directo, sin pasar por el listado del almacén, que es lento y puede tardar
+  // unos segundos en reflejar lo que se acaba de escribir.
+  let mio: Registro | undefined;
+  if (datos.token) {
+    const directo = await registroPorToken(datos.token).catch(() => null);
+    if (directo && directo.etapa === "aprobado" && normalizarCorreo(directo.luma.email) === email) mio = directo;
+  }
+  if (!mio) {
+    const registros = (await todosLosRegistros().catch(() => []))
+      .filter((r) => normalizarCorreo(r.luma.email) === email && r.etapa !== "rechazado")
+      .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+    mio = registros.find((r) => r.etapa === "aprobado");
+    if (!mio) return { ok: false, motivo: registros.length ? "pendiente" : "sin-entrada" };
+  }
   if (mio.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
 
   const hash = hashCedula(email, cedula);
