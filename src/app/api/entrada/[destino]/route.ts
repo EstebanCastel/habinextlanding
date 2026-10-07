@@ -26,6 +26,9 @@ import { paseApple, paseGoogle } from "@/lib/wallet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Google puede llevar hasta cinco llamadas seguidas (token, clase, objeto, con sus
+// reintentos por PUT) bajo un tope de 20 s, más la consulta a Luma de hasta 15 s.
+export const maxDuration = 60;
 
 const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
 
@@ -55,8 +58,12 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
     if (!entrada.qr) return fallar("sin-qr", entrada.motivo ?? "Tu entrada todavía no tiene QR.", 409);
 
     if (destino === "google") {
-      const r = paseGoogle(entrada, SITIO);
-      if (!r.ok) return fallar("google-falta", r.falta, 503);
+      const r = await paseGoogle(entrada, SITIO);
+      if (!r.ok) {
+        console.error("[entrada/google]", r.falta);
+        // Un tropiezo pasajero con Google se dice como tal; lo demás es que falta configurar.
+        return fallar(r.transitorio ? "fallo" : "google-falta", r.falta, 503);
+      }
       return quiereJson
         ? NextResponse.json({ url: r.url }, { headers: { "Cache-Control": "no-store" } })
         : NextResponse.redirect(r.url, { status: 302, headers: { "Cache-Control": "no-store" } });

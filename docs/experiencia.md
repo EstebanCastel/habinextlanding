@@ -224,18 +224,39 @@ Android, los dos si no se sabe). Son enlaces a
 `GET /api/entrada/apple?t=<token>` y `GET /api/entrada/google?t=<token>`: en
 iPhone, Safari abre la hoja «Agregar a Wallet» al navegar al `.pkpass`; para
 Google el endpoint redirige al enlace de guardar. El pase lleva el **mismo QR
-de Luma** que lee la puerta, vence el 21 de octubre a las 6 a. m. y no se
-puede compartir desde el teléfono. Si algo falla en la navegación, se vuelve a
-`/experiencia/carnet?billetera=<código>` y la pantalla lo explica.
+de Luma** que lee la puerta, vence el 21 de octubre a las 6 a. m. (Apple) y no
+se puede compartir desde el teléfono (Apple: `sharingProhibited`; Google:
+`multipleDevicesAndHoldersAllowedStatus: ONE_USER_ALL_DEVICES`, la primera
+cuenta que lo guarda es la única). Ninguno de los dos muestra la cédula: es la
+clave con la que se entra a la experiencia. Si algo falla en la navegación, se
+vuelve a `/experiencia/carnet?billetera=<código>` y la pantalla lo explica.
 
 Apple quedó configurado el 6 de octubre de 2026 (Team ID `UD6ZAR8J87`, Pass
 Type ID `pass.co.habi.habinext`, certificado firmado por WWDR G4, vence el 5
 de noviembre de 2027: hay que renovarlo y volver a cargar `APPLE_PASS_P12_BASE64`
-antes de esa fecha). Google Wallet sigue pendiente. Mientras falte una credencial,
-`disponibilidad()` (`src/lib/wallet.ts`) deja el botón atenuado con «estará
-disponible muy pronto». Las imágenes del pase de Apple ya van incrustadas
+antes de esa fecha). Google quedó configurado el 6 de octubre de 2026 (emisor
+«Habi», Issuer ID `3388000000023211634`, cuenta de servicio
+`habinext-wallet@red-habi-mobile.iam.gserviceaccount.com` del proyecto de GCP
+`red-habi-mobile`). Mientras falte una credencial, `disponibilidad()`
+(`src/lib/wallet.ts`) deja el botón atenuado con «estará disponible muy
+pronto». Las imágenes del pase de Apple ya van incrustadas
 (`src/lib/wallet-recursos.ts`); el logo del pase de Google se sirve desde
 `public/img/wallet/logo-pase.png`.
+
+En Google el pase no va incrustado en el enlace: con la clase y el objeto
+completos el JWT pasaba de los 1800 caracteres que Google da por seguros. Por
+eso `paseGoogle` pide un token OAuth2 con la cuenta de servicio (se guarda en
+memoria mientras valga), guarda la clase `<issuer>.habinext2026` una vez por
+proceso y el objeto de la persona en cada pedido (`POST` y, si ya existe,
+`PUT`, así el nombre o el QR se actualizan sin duplicar el pase) y firma un
+JWT que solo lleva el id del objeto. La API valida cada campo y responde con
+el error exacto, que queda en los logs de Vercel como `[entrada/google]`. Si
+Google no responde o devuelve 5xx, la pantalla dice «Inténtalo de nuevo»
+(`fallo`); si es un error de definición o de credenciales, «todavía no está
+disponible» (`google-falta`). Para revisar lo que Google tiene guardado:
+`GET https://walletobjects.googleapis.com/walletobjects/v1/eventTicketObject/<id>`
+con un token de la cuenta de servicio; el id del objeto es
+`<issuer>.<sha256(token) recortado a 40>` (`idObjetoGoogle`).
 
 ### Apple Wallet: qué conseguir
 
@@ -272,9 +293,10 @@ con sus `BEGIN`/`END`), `APPLE_PASS_TYPE_ID` (`pass.co.habi.habinext`),
 3. **Darle permiso.** De vuelta en la consola de Wallet → Usuarios → agregar
    el `client_email` de la cuenta de servicio como usuario (desarrollador).
 4. Mientras la cuenta esté en modo demo, solo los correos agregados como
-   «testers» en la consola pueden guardar pases. Para abrirla a todo el mundo
-   hay que pedir el acceso de producción en la misma consola (perfil de
-   empresa completo).
+   «testers» en la consola pueden guardar pases (los demás ven «no se pudo
+   guardar» en Google). Para abrirla a todo el mundo hay que pedir el acceso
+   de producción en la misma consola (perfil de empresa completo). Al 6 de
+   octubre de 2026 esto es lo único que sigue en manos de Habi.
 
 Variables: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SERVICE_ACCOUNT` (el JSON
 en una sola línea; los `\n` de la `private_key` pueden quedar escapados).
