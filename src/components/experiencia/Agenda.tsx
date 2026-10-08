@@ -2,11 +2,10 @@
 
 import Image from "next/image";
 import { Cormorant_Garamond } from "next/font/google";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Asterisk from "@/components/Asterisk";
 import { gsap, useGSAP } from "@/lib/gsap";
-import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionesDe, type Ficha, type Salon, type SalonId, type Sesion } from "@/config/agenda";
+import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionDe, sesionesDe, type Ficha, type Salon, type SalonId, type Sesion } from "@/config/agenda";
 import type { Vista } from "@/lib/experiencia";
 import { clasesBoton, pedirJson } from "./util";
 
@@ -38,8 +37,32 @@ type Intereses = {
   ocupada: string | null;
 };
 
+/**
+ * Sin sesión, las sesiones marcadas viven en el navegador: quien llega por el
+ * QR del evento puede armar su día sin entrar. Al entrar, lo marcado acá se
+ * pasa a su cuenta una sola vez y se borra de aquí.
+ */
+const CLAVE_LOCAL = "hn_agenda_interes";
+
+function leerLocal(): string[] {
+  try {
+    const crudo = localStorage.getItem(CLAVE_LOCAL);
+    const lista: unknown = crudo ? JSON.parse(crudo) : [];
+    return Array.isArray(lista) ? lista.filter((x): x is string => typeof x === "string" && Boolean(sesionDe(x))) : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarLocal(ids: Iterable<string>): void {
+  try {
+    localStorage.setItem(CLAVE_LOCAL, JSON.stringify([...ids]));
+  } catch {
+    // Sin almacenamiento (modo privado, por ejemplo): la marca dura lo que dure la página.
+  }
+}
+
 export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | null; conteos: Record<string, number> }) {
-  const router = useRouter();
   const [abierta, setAbierta] = useState<Sesion | null>(null);
   const [salonMovil, setSalonMovil] = useState<SalonId>("inspira");
   const [soloMias, setSoloMias] = useState(false);
@@ -47,9 +70,46 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
   const [conteos, setConteos] = useState(conteosIniciales);
   const [ocupada, setOcupada] = useState<string | null>(null);
 
+  // Lo guardado en el navegador: se lee al montar (el servidor no lo conoce) y,
+  // si ya hay sesión, se lleva a la cuenta y se limpia.
+  const sincronizado = useRef(false);
+  useEffect(() => {
+    if (sincronizado.current) return;
+    sincronizado.current = true;
+    const local = leerLocal();
+    if (!yo) {
+      if (local.length) setTimeout(() => setGustan(new Set(local)), 0);
+      return;
+    }
+    const pendientes = local.filter((id) => !yo.agenda.includes(id));
+    if (!pendientes.length) {
+      if (local.length) guardarLocal([]);
+      return;
+    }
+    (async () => {
+      let ultimo: { yo: Vista; conteos: Record<string, number> } | null = null;
+      for (const id of pendientes) {
+        try {
+          ultimo = await pedirJson<{ ok: boolean; yo: Vista; conteos: Record<string, number> }>("/api/experiencia/agenda", { sesion: id, gusta: true });
+        } catch {
+          return; // Se queda en el navegador y se intenta en la próxima visita.
+        }
+      }
+      guardarLocal([]);
+      if (ultimo) {
+        setGustan(new Set(ultimo.yo.agenda));
+        setConteos(ultimo.conteos);
+      }
+    })();
+  }, [yo]);
+
   const alternar = async (s: Sesion) => {
     if (!yo) {
-      router.push(`/experiencia?entrar=${encodeURIComponent("/experiencia/agenda")}`);
+      const n = new Set(gustan);
+      if (n.has(s.id)) n.delete(s.id);
+      else n.add(s.id);
+      setGustan(n);
+      guardarLocal(n);
       return;
     }
     if (ocupada) return;
@@ -120,7 +180,7 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
           <span className="rounded-full bg-white/15 px-1.5 text-[11px] font-bold tabular-nums">{gustan.size}</span>
         </button>
         <span className="text-xs font-light text-white/45">
-          {yo ? "Toca el corazón de una sesión para armar tu día." : "Entra para marcar las que te interesan."}
+          {yo ? "Toca el corazón de una sesión para armar tu día." : "Toca el corazón para armar tu día: se guarda en este aparato y, cuando entres, en tu cuenta."}
         </span>
       </div>
 
