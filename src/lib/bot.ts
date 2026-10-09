@@ -320,6 +320,13 @@ export async function redimirCodigo(datos: {
   });
   if (!cupo.ok) return { ok: false, nota: codigos.explicar(cupo.motivo) };
 
+  // Si el código es de una audiencia (grupo o nota «Externa · …» en la lista),
+  // la redención le cuenta a esa audiencia aunque la persona no haya llegado
+  // por el botón con utm: el código ya dice de dónde viene.
+  const ficha = await codigos.traer(datos.codigo).catch(() => null);
+  const etiqueta = `${ficha?.asignado?.grupo ?? ""} ${ficha?.nota ?? ""}`.trim();
+  const origen = datos.origen || (/^externa\b/i.test(etiqueta) ? "externa" : undefined);
+
   const ahora = new Date().toISOString();
 
   // El orden de estos dos pasos es lo que evita que la persona termine con dos
@@ -340,7 +347,7 @@ export async function redimirCodigo(datos: {
     nombre: datos.nombre,
     telefonoCrudo: datos.telefono,
     ...(datos.cedula ? { cedula: datos.cedula } : {}),
-    ...(datos.origen ? { origen: datos.origen } : {}),
+    ...(origen ? { origen } : {}),
     redimidoEn: ahora,
   });
 
