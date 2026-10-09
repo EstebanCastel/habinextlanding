@@ -247,7 +247,9 @@ const VIP = {
   w: 2040,
   h: 2946,
   tarjeta: { x: 423, y: 490, w: 1194, h: 1855, r: 127 },
-  foto: { x: 485, y: 673, w: 1070, h: 1662, r: 114 },
+  // La foto llena la tarjeta entera, como en la pieza: con un recuadro
+  // interior, una foto de fondo claro se veía enmarcada dentro del negro.
+  foto: { x: 423, y: 490, w: 1194, h: 1855, r: 127 },
   nombre: { x: 594, y: 2122, tam: 101 },
   apellido: { x: 594, y: 2226, tam: 106 },
 };
