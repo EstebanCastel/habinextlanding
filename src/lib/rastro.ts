@@ -71,9 +71,14 @@ export async function guardarLote(lote: Lote): Promise<void> {
 
 /** Todos los lotes de los últimos días, del más reciente al más viejo. */
 export async function lotes(dias = 45, tope = 4000): Promise<Lote[]> {
-  const rutas = await listarRutas("rastro/", tope);
-  const desde = new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
-  const vigentes = rutas.filter((r) => (r.split("/")[1] ?? "") >= desde);
+  // Un listado por día, del más reciente hacia atrás. Con un solo listado
+  // sobre `rastro/` el tope se llenaba con los días viejos (van en orden
+  // alfabético) y los últimos días quedaban fuera del panel y del CSV.
+  const vigentes: string[] = [];
+  for (let i = 0; i < dias && vigentes.length < tope; i++) {
+    const fecha = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+    vigentes.push(...(await listarRutas(`rastro/${fecha}/`, tope - vigentes.length)));
+  }
 
   const salida: Lote[] = [];
   const tanda = 25;
