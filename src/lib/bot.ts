@@ -1,5 +1,6 @@
 import {
   agregarInvitado,
+  agregarInvitadoConRespaldo,
   buscarInvitadoPorEmail,
   eventoDeTier,
   rechazarInvitado,
@@ -343,7 +344,7 @@ export async function redimirCodigo(datos: {
     redimidoEn: ahora,
   });
 
-  const alta = await agregarInvitado(evento, {
+  const alta = await agregarInvitadoConRespaldo(evento, {
     email: correo,
     nombre: datos.nombre,
     aprobado: true,
@@ -358,12 +359,15 @@ export async function redimirCodigo(datos: {
 
   // El id del invitado no viene en la respuesta del alta; sin él no se podría
   // relacionar después nada que se haga desde Luma con esta persona.
-  const invitado = await buscarInvitadoPorEmail(evento, correo);
+  const invitado = await buscarInvitadoPorEmail(evento, alta.email);
   if (invitado?.id) {
     await apuntarAInvitado(token, invitado.id);
-    await anotar(token, "entrada emitida por Luma", (r) => ({
-      luma: { ...r.luma, guestId: invitado.id },
-    }));
+    await anotar(
+      token,
+      alta.conAlias ? "entrada emitida por Luma con un alias del mismo buzón (Luma saltó el correo original)" : "entrada emitida por Luma",
+      (r) => ({ luma: { ...r.luma, guestId: invitado.id } }),
+      alta.conAlias ? alta.email : undefined
+    );
   }
 
   await soltarCorreo(correo);

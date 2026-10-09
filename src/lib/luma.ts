@@ -166,6 +166,38 @@ export async function listarInvitados(eventId: string): Promise<InvitadoLuma[]> 
   return salida;
 }
 
+/**
+ * Luma «salta» (`skipped`) algunos correos al darlos de alta y no dice por
+ * qué: pasa con cuentas que bloquearon al organizador o se dieron de baja de
+ * los correos del calendario. El alta responde 200 igual, así que sin mirar
+ * `skipped` la persona quedaba aprobada acá y sin entrada allá (pasó con 3
+ * redenciones el 7 y el 9 de octubre). Si Luma salta el correo, se reintenta
+ * con un alias del mismo buzón (`nombre+habinext@dominio`), que llega a la
+ * misma bandeja y Luma trata como otro usuario.
+ */
+export function fueSaltado(cuerpo: unknown, email: string): boolean {
+  const s = (cuerpo as { skipped?: { email?: string }[] } | null)?.skipped;
+  return Array.isArray(s) && s.some((x) => String(x?.email ?? "").toLowerCase() === email.toLowerCase());
+}
+
+export function aliasDe(email: string): string {
+  const [usuario, dominio] = email.toLowerCase().split("@");
+  return !dominio || usuario.includes("+") ? email : `${usuario}+habinext@${dominio}`;
+}
+
+export async function agregarInvitadoConRespaldo(
+  eventId: string,
+  persona: Parameters<typeof agregarInvitado>[1]
+): Promise<Awaited<ReturnType<typeof agregarInvitado>> & { email: string; conAlias: boolean }> {
+  const primero = await agregarInvitado(eventId, persona);
+  if (!primero.ok || !fueSaltado(primero.cuerpo, persona.email)) return { ...primero, email: persona.email, conAlias: false };
+  const alias = aliasDe(persona.email);
+  if (alias === persona.email) return { ...primero, ok: false, email: persona.email, conAlias: false };
+  const segundo = await agregarInvitado(eventId, { ...persona, email: alias });
+  if (segundo.ok && !fueSaltado(segundo.cuerpo, alias)) return { ...segundo, email: alias, conAlias: true };
+  return { ...segundo, ok: false, email: persona.email, conAlias: false };
+}
+
 export async function buscarInvitadoPorEmail(
   eventId: string,
   email: string

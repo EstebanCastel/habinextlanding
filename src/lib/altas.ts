@@ -1,6 +1,6 @@
 import { EVENT } from "@/config/event";
 import { enviarCorreo } from "./correo";
-import { agregarInvitado, buscarInvitadoPorEmail, eventoDeTier } from "./luma";
+import { agregarInvitadoConRespaldo, buscarInvitadoPorEmail, eventoDeTier } from "./luma";
 import { anotar, apuntarAInvitado, porToken, primerNombre, soltarCorreo, ticketDe, type EstadoEnvio, type Registro } from "./registros";
 import { enviarSms } from "./sms";
 import { enviarPlantilla, type Salida } from "./whatsapp";
@@ -30,18 +30,19 @@ export async function darDeAltaEnLuma(registro: Registro, decididoPor: string): 
   if (!eventId) return { ok: false, nota: `falta el evento de Luma para ${registro.tier} (LUMA_EVENT_*)` };
   const correo = registro.luma.email;
   try {
-    await agregarInvitado(eventId, {
+    const alta = await agregarInvitadoConRespaldo(eventId, {
       email: correo,
       nombre: registro.luma.nombre,
       aprobado: true,
       ...(registro.luma.cedula ? { respuestas: [{ id: "cedula", tipo: "text", valor: registro.luma.cedula }] } : {}),
     });
-    const invitado = await buscarInvitadoPorEmail(eventId, correo);
+    if (!alta.ok) throw new Error(`Luma no aceptó el alta: ${JSON.stringify(alta.cuerpo).slice(0, 160)}`);
+    const invitado = await buscarInvitadoPorEmail(eventId, alta.email);
     const guestId = invitado?.id ?? "";
     if (guestId) await apuntarAInvitado(registro.token, guestId);
     const actualizado = await anotar(
       registro.token,
-      "dado de alta en Luma, aprobado",
+      alta.conAlias ? `dado de alta en Luma, aprobado, con alias ${alta.email} (Luma saltó el correo original)` : "dado de alta en Luma, aprobado",
       (r) => ({
         etapa: "aprobado" as const,
         luma: { ...r.luma, guestId: guestId || r.luma.guestId, eventId, estadoAprobacion: "approved" },
