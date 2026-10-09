@@ -15,6 +15,8 @@
  */
 
 const URL_DATOS = "https://www.habinext.com/api/hoja/embajadores";
+const URL_LUMA = "https://www.habinext.com/api/hoja/luma";
+const NOMBRE_PESTANA_LUMA = "Registros Luma";
 const ID_HOJA = "1z_mVlJ1A7IU8ruLiSw3B88u8UgGdR9SYFd9PLazAyvc";
 const GID_PESTANA = 1025878679;
 const CADA_MINUTOS = 5;
@@ -23,6 +25,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Habi Next")
     .addItem("Actualizar ahora", "actualizar")
+    .addItem("Actualizar registros de Luma", "actualizarLuma")
     .addSeparator()
     .addItem("Activar actualización automática", "instalar")
     .addItem("Desactivar actualización automática", "desinstalar")
@@ -65,6 +68,12 @@ function pestana() {
 }
 
 function actualizar() {
+  actualizarEnlaces();
+  // La pestaña de Luma va después y por su cuenta: si Luma falla, la de enlaces ya quedó.
+  actualizarLuma();
+}
+
+function actualizarEnlaces() {
   const hoja = pestana();
   const token = tokenGuardado();
   const columnaEstado = 18; // R: dos columnas después de la tabla
@@ -105,6 +114,46 @@ function actualizar() {
     );
   } catch (e) {
     hoja.getRange(1, columnaEstado).setValue("Error al actualizar: " + e.message);
+    throw e;
+  }
+}
+
+/**
+ * La pestaña «Registros Luma»: todos los invitados de los dos eventos,
+ * aprobados y pendientes, con lo que el sistema sabe de cada uno. Se crea
+ * sola la primera vez y la refresca el mismo disparador de 5 minutos.
+ */
+function pestanaLuma() {
+  const libro = SpreadsheetApp.openById(ID_HOJA);
+  return libro.getSheetByName(NOMBRE_PESTANA_LUMA) || libro.insertSheet(NOMBRE_PESTANA_LUMA);
+}
+
+function actualizarLuma() {
+  const hoja = pestanaLuma();
+  const token = tokenGuardado();
+  if (!token) {
+    hoja.getRange(1, 16).setValue("Falta el token: menú Habi Next → Guardar token");
+    return;
+  }
+  try {
+    const res = UrlFetchApp.fetch(URL_LUMA, { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error("habinext.com respondió " + res.getResponseCode());
+    const datos = JSON.parse(res.getContentText());
+    const columnas = datos.cabecera.length;
+    hoja.getRange(1, 1, 1, columnas).setValues([datos.cabecera]).setFontWeight("bold");
+    if (datos.filas.length) hoja.getRange(2, 1, datos.filas.length, columnas).setValues(datos.filas);
+    const sobrantes = hoja.getMaxRows() - datos.filas.length - 1;
+    if (sobrantes > 0) hoja.getRange(datos.filas.length + 2, 1, sobrantes, columnas).clearContent();
+    hoja.setFrozenRows(1);
+    const cuando = Utilities.formatDate(new Date(), "America/Bogota", "d MMM yyyy, HH:mm");
+    const r = datos.resumen;
+    const linea = (ev, c) => ev + ": " + Object.keys(c).map((k) => k + " " + c[k]).join(" · ");
+    hoja.getRange(1, columnas + 2).setValue("Actualizado " + cuando);
+    hoja.getRange(2, columnas + 2).setValue(linea("General", r.general));
+    hoja.getRange(3, columnas + 2).setValue(linea("VIP", r.vip));
+    hoja.getRange(4, columnas + 2).setValue("Total en Luma: " + r.total);
+  } catch (e) {
+    hoja.getRange(1, 16).setValue("Error al actualizar: " + e.message);
     throw e;
   }
 }
