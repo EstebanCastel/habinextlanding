@@ -18,10 +18,18 @@ import { todos as todosLosRegistros, type Registro } from "./registros";
  * los registros, quién trae gente que mira y no se inscribe. Son dos problemas
  * distintos y se arreglan de forma distinta.
  *
- * Lo que se cuenta como logro es el **registro**. Un clic dice que alguien
- * compartió bien el enlace; un registro dice que la persona del otro lado
- * quiso ir. La meta se mide contra lo segundo.
+ * Lo que se cuenta como logro es la **entrada efectiva**: un registro que
+ * terminó con código redimido o con pago aprobado. Un clic dice que alguien
+ * compartió bien el enlace; un registro pendiente dice que la persona miró el
+ * link de pago y no pagó; una entrada dice que va. La meta se mide contra lo
+ * último. Los pendientes se muestran aparte, para saber a quién empujar, pero
+ * no suman.
  */
+
+/** Entrada efectiva: aprobada en Luma o con el pago ya confirmado. */
+const efectivo = (r: Registro) => r.etapa === "aprobado" || Boolean(r.pago.confirmadoEn);
+/** Registro que sigue vivo sin entrada: ni aprobado ni rechazado. */
+const pendiente = (r: Registro) => !efectivo(r) && r.etapa !== "rechazado";
 
 export type Marcador = {
   enlace: Enlace;
@@ -31,11 +39,12 @@ export type Marcador = {
   visitas: number;
   personas: number;
   clicsBoleteria: number;
-  /** De Luma. */
+  /** Entradas efectivas (código redimido o pago aprobado), de Luma. */
   registros: number;
   general: number;
   vip: number;
-  pagados: number;
+  /** Registrados por ese enlace que siguen sin entrada: no suman a la meta. */
+  pendientes: number;
   /** Porcentaje contra la meta de cada tipo, o null si el enlace no tiene meta. */
   avance: number | null;
   avanceGeneral: number | null;
@@ -45,9 +54,12 @@ export type Marcador = {
 
 export type Tablero = {
   marcadores: Marcador[];
-  /** Registros que no vinieron por ningún enlace conocido. */
+  /** Entradas efectivas que no vinieron por ningún enlace conocido. */
   sinAtribuir: number;
+  /** Entradas efectivas en total, vengan de donde vengan. */
   totalRegistros: number;
+  /** Registros vivos sin entrada, en total. */
+  pendientesTotal: number;
   metaTotal: number;
   traidosTotal: number;
 };
@@ -92,7 +104,8 @@ export async function tablero(): Promise<Tablero> {
   }
 
   const marcadores: Marcador[] = enlaces.map((enlace) => {
-    const suyos = porOrigen.get(enlace.utm.source) ?? [];
+    const todosSuyos = porOrigen.get(enlace.utm.source) ?? [];
+    const suyos = todosSuyos.filter(efectivo);
     const metas = enlace.metas ?? { general: 0, vip: 0 };
     const meta = metas.general + metas.vip;
     const generales = suyos.filter((r) => r.tier === "general").length;
@@ -107,7 +120,7 @@ export async function tablero(): Promise<Tablero> {
       registros: suyos.length,
       general: generales,
       vip: vips,
-      pagados: suyos.filter((r) => r.pago.confirmadoEn || r.etapa === "aprobado").length,
+      pendientes: todosSuyos.filter(pendiente).length,
       meta,
       avance: meta > 0 ? Math.round((suyos.length / meta) * 100) : null,
       avanceGeneral: metas.general > 0 ? Math.round((generales / metas.general) * 100) : null,
@@ -124,13 +137,14 @@ export async function tablero(): Promise<Tablero> {
   const fuentesConocidas = new Set(enlaces.map((e) => e.utm.source));
   const sinAtribuir = registros.filter((r) => {
     const o = (r.luma.origen ?? "").trim().toLowerCase();
-    return !o || !fuentesConocidas.has(o);
+    return efectivo(r) && (!o || !fuentesConocidas.has(o));
   }).length;
 
   return {
     marcadores,
     sinAtribuir,
-    totalRegistros: registros.length,
+    totalRegistros: registros.filter(efectivo).length,
+    pendientesTotal: registros.filter(pendiente).length,
     metaTotal: marcadores.reduce((n, m) => n + m.meta, 0),
     traidosTotal: marcadores.reduce((n, m) => n + m.registros, 0),
   };
@@ -147,7 +161,7 @@ export const CABECERA_HOJA = [
   "Avance",
   "General",
   "VIP",
-  "Pagados",
+  "Pendientes sin pagar",
   "Clics al enlace",
   "Visitas a la landing",
   "Personas distintas",
@@ -181,7 +195,7 @@ export function aFilas(t: Tablero, sitio: string): FilaHoja[] {
       m.avance === null ? "" : `${m.avance}%`,
       m.general,
       m.vip,
-      m.pagados,
+      m.pendientes,
       e.clics,
       m.visitas,
       m.personas,

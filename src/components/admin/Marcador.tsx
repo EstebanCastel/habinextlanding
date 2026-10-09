@@ -29,7 +29,7 @@ export default function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
               <span className="text-lg text-white/35"> / {t.metaTotal}</span>
             </p>
             <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.15em] text-white/45">
-              Registros contra la meta
+              Entradas contra la meta
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -60,9 +60,9 @@ export default function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
               <th className="px-4 py-3 font-medium" title="Tocaron su enlace">Clics</th>
               <th className="px-4 py-3 font-medium" title="Llegaron a la landing">Visitas</th>
               <th className="px-4 py-3 font-medium" title="Tocaron un botón de boletería">A boletería</th>
-              <th className="px-4 py-3 font-medium">Registros</th>
+              <th className="px-4 py-3 font-medium" title="Entradas efectivas: código redimido o pago aprobado">Entradas</th>
               <th className="px-4 py-3 font-medium">VIP</th>
-              <th className="px-4 py-3 font-medium">Pagados</th>
+              <th className="px-4 py-3 font-medium" title="Se registraron por este enlace y siguen sin pagar; no suman">Pendientes</th>
             </tr>
           </thead>
           <tbody>
@@ -125,7 +125,7 @@ export default function Marcador({ t, sitio }: { t: Tablero; sitio: string }) {
                   <td className="px-4 py-3 tabular-nums text-white/60">{m.clicsBoleteria}</td>
                   <td className="px-4 py-3 text-lg font-semibold tabular-nums">{m.registros}</td>
                   <td className="px-4 py-3 tabular-nums text-violet-soft">{m.vip}</td>
-                  <td className="px-4 py-3 tabular-nums">{m.pagados}</td>
+                  <td className="px-4 py-3 tabular-nums">{m.pendientes}</td>
                 </tr>
               );
             })}
