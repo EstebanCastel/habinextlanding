@@ -302,6 +302,8 @@ export async function redimirCodigo(datos: {
   email: string;
   telefono: string | null;
   cedula?: string;
+  /** utm_source del enlace que trajo a la persona a /codigo; le cuenta a ese enlace. */
+  origen?: string;
 }): Promise<{ ok: boolean; nota: string; token?: string }> {
   const evento = eventoDeTier(datos.tier);
   if (!evento) return { ok: false, nota: "Ese evento no está configurado" };
@@ -337,6 +339,7 @@ export async function redimirCodigo(datos: {
     nombre: datos.nombre,
     telefonoCrudo: datos.telefono,
     ...(datos.cedula ? { cedula: datos.cedula } : {}),
+    ...(datos.origen ? { origen: datos.origen } : {}),
     redimidoEn: ahora,
   });
 

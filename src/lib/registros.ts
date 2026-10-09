@@ -408,6 +408,7 @@ export async function crearCortesia(datos: {
   nombre: string;
   telefonoCrudo: string | null;
   cedula?: string;
+  origen?: string;
   redimidoEn: string;
 }): Promise<Registro> {
   const telefono = normalizarTelefono(datos.telefonoCrudo);
@@ -425,6 +426,7 @@ export async function crearCortesia(datos: {
       registradoEn: datos.redimidoEn,
       estadoAprobacion: "approved",
       ...(datos.cedula ? { cedula: datos.cedula } : {}),
+      ...(datos.origen ? { origen: datos.origen } : {}),
     },
     telefono,
     whatsapp: {},

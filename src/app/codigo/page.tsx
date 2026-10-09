@@ -77,6 +77,7 @@ export default async function Codigo({
   const tier =
     q.tier === "vip" || q.tier === "general" ? q.tier : vigente?.sirvePara === "vip" ? "vip" : "general";
   const ticket = TICKETS.find((t) => t.id === tier)!;
+  const origen = /^[a-z0-9_-]{1,40}$/i.test(q.utm_source ?? "") ? String(q.utm_source).toLowerCase() : "";
   // El campo lleva el +57 fijo: se prellena el número local, sin indicativo.
   const celularPre = pre?.telefono ? pre.telefono.replace(/\D/g, "").replace(/^57(?=\d{10}$)/, "") : "";
 
@@ -147,6 +148,9 @@ export default async function Codigo({
 
       <form method="post" action="/api/codigo" className="mt-11 flex flex-col gap-6">
         <input type="hidden" name="tier" value={tier} />
+        {/* De dónde vino (utm_source del enlace que lo trajo): queda en el registro
+            para que la redención le cuente a ese enlace, como una compra. */}
+        {origen ? <input type="hidden" name="origen" value={origen} /> : null}
 
         <label className="flex flex-col gap-2.5">
           <span className={etiqueta}>Tu código</span>

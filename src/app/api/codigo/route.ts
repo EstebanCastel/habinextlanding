@@ -59,6 +59,8 @@ export async function POST(request: Request) {
   const telefonoCrudo = String(form.get("telefono") ?? "").trim();
   const cedulaCruda = String(form.get("cedula") ?? "").trim();
   const tier = (String(form.get("tier") ?? "general") === "vip" ? "vip" : "general") as Tier;
+  const origenCrudo = String(form.get("origen") ?? "").trim().toLowerCase();
+  const origen = /^[a-z0-9_-]{1,40}$/.test(origenCrudo) ? origenCrudo : undefined;
 
   const conservar = { codigo, nombre, email, telefono: telefonoCrudo, cedula: cedulaCruda, tier };
 
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}`, cedula });
+    const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}`, cedula, ...(origen ? { origen } : {}) });
     if (!res.ok) return volver({ ...conservar, error: res.nota });
     // Con la entrada ya en Luma, la persona sigue de una a armar su carnet y
     // entra sin volver a escribir nada: el correo y la cédula son los mismos
