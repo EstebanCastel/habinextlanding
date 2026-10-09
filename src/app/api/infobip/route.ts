@@ -13,7 +13,7 @@ import {
 import { tokenValido } from "@/lib/seguridad";
 import { anotar, normalizarTelefono, porTelefono, porToken, type Registro } from "@/lib/registros";
 import { enviarTexto } from "@/lib/whatsapp";
-import { escribir, leer } from "@/lib/almacen";
+import { escribir, modificar } from "@/lib/almacen";
 
 /**
  * Webhook de Infobip. Una sola URL para las dos cosas que WhatsApp devuelve:
@@ -95,6 +95,7 @@ type Callback = {
   /** Un WhatsApp de invitación con código (campaña a la lista del equipo): no es de ningún registro. */
   invitacion?: boolean;
   reenvio?: boolean;
+  carnet?: boolean;
   codigo?: string;
   tier?: string;
 };
@@ -106,6 +107,7 @@ type ReporteInvitacion = {
   tier: string;
   tel: string;
   reenvio: boolean;
+  carnet?: boolean;
   estado?: "entregado" | "leido" | "fallo";
   entregadoEn?: string;
   leidoEn?: string;
@@ -201,6 +203,18 @@ async function procesarDlr(resultados: Resultado[]): Promise<number> {
       vistos += 1;
       continue;
     }
+    // El reporte de «visto» de WhatsApp llega sin callbackData: solo messageId,
+    // número y seenAt. Si ese messageId es de una invitación ya guardada, la
+    // lectura se anota ahí y no se busca un registro por número.
+    if (!cb && r.seenAt && r.messageId && /^[A-Za-z0-9-]{8,80}$/.test(r.messageId)) {
+      const inv = await modificar<ReporteInvitacion>(`envios/invitaciones/${r.messageId}.json`, (previo) =>
+        previo ? { ...previo, entregadoEn: previo.entregadoEn ?? r.seenAt, leidoEn: previo.leidoEn ?? r.seenAt, estado: "leido" } : null
+      ).catch(() => null);
+      if (inv) {
+        vistos += 1;
+        continue;
+      }
+    }
 
     const registro = await registroDe(r);
     if (!registro) continue;
@@ -241,7 +255,7 @@ async function procesarDlr(resultados: Resultado[]): Promise<number> {
   return vistos;
 }
 
-/** Entregado, leído o fallido, por mensaje de invitación; el reporte más reciente completa al anterior. */
+/** Entregado, leído o fallido, por mensaje de invitación; escritura condicional para que dos reportes seguidos no se pisen. */
 async function anotarInvitacion(r: Resultado, cb: Callback): Promise<void> {
   if (!r.messageId || !/^[A-Za-z0-9-]{8,80}$/.test(r.messageId)) return;
   const grupo = String(r.status?.groupName || r.status?.name || "").toUpperCase();
@@ -249,22 +263,24 @@ async function anotarInvitacion(r: Resultado, cb: Callback): Promise<void> {
   const entregado = grupo === "DELIVERED";
   const fallo = ["UNDELIVERABLE", "EXPIRED", "REJECTED", "FAILED"].includes(grupo);
   if (!leido && !entregado && !fallo) return;
-  const ruta = `envios/invitaciones/${r.messageId}.json`;
-  const previo = (await leer<ReporteInvitacion>(ruta)) ?? {
-    messageId: r.messageId,
-    codigo: String(cb.codigo ?? ""),
-    tier: String(cb.tier ?? ""),
-    tel: String(r.to ?? ""),
-    reenvio: Boolean(cb.reenvio),
-  };
   const ahora = new Date().toISOString();
-  await escribir(ruta, {
-    ...previo,
-    ...(entregado || leido ? { entregadoEn: previo.entregadoEn ?? r.doneAt ?? ahora } : {}),
-    ...(leido ? { leidoEn: previo.leidoEn ?? r.seenAt ?? ahora } : {}),
-    ...(fallo ? { error: r.error?.description || r.status?.description || grupo, falloEn: previo.falloEn ?? ahora } : {}),
-    // Leído manda sobre entregado aunque los reportes lleguen desordenados.
-    estado: leido || previo.estado === "leido" ? "leido" : entregado || previo.estado === "entregado" ? "entregado" : "fallo",
+  await modificar<ReporteInvitacion>(`envios/invitaciones/${r.messageId}.json`, (previo) => {
+    const base: ReporteInvitacion = previo ?? {
+      messageId: r.messageId!,
+      codigo: String(cb.codigo ?? ""),
+      tier: String(cb.tier ?? ""),
+      tel: String(r.to ?? ""),
+      reenvio: Boolean(cb.reenvio),
+      ...(cb.carnet ? { carnet: true } : {}),
+    };
+    return {
+      ...base,
+      ...(entregado || leido ? { entregadoEn: base.entregadoEn ?? r.doneAt ?? ahora } : {}),
+      ...(leido ? { leidoEn: base.leidoEn ?? r.seenAt ?? ahora } : {}),
+      ...(fallo ? { error: r.error?.description || r.status?.description || grupo, falloEn: base.falloEn ?? ahora } : {}),
+      // Leído manda sobre entregado aunque los reportes lleguen desordenados.
+      estado: leido || base.estado === "leido" ? "leido" : entregado || base.estado === "entregado" ? "entregado" : "fallo",
+    };
   });
 }
 
