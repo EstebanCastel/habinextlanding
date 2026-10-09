@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { entradaDe } from "@/lib/entrada";
+import { anotar, cambiar } from "@/lib/experiencia";
 import { participanteActual } from "@/lib/experiencia-http";
 import { paseApple, paseGoogle } from "@/lib/wallet";
 
@@ -50,6 +51,20 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
   try {
     const p = await participanteActual();
     if (!p?.registro) return fallar("sin-sesion", "Entra con tu correo para bajar tu entrada.", 401);
+    // Queda anotado quién bajó qué pase y cuántas veces: es la única forma de
+    // medir Apple Wallet (el pase no avisa cuando se guarda). Va después de
+    // responder para no demorar la entrega del archivo.
+    const anotarPase = () =>
+      after(() =>
+        cambiar(p.id, (q) => {
+          const previo = q.pases?.[destino];
+          return anotar(
+            { ...q, pases: { ...q.pases, [destino]: { primeraVez: previo?.primeraVez ?? new Date().toISOString(), veces: (previo?.veces ?? 0) + 1 } } },
+            "bajó el pase de la billetera",
+            destino
+          );
+        }).catch(() => null)
+      );
     const pedido = new URL(request.url).searchParams.get("t");
     if (pedido && pedido !== p.registro.token) return fallar("ajena", "Esa entrada no es tuya.", 403);
 
@@ -64,6 +79,7 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
         // Un tropiezo pasajero con Google se dice como tal; lo demás es que falta configurar.
         return fallar(r.transitorio ? "fallo" : "google-falta", r.falta, 503);
       }
+      anotarPase();
       return quiereJson
         ? NextResponse.json({ url: r.url }, { headers: { "Cache-Control": "no-store" } })
         : NextResponse.redirect(r.url, { status: 302, headers: { "Cache-Control": "no-store" } });
@@ -71,6 +87,7 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
 
     const r = await paseApple(entrada, SITIO);
     if (!r.ok) return fallar("apple-falta", r.falta, 503);
+    anotarPase();
     return new NextResponse(new Uint8Array(r.archivo), {
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",

@@ -101,6 +101,8 @@ export type Participante = {
   vistasPrevias: Record<string, string>;
   /** Las sesiones de la agenda que marcó como «me interesa», con la fecha. */
   agenda?: Record<string, string>;
+  /** Qué pases de billetera bajó (Apple, Google): cuándo la primera vez y cuántas veces. */
+  pases?: Partial<Record<"apple" | "google", { primeraVez: string; veces: number }>>;
   bitacora: { en: string; que: string; detalle?: string }[];
   creadoEn: string;
   actualizadoEn: string;
@@ -820,6 +822,8 @@ export function aCsv(lista: Participante[], sitio: string): string {
     "Invitación abierta (veces)",
     "Frase",
     "Carnet público",
+    "Pase Apple",
+    "Pase Google",
     "Empezó",
     "Último movimiento",
   ];
@@ -846,6 +850,8 @@ export function aCsv(lista: Participante[], sitio: string): string {
       p.invitacion.clics,
       p.frase,
       p.carnet ? `${sitio}/c/${p.id}` : "",
+      p.pases?.apple?.primeraVez ?? "",
+      p.pases?.google?.primeraVez ?? "",
       p.creadoEn,
       p.actualizadoEn,
     ]
