@@ -125,6 +125,47 @@ export async function agregarInvitado(
  * `guests/add` no devuelve el id del invitado que creó, y sin ese id no se
  * puede relacionar después la aprobación que alguien haga desde Luma.
  */
+/** Un invitado tal como lo lista Luma, con lo que hace falta para la hoja del equipo. */
+export type InvitadoLuma = {
+  id: string;
+  email: string;
+  nombre: string;
+  telefono: string | null;
+  estado: string;
+  registradoEn: string;
+  utmSource: string;
+};
+
+/** Todos los invitados de un evento, página por página (Luma da 100 por página). */
+export async function listarInvitados(eventId: string): Promise<InvitadoLuma[]> {
+  const salida: InvitadoLuma[] = [];
+  let cursor: string | undefined;
+  for (let pagina = 0; pagina < 60; pagina += 1) {
+    const url = new URL(`${BASE}/v1/events/guests/list`);
+    url.searchParams.set("event_id", eventId);
+    url.searchParams.set("pagination_limit", "100");
+    if (cursor) url.searchParams.set("pagination_cursor", cursor);
+    const res = await fetch(url, { headers: { "x-luma-api-key": llave() }, signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) throw new Error(`Luma respondió ${res.status} al listar invitados`);
+    const data = (await res.json().catch(() => null)) as { entries?: { guest?: Record<string, unknown> }[]; has_more?: boolean; next_cursor?: string } | null;
+    for (const fila of data?.entries ?? []) {
+      const g = (fila.guest ?? fila) as Record<string, unknown>;
+      salida.push({
+        id: String(g.api_id ?? g.id ?? ""),
+        email: String(g.user_email ?? "").trim().toLowerCase(),
+        nombre: String(g.user_name ?? g.name ?? "").trim(),
+        telefono: g.phone_number ? String(g.phone_number) : null,
+        estado: String(g.approval_status ?? ""),
+        registradoEn: String(g.registered_at ?? g.created_at ?? ""),
+        utmSource: String(g.utm_source ?? ""),
+      });
+    }
+    if (!data?.has_more || !data.next_cursor) break;
+    cursor = data.next_cursor;
+  }
+  return salida;
+}
+
 export async function buscarInvitadoPorEmail(
   eventId: string,
   email: string
