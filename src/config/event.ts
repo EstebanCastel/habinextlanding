@@ -136,7 +136,6 @@ export const TICKETS: Ticket[] = [
     includes: [
       "Evento y talleres",
       "Experiencia práctica",
-      "Kit oficial Habi Next",
       "Acceso a las experiencias del evento",
     ],
   },
@@ -180,7 +179,6 @@ export const TICKETS: Ticket[] = [
     includesTitle: "Todo lo de General, más",
     includes: [
       "Ubicación preferencial en primeras filas",
-      "Kit premium Habi Next",
       "Material y guías exclusivas",
       "Acceso a zona VIP",
       "Barra de snacks y bebidas exclusiva",
