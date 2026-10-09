@@ -13,7 +13,7 @@ import {
 import { tokenValido } from "@/lib/seguridad";
 import { anotar, normalizarTelefono, porTelefono, porToken, type Registro } from "@/lib/registros";
 import { enviarTexto } from "@/lib/whatsapp";
-import { escribir } from "@/lib/almacen";
+import { escribir, leer } from "@/lib/almacen";
 
 /**
  * Webhook de Infobip. Una sola URL para las dos cosas que WhatsApp devuelve:
@@ -86,7 +86,32 @@ function leerMensaje(r: Resultado): {
   };
 }
 
-type Callback = { token?: string; canal?: "whatsapp" | "sms" | "correo"; recordatorio?: boolean; confirmacion?: boolean; prueba?: boolean };
+type Callback = {
+  token?: string;
+  canal?: "whatsapp" | "sms" | "correo";
+  recordatorio?: boolean;
+  confirmacion?: boolean;
+  prueba?: boolean;
+  /** Un WhatsApp de invitación con código (campaña a la lista del equipo): no es de ningún registro. */
+  invitacion?: boolean;
+  reenvio?: boolean;
+  codigo?: string;
+  tier?: string;
+};
+
+/** Lo que se guarda por cada WhatsApp de invitación, en `envios/invitaciones/<messageId>.json`. */
+type ReporteInvitacion = {
+  messageId: string;
+  codigo: string;
+  tier: string;
+  tel: string;
+  reenvio: boolean;
+  estado?: "entregado" | "leido" | "fallo";
+  entregadoEn?: string;
+  leidoEn?: string;
+  falloEn?: string;
+  error?: string;
+};
 
 function callbackDe(r: Resultado): Callback | null {
   try {
@@ -168,6 +193,15 @@ async function procesarDlr(resultados: Resultado[]): Promise<number> {
     // Los envíos de prueba al operador no son de nadie: no se anotan.
     if (cb?.prueba) continue;
 
+    // Las invitaciones con código se miden aparte, por mensaje. Va antes de
+    // buscar el registro: por número coincidiría con el de quien ya redimió y
+    // le movería la etapa de su entrada.
+    if (cb?.invitacion) {
+      await anotarInvitacion(r, cb).catch((error) => console.error("[infobip] invitación:", (error as Error).message));
+      vistos += 1;
+      continue;
+    }
+
     const registro = await registroDe(r);
     if (!registro) continue;
 
@@ -205,6 +239,33 @@ async function procesarDlr(resultados: Resultado[]): Promise<number> {
     vistos += 1;
   }
   return vistos;
+}
+
+/** Entregado, leído o fallido, por mensaje de invitación; el reporte más reciente completa al anterior. */
+async function anotarInvitacion(r: Resultado, cb: Callback): Promise<void> {
+  if (!r.messageId || !/^[A-Za-z0-9-]{8,80}$/.test(r.messageId)) return;
+  const grupo = String(r.status?.groupName || r.status?.name || "").toUpperCase();
+  const leido = Boolean(r.seenAt) || grupo === "SEEN" || grupo === "READ";
+  const entregado = grupo === "DELIVERED";
+  const fallo = ["UNDELIVERABLE", "EXPIRED", "REJECTED", "FAILED"].includes(grupo);
+  if (!leido && !entregado && !fallo) return;
+  const ruta = `envios/invitaciones/${r.messageId}.json`;
+  const previo = (await leer<ReporteInvitacion>(ruta)) ?? {
+    messageId: r.messageId,
+    codigo: String(cb.codigo ?? ""),
+    tier: String(cb.tier ?? ""),
+    tel: String(r.to ?? ""),
+    reenvio: Boolean(cb.reenvio),
+  };
+  const ahora = new Date().toISOString();
+  await escribir(ruta, {
+    ...previo,
+    ...(entregado || leido ? { entregadoEn: previo.entregadoEn ?? r.doneAt ?? ahora } : {}),
+    ...(leido ? { leidoEn: previo.leidoEn ?? r.seenAt ?? ahora } : {}),
+    ...(fallo ? { error: r.error?.description || r.status?.description || grupo, falloEn: previo.falloEn ?? ahora } : {}),
+    // Leído manda sobre entregado aunque los reportes lleguen desordenados.
+    estado: leido || previo.estado === "leido" ? "leido" : entregado || previo.estado === "entregado" ? "entregado" : "fallo",
+  });
 }
 
 /** ---------- mensajes entrantes ---------- */

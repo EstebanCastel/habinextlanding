@@ -1,6 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { claseDeAgente } from "@/lib/agentes";
-import { contarClic, destinoDe, traer } from "@/lib/enlaces";
+import { contarClic, crear, destinoDe, normalizar, traer } from "@/lib/enlaces";
 
 /**
  * Enlace corto: `/l/li` → la landing con las UTM de LinkedIn.
@@ -18,16 +18,34 @@ function varianteDe(valor: string | null): string | undefined {
 }
 export const dynamic = "force-dynamic";
 
+/** El canal se lee del prefijo con el que el equipo nombra los enlaces: `ig-`, `mail-`, `li-`, `wa-`… */
+function medioPorPrefijo(slug: string): string {
+  const p = slug.split("-")[0];
+  return { ig: "instagram", mail: "email", li: "linkedin", linkedin: "linkedin", wa: "whatsapp", fb: "facebook", tiktok: "tiktok", tt: "tiktok" }[p] ?? "enlace";
+}
+
 export async function GET(request: Request, contexto: { params: Promise<{ slug: string }> }) {
   const { slug } = await contexto.params;
   const base = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
 
-  const enlace = await traer(slug).catch(() => null);
-  // Un enlace que no existe manda a la portada en vez de a un 404: puede ser
-  // un link viejo de una pieza que sigue circulando, y es preferible que esa
-  // persona vea el evento a que vea un error.
+  let enlace = await traer(slug).catch(() => null);
+  // Un enlace que nadie creó en el panel (una pieza salió con un nombre nuevo)
+  // se crea solo al primer clic, con nota, y desde ahí se mide como los demás:
+  // ningún clic se pierde. Si el nombre no sirve ni para eso, a la portada.
   if (!enlace) {
-    return NextResponse.redirect(base, { status: 302, headers: { "Cache-Control": "no-store" } });
+    const limpio = normalizar(slug);
+    if (/^[a-z0-9][a-z0-9-]{1,39}$/.test(limpio)) {
+      const r = await crear({
+        slug: limpio,
+        destino: "/",
+        source: limpio.replace(/^(ig|mail|li|linkedin|wa|fb|tiktok|tt)-/, ""),
+        medium: medioPorPrefijo(limpio),
+        campaign: "habinext-2026",
+        nota: "Creado solo al primer clic: nadie lo había creado en el panel",
+      }).catch(() => null);
+      enlace = r?.ok ? await traer(limpio).catch(() => null) : null;
+    }
+    if (!enlace) return NextResponse.redirect(base, { status: 302, headers: { "Cache-Control": "no-store" } });
   }
 
   // `?c=a` distingue variantes de una misma pieza (dos copys de WhatsApp, dos
