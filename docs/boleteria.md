@@ -133,6 +133,12 @@ correo y celular, y su entrada sale en el acto:
    puede abrir, cae en la portada con la ventana de entrar lista. Probado en
    producción el 7 de octubre con una redención real.
 
+Si la persona llegó a `/codigo` por un enlace con `utm_source` (por ejemplo
+`/l/externa-pool`, que redirige a `/codigo?utm_source=externa…`), ese valor
+viaja como `origen` oculto en el formulario y queda en `luma.origen` del
+registro: la redención le cuenta al enlace en la hoja del equipo, igual que
+una compra.
+
 ### La invitación por WhatsApp
 
 A los invitados de la lista del equipo se les manda el código por WhatsApp con
