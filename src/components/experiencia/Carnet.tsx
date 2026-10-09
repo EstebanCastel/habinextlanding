@@ -9,6 +9,7 @@ import {
   cargarFuentes,
   cargarImagen,
   cargarRecursos,
+  cargarRecursosVip,
   dibujar,
   dibujarReverso,
   DISENO,
@@ -83,21 +84,24 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
   const arrastre = useRef<{ x: number; y: number; dx: number; dy: number } | null>(null);
   const fotoInicialCargada = useRef(false);
 
+  // La entrada decide el diseño: la escarapela VIP tiene el suyo.
+  const tier = entrada?.tier ?? yo?.registro?.tier ?? "general";
+
   // Recursos y tipografía se cargan una vez.
   useEffect(() => {
     let vivo = true;
     (async () => {
       const fam = familiaDeFuente();
       await cargarFuentes(fam);
-      const [feed, story] = await Promise.all([cargarRecursos("feed"), cargarRecursos("story")]);
+      const [feed, story, vip] = await Promise.all([cargarRecursos("feed"), cargarRecursos("story"), tier === "vip" ? cargarRecursosVip() : Promise.resolve(undefined)]);
       if (!vivo) return;
       setFamilia(fam);
-      setRecursos({ feed, story });
+      setRecursos(vip ? { feed: { ...feed, vip }, story: { ...story, vip } } : { feed, story });
     })().catch(() => setError("No pudimos cargar las piezas del carnet. Recarga la página."));
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [tier]);
 
   // El carnet ya guardado, para verlo igual desde cualquier aparato.
   useEffect(() => {
@@ -165,13 +169,12 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
         c.getContext("2d")!.drawImage(listo, 0, 0, D.w, D.h);
         return;
       }
-      dibujar(c, { formato, nombre, apellido, foto, encuadre, recursos: recursos[formato], familia, sinAsteriscos: true });
+      dibujar(c, { formato, nombre, apellido, foto, encuadre, recursos: recursos[formato], familia, sinAsteriscos: true, tier });
     });
     return () => cancelAnimationFrame(cuadro.current);
-  }, [recursos, formato, nombre, apellido, foto, encuadre, familia, guardado]);
+  }, [recursos, formato, nombre, apellido, foto, encuadre, familia, guardado, tier]);
 
   // El reverso cambia menos: nombre, formato y la entrada.
-  const tier = entrada?.tier ?? yo?.registro?.tier ?? "general";
   useEffect(() => {
     if (!recursos || !reverso.current) return;
     dibujarReverso(reverso.current, {
@@ -309,7 +312,7 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
       const salidas = {} as Record<Formato, Blob>;
       for (const f of ["feed", "story"] as Formato[]) {
         const aparte = document.createElement("canvas");
-        dibujar(aparte, { formato: f, nombre, apellido, foto, encuadre, recursos: recursos[f], familia });
+        dibujar(aparte, { formato: f, nombre, apellido, foto, encuadre, recursos: recursos[f], familia, tier });
         salidas[f] = await aBlob(aparte, 0.92);
       }
 
@@ -411,8 +414,8 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
                   style={{ touchAction: foto ? "none" : "auto" }}
                   aria-label="Vista previa de tu carnet"
                 />
-                {/* Los dos asteriscos, vivos. El guardado ya los trae pintados. */}
-                {!mostrandoGuardado ? (
+                {/* Los dos asteriscos, vivos. El guardado ya los trae pintados. La VIP trae el suyo en la pieza. */}
+                {!mostrandoGuardado && tier !== "vip" ? (
                   <>
                     <span aria-hidden="true" className="pointer-events-none absolute aspect-square" style={posicion(A.blanco)}>
                       <svg ref={astBlanco} viewBox="0 0 152.4 152.47" className="block h-full w-full overflow-visible">

@@ -72,7 +72,9 @@ export const DISENO: Record<Formato, Diseno> = {
 const VIOLETA = "#802ef6";
 const VIOLETA_OSCURO = "#4b1a8b";
 
-export type Recursos = { fondo: HTMLImageElement; lockup: HTMLImageElement; habi: HTMLImageElement };
+/** Las capas del diseño VIP: el fondo (Bogotá), lo que va debajo de la tarjeta y lo que va encima. */
+export type RecursosVip = { fondo: HTMLImageElement; bajo: HTMLImageElement; alto: HTMLImageElement };
+export type Recursos = { fondo: HTMLImageElement; lockup: HTMLImageElement; habi: HTMLImageElement; vip?: RecursosVip };
 
 const cache = new Map<string, Promise<HTMLImageElement>>();
 
@@ -88,6 +90,15 @@ export function cargarImagen(src: string): Promise<HTMLImageElement> {
   });
   cache.set(src, p);
   return p;
+}
+
+export async function cargarRecursosVip(): Promise<RecursosVip> {
+  const [fondo, bajo, alto] = await Promise.all([
+    cargarImagen("/img/carnet/vip-fondo.jpg"),
+    cargarImagen("/img/carnet/vip-bajo.png"),
+    cargarImagen("/img/carnet/vip-alto.png"),
+  ]);
+  return { fondo, bajo, alto };
 }
 
 export async function cargarRecursos(formato: Formato): Promise<Recursos> {
@@ -221,9 +232,110 @@ export type OpcionesDeDibujo = {
   familia: string;
   /** En pantalla los asteriscos van aparte, animados; en la imagen final, pintados. */
   sinAsteriscos?: boolean;
+  /** La escarapela VIP tiene su propio diseño (`dibujarVip`); General es el de siempre. */
+  tier?: "general" | "vip";
 };
 
+/**
+ * La escarapela VIP: el diseño de la pieza oficial (2040 × 2946), partido en
+ * tres capas rasterizadas —fondo, lo que va debajo de la tarjeta y las
+ * palabras verticales que van encima— y, en medio, la tarjeta con la foto y
+ * el nombre que pinta el canvas. En feed la pieza se ajusta a la altura y
+ * queda centrada; en story, al ancho.
+ */
+const VIP = {
+  w: 2040,
+  h: 2946,
+  tarjeta: { x: 423, y: 490, w: 1194, h: 1855, r: 127 },
+  foto: { x: 485, y: 673, w: 1070, h: 1662, r: 114 },
+  nombre: { x: 594, y: 2122, tam: 101 },
+  apellido: { x: 594, y: 2226, tam: 106 },
+};
+
+export function dibujarVip(canvas: HTMLCanvasElement, o: OpcionesDeDibujo, vip: RecursosVip) {
+  const D = DISENO[o.formato];
+  canvas.width = D.w;
+  canvas.height = D.h;
+  const ctx = canvas.getContext("2d")!;
+  const { w, h } = D;
+  const s = o.formato === "feed" ? h / VIP.h : w / VIP.w;
+  const ox = (w - VIP.w * s) / 2;
+  const oy = (h - VIP.h * s) / 2;
+  const S = (v: number) => v * s;
+
+  // --- fondo a sangre ---
+  ctx.fillStyle = "#07040d";
+  ctx.fillRect(0, 0, w, h);
+  const fs = Math.max(w / vip.fondo.width, h / vip.fondo.height);
+  const fw = vip.fondo.width * fs;
+  const fh = vip.fondo.height * fs;
+  ctx.drawImage(vip.fondo, (w - fw) / 2, (h - fh) / 2, fw, fh);
+
+  // --- cuadrícula, asterisco, «VIP», lockup y «un evento de» ---
+  ctx.drawImage(vip.bajo, ox, oy, S(VIP.w), S(VIP.h));
+
+  // --- la tarjeta y la foto ---
+  const T = VIP.tarjeta;
+  ctx.fillStyle = "rgba(9,8,11,0.97)";
+  redondeado(ctx, ox + S(T.x), oy + S(T.y), S(T.w), S(T.h), S(T.r));
+  ctx.fill();
+  const F = VIP.foto;
+  const fx = ox + S(F.x);
+  const fy = oy + S(F.y);
+  const fW = Math.round(S(F.w));
+  const fH = Math.round(S(F.h));
+  ctx.save();
+  redondeado(ctx, fx, fy, fW, fH, S(F.r));
+  ctx.clip();
+  if (o.foto) {
+    ctx.drawImage(fotoEnGris(o.foto, fW, fH, o.encuadre), fx, fy);
+    // El nombre va sobre la parte baja de la foto: se oscurece para que se lea.
+    const velo = ctx.createLinearGradient(0, fy + fH * 0.5, 0, fy + fH);
+    velo.addColorStop(0, "rgba(0,0,0,0)");
+    velo.addColorStop(1, "rgba(0,0,0,0.92)");
+    ctx.fillStyle = velo;
+    ctx.fillRect(fx, fy, fW, fH);
+  } else {
+    const relleno = ctx.createLinearGradient(fx, fy, fx + fW, fy + fH);
+    relleno.addColorStop(0, "#1a0b30");
+    relleno.addColorStop(1, "#0d0618");
+    ctx.fillStyle = relleno;
+    ctx.fillRect(fx, fy, fW, fH);
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    trazarAsterisco(ctx, fx + fW / 2, fy + fH / 2 - 30, fW * 0.42);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.font = `500 ${Math.round(fW * 0.055)}px ${o.familia}`;
+    ctx.textAlign = "center";
+    ctx.fillText("Tu foto va aquí", fx + fW / 2, fy + fH * 0.62);
+    ctx.textAlign = "left";
+  }
+  ctx.restore();
+
+  // --- las palabras verticales de la izquierda ---
+  ctx.drawImage(vip.alto, ox, oy, S(VIP.w), S(VIP.h));
+
+  // --- el nombre, como en la pieza: pila fino y espaciado, apellido en negrita ---
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#ffffff";
+  const nombre = (o.nombre || "Tu nombre").trim().toUpperCase();
+  const apellido = (o.apellido || (o.nombre ? "" : "Apellido")).trim().toUpperCase();
+  const maximo = S(F.x + F.w - VIP.nombre.x - 48);
+  const tN = ajustar(ctx, nombre, 300, S(VIP.nombre.tam), o.familia, maximo, 0.22);
+  ctx.font = `300 ${tN}px ${o.familia}`;
+  dibujarEspaciado(ctx, nombre, ox + S(VIP.nombre.x), oy + S(VIP.nombre.y), tN * 0.22);
+  if (apellido) {
+    const tA = ajustar(ctx, apellido, 800, S(VIP.apellido.tam), o.familia, maximo, 0.08);
+    ctx.font = `800 ${tA}px ${o.familia}`;
+    dibujarEspaciado(ctx, apellido, ox + S(VIP.apellido.x), oy + S(VIP.apellido.y), tA * 0.08);
+  }
+}
+
 export function dibujar(canvas: HTMLCanvasElement, o: OpcionesDeDibujo) {
+  if (o.tier === "vip" && o.recursos.vip) {
+    dibujarVip(canvas, o, o.recursos.vip);
+    return;
+  }
   const D = DISENO[o.formato];
   canvas.width = D.w;
   canvas.height = D.h;
