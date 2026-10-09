@@ -70,7 +70,12 @@ export async function guardarLote(lote: Lote): Promise<void> {
 }
 
 /** Todos los lotes de los últimos días, del más reciente al más viejo. */
-export async function lotes(dias = 45, tope = 4000): Promise<Lote[]> {
+/**
+ * Hay ~10.000 lotes desde que arrancó la landing (sep 2026) y crecen unos
+ * 300 por día de campaña: el tope va holgado y las lecturas van de a 100 en
+ * paralelo, que es lo que aguanta el store sin despeinarse.
+ */
+export async function lotes(dias = 60, tope = 30_000): Promise<Lote[]> {
   // Un listado por día, del más reciente hacia atrás. Con un solo listado
   // sobre `rastro/` el tope se llenaba con los días viejos (van en orden
   // alfabético) y los últimos días quedaban fuera del panel y del CSV.
@@ -81,7 +86,7 @@ export async function lotes(dias = 45, tope = 4000): Promise<Lote[]> {
   }
 
   const salida: Lote[] = [];
-  const tanda = 25;
+  const tanda = 100;
   for (let i = 0; i < vigentes.length; i += tanda) {
     const trozo = await Promise.all(vigentes.slice(i, i + tanda).map((r) => leer<Lote>(r)));
     for (const l of trozo) if (l) salida.push(l);

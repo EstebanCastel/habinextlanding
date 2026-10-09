@@ -5,6 +5,8 @@ import { haySesion } from "@/lib/sesion";
 /** La planilla para repartir: nombre, correo, enlace y meta de cada persona. */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/** Lee decenas de miles de lotes del rastro: el tiempo por defecto no alcanza. */
+export const maxDuration = 120;
 
 export async function GET() {
   if (!(await haySesion())) {

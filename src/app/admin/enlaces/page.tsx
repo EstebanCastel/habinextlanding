@@ -6,6 +6,8 @@ import { todos as todosLosEnlaces, type Enlace } from "@/lib/enlaces";
 import { haySesion } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";
+/** Lee decenas de miles de lotes del rastro: el tiempo por defecto no alcanza. */
+export const maxDuration = 120;
 
 export default async function PaginaEnlaces({ searchParams }: { searchParams: Promise<{ aviso?: string }> }) {
   const { aviso } = await searchParams;

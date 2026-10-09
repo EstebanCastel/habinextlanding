@@ -15,7 +15,7 @@ import { tokenValido } from "@/lib/seguridad";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 /** Cruza enlaces, registros y rastro completos: le hace falta más que el tiempo por defecto. */
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function tokenRecibido(request: Request): string | null {
   const auth = request.headers.get("authorization") ?? "";
