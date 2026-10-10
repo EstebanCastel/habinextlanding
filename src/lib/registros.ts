@@ -1,4 +1,4 @@
-import { crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
+import { borrar, crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
 import { activeStageIndex, precioNumerico, TICKETS, type Ticket } from "@/config/event";
 import { nuevoToken } from "./seguridad";
 
@@ -380,6 +380,17 @@ export async function crearORecuperar(datos: {
  * y sin esa marca puesta de antemano ese webhook crearía un registro nuevo y
  * la persona quedaría partida en dos.
  */
+/**
+ * Elimina un registro que nunca llegó a ser una entrada: el de una redención
+ * cuya alta en Luma falló. Solo se llama antes de que exista invitado, índice
+ * de invitado o participante que lo referencie; si se dejara, quedaría como
+ * «aprobado» sin QR, contaría en la hoja y aparecería repetido cada vez que
+ * la persona reintenta.
+ */
+export async function descartar(token: string): Promise<void> {
+  await borrar(rutaRegistro(token));
+}
+
 export async function reservarCorreo(email: string, token: string): Promise<void> {
   await escribir(rutaIndiceReserva(email), { token, en: new Date().toISOString() });
 }

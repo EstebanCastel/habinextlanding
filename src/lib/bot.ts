@@ -10,6 +10,7 @@ import {
   anotar,
   apuntarAInvitado,
   crearCortesia,
+  descartar,
   diferenciaVip,
   precioVigente,
   reservarCorreo,
@@ -358,9 +359,14 @@ export async function redimirCodigo(datos: {
     ...(datos.cedula ? { respuestas: [{ id: "cedula", tipo: "text", valor: datos.cedula }] } : {}),
   });
   if (!alta.ok) {
+    // Se deshace todo: el cupo vuelve al código, el correo queda libre y el
+    // registro se borra. Si quedara, sería un «aprobado» sin invitado que
+    // cuenta en la hoja y se repite con cada reintento (Luma limita tráfico
+    // por ráfagas: «heavy traffic from your network»).
     await soltarCorreo(correo);
     await codigos.devolverCupo(datos.codigo, token);
-    await anotar(token, "no se pudo dar de alta en Luma", () => ({}), alta.cuerpo);
+    await descartar(token).catch(() => null);
+    console.warn("[codigo] alta en Luma falló, redención deshecha", correo, JSON.stringify(alta.cuerpo).slice(0, 200));
     return { ok: false, nota: "No pudimos registrarte en Luma. Inténtalo de nuevo en un momento." };
   }
 
