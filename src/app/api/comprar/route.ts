@@ -52,7 +52,9 @@ export async function POST(request: Request) {
   const cedulaCruda = String(form.get("cedula") ?? "").trim();
   const origen = String(form.get("origen") ?? "").trim().toLowerCase().slice(0, 60) || undefined;
   const contenido = String(form.get("contenido") ?? "").trim().slice(0, 80) || undefined;
-  const conservar = { tier, nombre, email, telefono: telefonoCrudo, cedula: cedulaCruda };
+  // La utm viaja de vuelta con el error: si no, la persona corrige la cédula
+  // y su compra queda sin atribuir a quien la trajo.
+  const conservar = { tier, nombre, email, telefono: telefonoCrudo, cedula: cedulaCruda, utm_source: origen ?? "", utm_content: contenido ?? "" };
 
   if (nombre.length < 3) return volver({ ...conservar, error: "Escribe tu nombre completo." });
   if (!correoValido(email)) return volver({ ...conservar, error: "Ese correo no parece válido." });

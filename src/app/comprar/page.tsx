@@ -41,6 +41,13 @@ function Colombia() {
 
 export default async function Comprar({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const q = await searchParams;
+  // Los enlaces internos llevan la utm consigo: next/link navega con el href
+  // de la prop, no con el que reescribe el rastro, y sin esto cambiar de
+  // boleta o ir a /codigo dejaría la compra sin atribuir.
+  const utm = (["utm_source", "utm_medium", "utm_campaign", "utm_content"] as const)
+    .filter((k) => q[k])
+    .map((k) => `&${k}=${encodeURIComponent(q[k]!)}`)
+    .join("");
   const tier = q.tier === "vip" ? "vip" : "general";
   const ticket = TICKETS.find((t) => t.id === tier)!;
   const etapa = ticket.stages[activeStageIndex(ticket.stages, new Date())];
@@ -123,10 +130,10 @@ export default async function Comprar({ searchParams }: { searchParams: Promise<
         </form>
 
         <p className="mt-9 flex flex-wrap gap-x-5 gap-y-2 text-base font-light text-white/45">
-          <Link href={`/comprar?tier=${otro.id}`} className="text-violet-soft underline underline-offset-4 transition-colors hover:text-white">
+          <Link href={`/comprar?tier=${otro.id}${utm}`} className="text-violet-soft underline underline-offset-4 transition-colors hover:text-white">
             Prefiero la entrada {otro.name}
           </Link>
-          <Link href={`/codigo?tier=${tier}`} className="underline underline-offset-4 transition-colors hover:text-violet-soft">
+          <Link href={`/codigo?tier=${tier}${utm}`} className="underline underline-offset-4 transition-colors hover:text-violet-soft">
             Tengo un código de invitación
           </Link>
           <Link href="/" className="underline underline-offset-4 transition-colors hover:text-violet-soft">
