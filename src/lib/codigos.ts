@@ -352,7 +352,9 @@ export function aCsv(lista: CodigoConEstado[], sitio: string): string {
 }
 
 export async function todos(): Promise<CodigoConEstado[]> {
-  const rutas = await listarRutas("codigos/", 2000);
+  // Hay más de cuatro mil códigos entre equipo, pool y campañas externas: el tope
+  // anterior (2.000) dejaba por fuera a la mitad sin avisar.
+  const rutas = await listarRutas("codigos/", 20_000);
   const ahora = Date.now();
   const salida: CodigoConEstado[] = [];
 
