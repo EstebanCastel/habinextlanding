@@ -326,7 +326,10 @@ export async function redimirCodigo(datos: {
   // por el botón con utm: el código ya dice de dónde viene.
   const ficha = await codigos.traer(datos.codigo).catch(() => null);
   const etiqueta = `${ficha?.asignado?.grupo ?? ""} ${ficha?.nota ?? ""}`.trim();
-  const origen = datos.origen || (/^externa\b/i.test(etiqueta) ? "externa" : undefined);
+  // «Externa · …» cuenta a la audiencia externa; «Online · …» a Habi Next Online
+  // (el enlace /l/online de Mariam). El prefijo del grupo es la fuente.
+  const porGrupo = etiqueta.match(/^(externa|online)\b/i)?.[1].toLowerCase();
+  const origen = datos.origen || porGrupo;
 
   const ahora = new Date().toISOString();
 
