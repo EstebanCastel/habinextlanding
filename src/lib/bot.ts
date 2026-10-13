@@ -12,9 +12,12 @@ import {
   crearCortesia,
   descartar,
   diferenciaVip,
+  normalizarTelefono,
+  porToken,
   precioVigente,
   reservarCorreo,
   soltarCorreo,
+  tokenDeGuest,
   type Registro,
   type Tier,
 } from "./registros";
@@ -311,7 +314,17 @@ export async function redimirCodigo(datos: {
   if (!evento) return { ok: false, nota: "Ese evento no está configurado" };
 
   const correo = datos.email.trim().toLowerCase();
-  const token = nuevoToken();
+
+  // Si la persona ya está en Luma esperando aprobación (se registró para
+  // pagar y no pagó), el código aprueba ESE registro: una persona, un solo
+  // registro, sin duplicar ni en Luma ni acá. Luma, al dar de alta un correo
+  // que ya existe, aprueba al mismo invitado; acá se reutiliza el registro
+  // que el webhook creó cuando se inscribió.
+  const previo = await buscarInvitadoPorEmail(evento, correo).catch(() => null);
+  const tokenPrevio = previo && previo.estado !== "approved" ? await tokenDeGuest(previo.id).catch(() => null) : null;
+  const registroPrevio = tokenPrevio ? await porToken(tokenPrevio) : null;
+  const reutiliza = Boolean(registroPrevio && registroPrevio.tier === datos.tier && registroPrevio.etapa !== "aprobado" && !registroPrevio.cortesia);
+  const token = reutiliza ? registroPrevio!.token : nuevoToken();
 
   const cupo = await codigos.tomarCupo(datos.codigo, {
     email: correo,
@@ -332,6 +345,7 @@ export async function redimirCodigo(datos: {
   const origen = datos.origen || porGrupo;
 
   const ahora = new Date().toISOString();
+  const codigoLimpio = codigos.normalizar(datos.codigo);
 
   // El orden de estos dos pasos es lo que evita que la persona termine con dos
   // registros. El alta en Luma dispara un `guest.registered` que vuelve por el
@@ -341,19 +355,24 @@ export async function redimirCodigo(datos: {
   // encontraría nada y abriría un registro de pago paralelo — a alguien que
   // acaba de entrar gratis.
   await reservarCorreo(correo, token);
-  const registro = await crearCortesia({
-    token,
-    tier: datos.tier,
-    codigo: codigos.normalizar(datos.codigo),
-    guestId: "",
-    eventId: evento,
-    email: correo,
-    nombre: datos.nombre,
-    telefonoCrudo: datos.telefono,
-    ...(datos.cedula ? { cedula: datos.cedula } : {}),
-    ...(origen ? { origen } : {}),
-    redimidoEn: ahora,
-  });
+  let registro: Registro;
+  if (reutiliza) {
+    registro = registroPrevio!;
+  } else {
+    registro = await crearCortesia({
+      token,
+      tier: datos.tier,
+      codigo: codigoLimpio,
+      guestId: "",
+      eventId: evento,
+      email: correo,
+      nombre: datos.nombre,
+      telefonoCrudo: datos.telefono,
+      ...(datos.cedula ? { cedula: datos.cedula } : {}),
+      ...(origen ? { origen } : {}),
+      redimidoEn: ahora,
+    });
+  }
 
   const alta = await agregarInvitadoConRespaldo(evento, {
     email: correo,
@@ -363,14 +382,40 @@ export async function redimirCodigo(datos: {
   });
   if (!alta.ok) {
     // Se deshace todo: el cupo vuelve al código, el correo queda libre y el
-    // registro se borra. Si quedara, sería un «aprobado» sin invitado que
-    // cuenta en la hoja y se repite con cada reintento (Luma limita tráfico
-    // por ráfagas: «heavy traffic from your network»).
+    // registro nuevo se borra (el reutilizado no se tocó). Si quedara, sería
+    // un «aprobado» sin invitado que cuenta en la hoja y se repite con cada
+    // reintento (Luma limita tráfico por ráfagas: «heavy traffic from your network»).
     await soltarCorreo(correo);
     await codigos.devolverCupo(datos.codigo, token);
-    await descartar(token).catch(() => null);
+    if (!reutiliza) await descartar(token).catch(() => null);
     console.warn("[codigo] alta en Luma falló, redención deshecha", correo, JSON.stringify(alta.cuerpo).slice(0, 200));
     return { ok: false, nota: "No pudimos registrarte en Luma. Inténtalo de nuevo en un momento." };
+  }
+
+  if (reutiliza) {
+    // Luma ya aprobó al invitado que estaba pendiente: el registro de pago
+    // pasa a ser la cortesía, con su código, su origen y su cédula.
+    registro =
+      (await anotar(
+        token,
+        "redimió un código de invitación sobre su registro pendiente",
+        (r) => ({
+          etapa: "aprobado" as const,
+          telefono: r.telefono ?? normalizarTelefono(datos.telefono),
+          luma: {
+            ...r.luma,
+            nombre: r.luma.nombre || datos.nombre,
+            telefonoCrudo: r.luma.telefonoCrudo ?? datos.telefono,
+            estadoAprobacion: "approved",
+            ...(datos.cedula ? { cedula: datos.cedula } : {}),
+            ...(origen && !r.luma.origen ? { origen } : {}),
+          },
+          pago: { ...r.pago, etiquetaEtapa: "Cortesía", precio: "$0" },
+          aprobacion: { decididoEn: ahora, decididoPor: `código ${codigoLimpio}` },
+          cortesia: { codigo: codigoLimpio, redimidoEn: ahora },
+        }),
+        codigoLimpio
+      )) ?? registro;
   }
 
   // El id del invitado no viene en la respuesta del alta; sin él no se podría
