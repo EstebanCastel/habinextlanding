@@ -146,7 +146,10 @@ export async function tablero(): Promise<Tablero> {
     totalRegistros: registros.filter(efectivo).length,
     pendientesTotal: registros.filter(pendiente).length,
     metaTotal: marcadores.reduce((n, m) => n + m.meta, 0),
-    traidosTotal: marcadores.reduce((n, m) => n + m.registros, 0),
+    // Varios enlaces comparten fuente (los ocho de «externa», los tres de cada
+    // ponente): se cuenta cada fuente una vez, o el total sumaría la misma
+    // gente ocho veces.
+    traidosTotal: [...new Set(marcadores.map((m) => m.enlace.utm.source))].reduce((n, s) => n + (porOrigen.get(s) ?? []).filter(efectivo).length, 0),
   };
 }
 
@@ -163,6 +166,7 @@ export const CABECERA_HOJA = [
   "VIP",
   "Pendientes sin pagar",
   "Clics al enlace",
+  "Clics de personas",
   "Visitas a la landing",
   "Personas distintas",
   "Clics a boletería",
@@ -197,6 +201,7 @@ export function aFilas(t: Tablero, sitio: string): FilaHoja[] {
       m.vip,
       m.pendientes,
       e.clics,
+      e.clicsHumanos ?? 0,
       m.visitas,
       m.personas,
       m.clicsBoleteria,
