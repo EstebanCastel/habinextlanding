@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const MENSAJES: Record<string, string> = {
   datos: "Revisa el correo y la cédula: la cédula va solo en números.",
-  cedula: "Esa cédula no coincide con la de tu entrada en Luma.",
+  cedula: "Esa cédula no coincide con la que tenemos registrada.",
   "sin-entrada": "No encontramos una entrada aprobada con ese correo. Entra con el correo con el que compraste.",
   pendiente: "Tu entrada todavía no está aprobada. Apenas confirmemos tu pago podrás entrar.",
   limite: "Demasiados intentos. Espera unos minutos.",
