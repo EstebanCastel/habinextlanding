@@ -1,3 +1,4 @@
+import { fichaDeEquipo } from "@/config/equipo";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { borrar, crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
@@ -90,6 +91,8 @@ export type Participante = {
    * es la clave de la persona y no tiene por qué leerse desde el almacén.
    */
   credencial?: { email: string; cedulaHash: string; creadaEn: string; ultimaEntrada?: string };
+  /** Del equipo de Habi (ver `config/equipo`): entra sin entrada de Luma y su carnet no lleva QR. */
+  equipo?: boolean;
   /** El mapa del tesoro: qué paradas hizo y qué rutas completó. */
   mapa?: { paradas: Record<string, ParadaHecha>; rutas: Partial<Record<RutaId, string>> };
   fotos: Foto[];
@@ -347,19 +350,28 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
     const directo = await registroPorToken(datos.token).catch(() => null);
     if (directo && directo.etapa === "aprobado" && normalizarCorreo(directo.luma.email) === email) mio = directo;
   }
+  // El equipo de Habi trabaja en el evento: no tiene entrada en Luma ni la
+  // necesita, pero entra con su correo corporativo y su cédula, arma su
+  // carnet y lo publica. El reverso le dice por qué no lleva QR.
+  const companero = fichaDeEquipo(email);
   if (!mio) {
     const registros = (await todosLosRegistros().catch(() => []))
       .filter((r) => normalizarCorreo(r.luma.email) === email && r.etapa !== "rechazado")
       .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
     mio = registros.find((r) => r.etapa === "aprobado");
-    if (!mio) return { ok: false, motivo: registros.length ? "pendiente" : "sin-entrada" };
+    if (!mio && !companero) return { ok: false, motivo: registros.length ? "pendiente" : "sin-entrada" };
   }
-  if (mio.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
+  // La cédula es la clave: la del registro manda y, si no hay registro, la de
+  // la lista del equipo. Al compañero que no tenga cédula en la lista le queda
+  // la primera que escriba.
+  if (mio?.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
+  if (!mio && companero?.cedula && companero.cedula !== cedula) return { ok: false, motivo: "cedula" };
 
   const hash = hashCedula(email, cedula);
   const ahora = new Date().toISOString();
-  const registro = { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: ahora };
-  const partes = (mio.luma.nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  const registro = mio ? { token: mio.token, tier: mio.tier, etapa: mio.etapa, vinculadoEn: ahora } : undefined;
+  const partes = (mio?.luma.nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  const detalle = mio ? `${mio.tier} · ${mio.etapa}` : `equipo Habi · ${companero?.cargo ?? "sin cargo"}`;
 
   const existente = await porCorreo(email);
   if (existente) {
@@ -368,14 +380,15 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
         {
           ...q,
           email,
+          ...(companero ? { equipo: true as const } : {}),
           credencial: { email, cedulaHash: hash, creadaEn: q.credencial?.creadaEn ?? ahora, ultimaEntrada: ahora },
-          registro: q.registro?.token === mio.token ? { ...q.registro, etapa: mio.etapa } : registro,
+          ...(registro && mio ? { registro: q.registro?.token === mio.token ? { ...q.registro, etapa: mio.etapa } : registro } : {}),
         },
         "entró con correo y cédula",
-        `${mio.tier} · ${mio.etapa}`
+        detalle
       )
     );
-    if (!mio.luma.cedula) await fijarCedulaEnLuma(mio.token, cedula);
+    if (mio && !mio.luma.cedula) await fijarCedulaEnLuma(mio.token, cedula);
     return { ok: true, participante: p ?? existente, nuevo: false };
   }
 
@@ -386,16 +399,17 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
       {
         ...q,
         email,
-        nombre: partes[0] ?? q.nombre,
-        apellido: partes.length > 1 ? partes.slice(partes.length > 2 ? 2 : 1).join(" ") || partes[1] : q.apellido,
+        nombre: partes[0] ?? companero?.nombre ?? q.nombre,
+        apellido: partes.length > 1 ? partes.slice(partes.length > 2 ? 2 : 1).join(" ") || partes[1] : (companero?.apellido ?? q.apellido),
+        ...(companero ? { equipo: true as const } : {}),
         credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora },
-        registro,
+        ...(registro ? { registro } : {}),
       },
       "entró con correo y cédula",
-      `${mio.tier} · ${mio.etapa}`
+      detalle
     )
   );
-  if (!mio.luma.cedula) await fijarCedulaEnLuma(mio.token, cedula);
+  if (mio && !mio.luma.cedula) await fijarCedulaEnLuma(mio.token, cedula);
   return { ok: true, participante: p ?? base, nuevo: true };
 }
 
@@ -667,6 +681,7 @@ export type Vista = {
   carnet?: Participante["carnet"];
   linkedin?: { nombre: string; venceEn: string; vigente: boolean; fotoId?: string };
   registro?: { tier: Tier; etapa: Etapa };
+  equipo?: boolean;
   conClave: boolean;
   mapa: { paradas: Record<string, ParadaHecha>; rutas: Partial<Record<RutaId, string>> };
   fotos: Pick<Foto, "id" | "tipo" | "subidaEn" | "clase" | "de">[];
@@ -697,6 +712,7 @@ export function vistaDe(p: Participante): Vista {
         }
       : undefined,
     registro: p.registro ? { tier: p.registro.tier, etapa: p.registro.etapa } : undefined,
+    ...(p.equipo ? { equipo: true } : {}),
     conClave: Boolean(p.credencial),
     mapa: { paradas: p.mapa?.paradas ?? {}, rutas: p.mapa?.rutas ?? {} },
     fotos: p.fotos.map((f) => ({ id: f.id, tipo: f.tipo, subidaEn: f.subidaEn, clase: f.clase, ...(f.de ? { de: f.de } : {}) })),
