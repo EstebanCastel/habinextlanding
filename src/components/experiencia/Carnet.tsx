@@ -24,7 +24,7 @@ import Dot from "@/components/Dot";
 import Publicar from "./Publicar";
 import Wallet, { AvisoBilletera, notaBilletera, useAparato } from "./Wallet";
 import type { EntradaVista } from "./entrada";
-import { cargarImagenDeArchivo, claseCampo, clasesBoton, compartirArchivos, descargar, pedir, useMovil } from "./util";
+import { avisarFallo, cargarImagenDeArchivo, claseCampo, clasesBoton, compartirArchivos, descargar, pedir, useMovil } from "./util";
 
 /**
  * El carnet: una carta con dos caras y un formulario.
@@ -97,7 +97,10 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
       if (!vivo) return;
       setFamilia(fam);
       setRecursos(vip ? { feed: { ...feed, vip }, story: { ...story, vip } } : { feed, story });
-    })().catch(() => setError("No pudimos cargar las piezas del carnet. Recarga la página."));
+    })().catch(() => {
+      setError("No pudimos cargar las piezas del carnet. Recarga la página.");
+      avisarFallo("piezas");
+    });
     return () => {
       vivo = false;
     };
@@ -250,7 +253,9 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
       setEncuadre(ENCUADRE_INICIAL);
       setVolteado(false);
     } catch (e) {
-      setError((e as Error).message);
+      const m = (e as Error).message;
+      setError(m);
+      avisarFallo("foto", `${m} · ${f.type || "sin tipo"} · ${Math.round(f.size / 1024)} kB`);
     }
   }, []);
 
@@ -327,13 +332,23 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
         fd.append("formato", f);
         fd.append("nombre", nombre.trim());
         fd.append("apellido", apellido.trim());
-        const r = await pedir<{ ok: boolean; yo: Vista }>("/api/experiencia/carnet", { method: "POST", body: fd });
-        ultimo = r.yo;
+        // Dos intentos: el celular pierde la red un segundo y el carnet se
+        // quedaba guardado en un solo formato.
+        let r: { ok: boolean; yo: Vista } | undefined;
+        for (let intento = 0; intento < 2 && !r; intento++) {
+          r = await pedir<{ ok: boolean; yo: Vista }>("/api/experiencia/carnet", { method: "POST", body: fd }).catch((err) => {
+            if (intento === 1) throw err;
+            return undefined;
+          });
+        }
+        ultimo = r?.yo ?? ultimo;
       }
       if (ultimo) alCambiar(ultimo);
       setAviso(entregado ? "Listo: tu carnet quedó guardado. Ahora publícalo." : "Tu carnet quedó guardado. Ahora publícalo.");
     } catch (e) {
-      setError((e as Error).message || "Algo falló al guardar. Inténtalo otra vez.");
+      const m = (e as Error).message;
+      setError(m || "Algo falló al guardar. Inténtalo otra vez.");
+      avisarFallo("carnet", m);
     } finally {
       setOcupado(false);
     }

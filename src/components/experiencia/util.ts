@@ -34,7 +34,17 @@ export function pedirJson<T = { ok: boolean; yo?: Vista }>(url: string, cuerpo: 
   });
 }
 
-export function cargarImagenDeArchivo(archivo: Blob): Promise<HTMLImageElement> {
+/**
+ * Una foto que el navegador no decodifica. Casi siempre es HEIC, el formato
+ * con el que graba el iPhone: Safari lo abre, Chrome y Android no.
+ */
+async function esHeic(archivo: Blob): Promise<boolean> {
+  const cabeza = new Uint8Array(await archivo.slice(0, 16).arrayBuffer());
+  const marca = String.fromCharCode(...cabeza.slice(4, 12));
+  return marca.startsWith("ftyp") && /heic|heix|hevc|mif1|msf1/.test(marca.slice(4));
+}
+
+function leerComoImagen(archivo: Blob): Promise<HTMLImageElement> {
   return new Promise((resolver, rechazar) => {
     const url = URL.createObjectURL(archivo);
     const img = new Image();
@@ -42,12 +52,50 @@ export function cargarImagenDeArchivo(archivo: Blob): Promise<HTMLImageElement> 
       URL.revokeObjectURL(url);
       resolver(img);
     };
-    img.onerror = () => {
+    img.onerror = async () => {
       URL.revokeObjectURL(url);
-      rechazar(new Error("No pudimos leer esa imagen."));
+      rechazar(
+        new Error(
+          (await esHeic(archivo).catch(() => false))
+            ? "Esa foto está en formato HEIC, el del iPhone, y este navegador no lo abre. Tómate una con el botón de la cámara o guárdala como JPG."
+            : "No pudimos leer esa imagen. Prueba con otra, en JPG o PNG."
+        )
+      );
     };
     img.src = url;
   });
+}
+
+/**
+ * La foto, lista para dibujar. Si viene enorme se reduce antes: una foto de
+ * 48 megapíxeles hace que iOS dibuje el lienzo en blanco, sin dar error, y la
+ * persona termina con un carnet sin cara y sin saber por qué.
+ */
+const LADO_MAXIMO = 3000;
+
+export async function cargarImagenDeArchivo(archivo: Blob): Promise<HTMLImageElement> {
+  const img = await leerComoImagen(archivo);
+  const lado = Math.max(img.naturalWidth, img.naturalHeight);
+  if (!lado || lado <= LADO_MAXIMO) return img;
+  const k = LADO_MAXIMO / lado;
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * k);
+  c.height = Math.round(img.naturalHeight * k);
+  const ctx = c.getContext("2d");
+  if (!ctx) return img;
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.92));
+  return blob ? leerComoImagen(blob).catch(() => img) : img;
+}
+
+/** Deja anotado en la bitácora de la persona lo que se le rompió. */
+export function avisarFallo(paso: "foto" | "carnet" | "piezas", detalle?: string): void {
+  void fetch("/api/experiencia/fallo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paso, detalle }),
+    keepalive: true,
+  }).catch(() => null);
 }
 
 /**
