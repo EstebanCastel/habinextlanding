@@ -1,3 +1,4 @@
+import { traer as traerCodigo } from "@/lib/codigos";
 import { NextResponse } from "next/server";
 import { redimirCodigo } from "@/lib/bot";
 import { COOKIE_SESION, entrar, firmarSesion, opcionesDeCookie } from "@/lib/experiencia";
@@ -84,8 +85,15 @@ export async function POST(request: Request) {
     });
   }
 
+  // El código manda sobre el formulario: quien llega a /codigo sin `tier` cae
+  // en General, y si su código es VIP (o al revés) se topaba con «Ese código
+  // no aplica para esta boleta» sin saber qué hacer. La entrada que emite es
+  // la del código, que es la que le corresponde.
+  const ficha = await traerCodigo(codigo).catch(() => null);
+  const tierFinal: Tier = ficha && ficha.activo && ficha.sirvePara !== "ambos" ? ficha.sirvePara : tier;
+
   try {
-    const res = await redimirCodigo({ codigo, tier, nombre, email, telefono: `+${telefono}`, cedula, ...(origen ? { origen } : {}) });
+    const res = await redimirCodigo({ codigo, tier: tierFinal, nombre, email, telefono: `+${telefono}`, cedula, ...(origen ? { origen } : {}) });
     if (!res.ok) return volver({ ...conservar, error: res.nota });
     // Con la entrada ya en Luma, la persona sigue de una a armar su carnet y
     // entra sin volver a escribir nada: el correo y la cédula son los mismos
