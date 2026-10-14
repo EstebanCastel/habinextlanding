@@ -9,7 +9,10 @@ export default function Embudo({ registros }: { registros: Registro[] }) {
   // Contar solo la etapa actual dejaría el embudo lleno de huecos.
   const conteo = ETAPAS.map((etapa, i) => ({
     ...etapa,
-    n: vivos.filter((r) => orden.indexOf(r.etapa) >= i).length,
+    // La última etapa cuenta entradas reales: quien figura aprobado pero no
+    // tiene invitado en Luma no tiene entrada, y contarlo acá era lo que hacía
+    // que el embudo cerrara por encima de lo que muestra Luma.
+    n: vivos.filter((r) => orden.indexOf(r.etapa) >= i && (etapa.id !== "aprobado" || Boolean(r.luma.guestId))).length,
   }));
 
   return (

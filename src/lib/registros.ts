@@ -404,6 +404,59 @@ export async function apuntarAInvitado(token: string, guestId: string): Promise<
   await escribir(rutaIndiceGuest(guestId), { token, en: new Date().toISOString() });
 }
 
+/** Una entrada de verdad: código redimido o pago confirmado. */
+export const esEfectivo = (r: Registro) => r.etapa === "aprobado" || Boolean(r.pago.confirmadoEn);
+
+/**
+ * Un registro por persona en Luma.
+ *
+ * La misma persona puede tener dos registros nuestros apuntando al mismo
+ * invitado: se inscribió en Luma en septiembre, le escribimos, y en octubre
+ * redimió un código que le abrió otro registro encima. Para Luma es una sola
+ * entrada y un solo cupo, así que para contar también tiene que serlo; si no,
+ * el panel muestra más aprobados de los que existen.
+ *
+ * Se queda el registro que mejor describe a la persona hoy: primero el que
+ * tiene entrada efectiva, y entre iguales el más reciente. Los que no tienen
+ * invitado en Luma pasan tal cual: no hay con qué agruparlos, y son
+ * justamente los que hay que ir a mirar.
+ */
+export function unificarPorInvitado(registros: Registro[]): Registro[] {
+  const mejorPorInvitado = new Map<string, Registro>();
+  const sinInvitado: Registro[] = [];
+  const gana = (a: Registro, b: Registro) => {
+    if (esEfectivo(a) !== esEfectivo(b)) return esEfectivo(a);
+    return (a.actualizadoEn ?? a.creadoEn) > (b.actualizadoEn ?? b.creadoEn);
+  };
+  for (const r of registros) {
+    const invitado = r.luma.guestId;
+    if (!invitado) {
+      sinInvitado.push(r);
+      continue;
+    }
+    const previo = mejorPorInvitado.get(invitado);
+    if (!previo || gana(r, previo)) mejorPorInvitado.set(invitado, r);
+  }
+  return [...mejorPorInvitado.values(), ...sinInvitado];
+}
+
+/**
+ * Quedó aprobada de nuestro lado pero no existe en Luma: no tiene entrada ni
+ * QR, por más que el panel la cuente. Casi siempre es un correo mal escrito o
+ * un alta que falló; hay que darle de alta a mano.
+ */
+export const aprobadoSinEntrada = (r: Registro) => esEfectivo(r) && !r.luma.guestId;
+
+/**
+ * Borra el índice de un invitado de Luma que ya no apunta a ningún registro.
+ *
+ * Se usa al descartar un registro: si el índice se quedara, un webhook tardío
+ * de ese invitado buscaría un registro que ya no existe y abriría otro.
+ */
+export async function olvidarInvitado(guestId: string): Promise<void> {
+  await borrar(rutaIndiceGuest(guestId));
+}
+
 /**
  * Registro de alguien que entró con un código de invitación. Nace en la última
  * etapa: no hay pago que esperar ni aprobación que pedir, porque el código ya

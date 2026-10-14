@@ -2,8 +2,9 @@ import Embudo from "@/components/admin/Embudo";
 import { Fila } from "@/components/admin/Fila";
 import { Aviso, LUMA_INVITADOS, Tarjetas } from "@/components/admin/comunes";
 import { resumir as resumirCodigos, todos as todosLosCodigos, type CodigoConEstado } from "@/lib/codigos";
+import { contarAprobadosEnLuma } from "@/lib/luma";
 import { pendientesDePago } from "@/lib/recuperacion";
-import { todos, type Registro } from "@/lib/registros";
+import { aprobadoSinEntrada, todos, unificarPorInvitado, type Registro } from "@/lib/registros";
 import { haySesion } from "@/lib/sesion";
 import { redirect } from "next/navigation";
 
@@ -26,10 +27,15 @@ export default async function Hoy({ searchParams }: { searchParams: Promise<{ av
   }
   if (!(await haySesion())) return null;
 
-  const [registros, codigos] = await Promise.all([
+  const [crudos, codigos, enLuma] = await Promise.all([
     todos().catch(() => [] as Registro[]),
     todosLosCodigos().catch(() => [] as CodigoConEstado[]),
+    contarAprobadosEnLuma().catch(() => null),
   ]);
+  // Un registro por invitado de Luma: dos registros del mismo invitado son un
+  // solo cupo. Contarlos dos veces era lo que inflaba los números del panel
+  // frente a Luma.
+  const registros = unificarPorInvitado(crudos);
 
   const pendientes = registros.filter((r) => (r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado") && r.luma.guestId);
   // Pagaron desde la landing y esperan su alta en Luma: el trabajo diario.
@@ -37,6 +43,9 @@ export default async function Hoy({ searchParams }: { searchParams: Promise<{ av
   const fueronAPagar = registros.filter((r) => !r.luma.guestId && r.etapa === "por_pagar");
 
   const pagados = registros.filter((r) => (r.pago.confirmadoEn || r.etapa === "aprobado") && !r.cortesia).length;
+  // Las que damos por aprobadas y Luma no conoce: no tienen entrada ni QR.
+  const sinEntrada = registros.filter(aprobadoSinEntrada);
+  const conEntrada = registros.filter((r) => r.etapa === "aprobado" && r.luma.guestId).length;
   const cortesias = registros.filter((r) => r.cortesia).length;
   const sinPagar = pendientesDePago(registros).length;
   const rc = resumirCodigos(codigos);
@@ -78,6 +87,19 @@ export default async function Hoy({ searchParams }: { searchParams: Promise<{ av
         </div>
       ) : null}
 
+      {sinEntrada.length > 0 ? (
+        <p className="mb-7 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-5 py-4 text-base font-light">
+          <strong className="font-semibold">{sinEntrada.length}</strong>{" "}
+          {sinEntrada.length === 1 ? "persona figura aprobada" : "personas figuran aprobadas"} de nuestro lado pero{" "}
+          {sinEntrada.length === 1 ? "no existe" : "no existen"} en Luma: no {sinEntrada.length === 1 ? "tiene" : "tienen"} entrada ni
+          código QR. Casi siempre es un correo mal escrito.{" "}
+          <a href="/admin/registros?estado=sin-entrada" className="underline">
+            Verlas y darles de alta
+          </a>
+          .
+        </p>
+      ) : null}
+
       {pendientes.length > 0 ? (
         <p className="mb-7 rounded-2xl border border-violet/40 bg-violet/10 px-5 py-4 text-base font-light">
           <strong className="font-semibold">{pendientes.length}</strong> {pendientes.length === 1 ? "persona pagó y espera" : "personas pagaron y esperan"} su entrada. Se aprueban en
@@ -95,7 +117,12 @@ export default async function Hoy({ searchParams }: { searchParams: Promise<{ av
       <Tarjetas
         items={[
           { n: registros.length, t: "Registros" },
-          { n: pagados, t: "Pagados con plata", acento: true },
+          {
+            n: enLuma ? `${enLuma.total}` : conEntrada,
+            t: enLuma ? `Aprobados en Luma · ${enLuma.general} General · ${enLuma.vip} VIP` : "Con entrada en Luma",
+            acento: true,
+          },
+          { n: pagados, t: "Pagados con plata" },
           { n: cortesias, t: "Entraron con código" },
           { n: sinPagar, t: "Sin pagar" },
           { n: `${rc.asignados} · ${rc.redimidos}`, t: "Códigos asignados · redimidos" },

@@ -1,17 +1,20 @@
 import Registros, { filtrarRegistros, POR_PAGINA } from "@/components/admin/Registros";
 import { Aviso, paginaDe } from "@/components/admin/comunes";
-import { todos, type Registro } from "@/lib/registros";
+import { todos, unificarPorInvitado, type Registro } from "@/lib/registros";
 import { haySesion } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";
 
-const ESTADOS = new Set(["todos", "por-atender", "pendientes", "aprobados", "cortesias", "rechazados"]);
+const ESTADOS = new Set(["todos", "por-atender", "pendientes", "aprobados", "sin-entrada", "cortesias", "rechazados"]);
 
 export default async function PaginaRegistros({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const q = await searchParams;
   if (!(await haySesion())) return null;
 
-  const registros = await todos().catch(() => [] as Registro[]);
+  // Unificado por invitado de Luma: dos registros del mismo invitado son un
+  // solo cupo, y contarlos dos veces es lo que hacía que el panel mostrara más
+  // aprobados que Luma.
+  const registros = unificarPorInvitado(await todos().catch(() => [] as Registro[]));
   const estado = q.estado && ESTADOS.has(q.estado) ? q.estado : "todos";
   const tier = q.tier === "vip" || q.tier === "general" ? q.tier : "todas";
   const texto = (q.q ?? "").slice(0, 80);

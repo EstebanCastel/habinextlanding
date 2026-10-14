@@ -167,6 +167,37 @@ export async function listarInvitados(eventId: string): Promise<InvitadoLuma[]> 
 }
 
 /**
+ * Cuántas entradas hay aprobadas en Luma, que es el número que manda.
+ *
+ * El panel contaba sus propios registros y por eso mostraba de más: la misma
+ * persona podía tener dos registros nuestros sobre un solo invitado, y había
+ * gente aprobada a mano en Luma que nunca pasó por nuestro flujo. Acá se
+ * pregunta directamente, para que el panel y Luma digan lo mismo.
+ *
+ * Se guarda un minuto en memoria: el panel se recarga seguido y listar los dos
+ * eventos son catorce llamadas.
+ */
+let cacheAprobados: { en: number; valor: { general: number; vip: number; total: number } } | null = null;
+
+export async function contarAprobadosEnLuma(): Promise<{ general: number; vip: number; total: number } | null> {
+  if (cacheAprobados && Date.now() - cacheAprobados.en < 60_000) return cacheAprobados.valor;
+  const general = eventoDeTier("general");
+  const vip = eventoDeTier("vip");
+  if (!general || !vip) return null;
+  try {
+    const [g, v] = await Promise.all([listarInvitados(general), listarInvitados(vip)]);
+    const cuenta = (xs: InvitadoLuma[]) => xs.filter((x) => x.estado === "approved").length;
+    const valor = { general: cuenta(g), vip: cuenta(v), total: cuenta(g) + cuenta(v) };
+    cacheAprobados = { en: Date.now(), valor };
+    return valor;
+  } catch {
+    // Si Luma no responde, el panel sigue con su propia cuenta en vez de
+    // quedarse en blanco.
+    return cacheAprobados?.valor ?? null;
+  }
+}
+
+/**
  * Luma «salta» (`skipped`) algunos correos al darlos de alta y no dice por
  * qué: pasa con cuentas que bloquearon al organizador o se dieron de baja de
  * los correos del calendario. El alta responde 200 igual, así que sin mirar

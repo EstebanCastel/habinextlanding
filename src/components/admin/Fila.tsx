@@ -1,6 +1,48 @@
 import { CANALES, NOMBRE_CANAL } from "@/lib/recuperacion";
-import type { Registro } from "@/lib/registros";
+import { diferenciaVip, precioVigente, type Registro } from "@/lib/registros";
 import { ETAPAS, hora, LUMA_INVITADOS } from "./comunes";
+
+/**
+ * El upgrade a VIP cobrado a mano.
+ *
+ * El pago del upgrade no lo confirma ningún webhook —el de Wompi nunca quedó
+ * conectado—, así que se ve en Wompi y se marca acá. Marcarlo la deja aprobada
+ * en VIP y le borra la entrada General: nadie debe ocupar dos cupos.
+ *
+ * Sale en toda fila de General, esté aprobada o no, porque el upgrade se puede
+ * cobrar en cualquier momento, incluso a quien entró con una cortesía.
+ */
+function UpgradeVip({ r }: { r: Registro }) {
+  if (r.tier !== "general" || r.etapa === "rechazado") return null;
+  // Quien entró con cortesía no pagó nada por la General, así que el upgrade
+  // le cuesta la VIP entera; quien sí la pagó, solo la diferencia. Es el mismo
+  // precio que queda escrito en el registro al marcarlo.
+  const cuanto = r.cortesia ? precioVigente("vip").precio : diferenciaVip();
+  return (
+    <form
+      method="post"
+      action="/api/admin"
+      className="mt-2 flex flex-col gap-1.5 rounded-xl border border-violet/25 bg-violet/[0.06] p-2.5"
+    >
+      <input type="hidden" name="accion" value="pasar-a-vip" />
+      <input type="hidden" name="token" value={r.token} />
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-soft">Upgrade a VIP</p>
+      <label className="flex items-start gap-2 text-[11px] leading-snug text-white/60">
+        <input type="checkbox" name="pagado" value="1" required className="mt-0.5 accent-violet" />
+        Pagó el upgrade a VIP ({cuanto})
+      </label>
+      <button
+        type="submit"
+        className="w-full rounded-full border border-violet/40 px-3 py-2 text-xs font-semibold text-violet-soft transition-colors hover:bg-violet/15"
+      >
+        Pasar a VIP
+      </button>
+      <p className="text-[10px] leading-snug text-white/35">
+        Queda aprobada en VIP, se le borra la General y le llega la confirmación con el QR nuevo.
+      </p>
+    </form>
+  );
+}
 
 /** Todo lo que le pasó a una persona, en orden. Es el detalle que traía la hoja. */
 export function Bitacora({ r }: { r: Registro }) {
@@ -22,7 +64,9 @@ export function Bitacora({ r }: { r: Registro }) {
 }
 
 export function Fila({ r }: { r: Registro }) {
-  const decidido = r.etapa === "aprobado" || r.etapa === "rechazado";
+  // Quien figura aprobado pero no está en Luma no tiene entrada: su fila tiene
+  // que ofrecer el alta, no el cartel de «entrada enviada».
+  const decidido = (r.etapa === "aprobado" && Boolean(r.luma.guestId)) || r.etapa === "rechazado";
   const leToca = r.etapa === "comprobante_recibido" || r.etapa === "pago_confirmado";
 
   return (
@@ -127,6 +171,7 @@ export function Fila({ r }: { r: Registro }) {
       <td className="px-3 py-3">
         <div className="flex flex-col gap-1.5">
           {decidido ? (
+            <>
             <p className="text-xs text-white/50">
               {r.etapa === "aprobado" ? "Entrada enviada" : "Rechazado"}
               <span className="block text-white/35">{hora(r.aprobacion.decididoEn)}</span>
@@ -152,6 +197,8 @@ export function Fila({ r }: { r: Registro }) {
                 </form>
               ) : null}
             </p>
+            <UpgradeVip r={r} />
+            </>
           ) : !r.luma.guestId ? (
             <>
               {/* Compró desde la landing y todavía no está en Luma: el alta se hace desde acá, ya aprobada. */}
@@ -207,12 +254,13 @@ export function Fila({ r }: { r: Registro }) {
                   <input type="hidden" name="token" value={r.token} />
                   <button
                     type="submit"
-                    className="w-full rounded-full border border-violet/40 px-3 py-2 text-xs text-violet-soft transition-colors hover:bg-violet/15"
+                    className="w-full rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white"
                   >
-                    Pasar a VIP
+                    Mandarle el link de VIP
                   </button>
                 </form>
               ) : null}
+              <UpgradeVip r={r} />
             </>
           )}
         </div>

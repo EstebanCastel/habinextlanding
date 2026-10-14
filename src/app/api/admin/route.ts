@@ -1,6 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { confirmarEntrada, darDeAltaEnLuma } from "@/lib/altas";
 import { darLaBienvenida, pasarAVip } from "@/lib/bot";
+import { marcarUpgradePagado } from "@/lib/upgrade";
 import {
   CANALES,
   correrCampana,
@@ -285,8 +286,14 @@ export async function POST(request: Request) {
   // ---------- pasar a VIP a mano ----------
   if (accion === "pasar-a-vip") {
     if (registro.tier === "vip") return volver(request, "Esa persona ya es VIP");
+    // Con el pago marcado no hay link que mandar: queda aprobada en VIP, se le
+    // borra la General y le sale la confirmación con el QR nuevo.
+    if (String(form.get("pagado") ?? "") === "1") {
+      const res = await marcarUpgradePagado(registro);
+      return volver(request, res.ok ? res.nota : `No se pudo pasar a VIP: ${res.nota}`);
+    }
     const res = await pasarAVip(registro);
-    return volver(request, 
+    return volver(request,
       res.ok
         ? `${registro.luma.nombre} pasó a VIP y ya tiene su link de pago`
         : `No se pudo pasar a VIP: ${res.nota}`

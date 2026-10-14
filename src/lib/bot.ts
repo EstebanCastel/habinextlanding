@@ -182,7 +182,10 @@ export async function darLaBienvenida(registro: Registro): Promise<void> {
  * inscrita en los dos y eso se arregla mirando; queda registrado en la
  * bitácora.
  */
-export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota: string }> {
+export async function pasarAVip(
+  registro: Registro,
+  opciones: { pagado?: boolean; decididoPor?: string } = {}
+): Promise<{ ok: boolean; nota: string }> {
   if (registro.tier === "vip") return { ok: true, nota: "ya era VIP" };
 
   const eventoVip = eventoDeTier("vip");
@@ -194,6 +197,9 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
   const alta = await agregarInvitado(eventoVip, {
     email: registro.luma.email,
     nombre: registro.luma.nombre,
+    // Si el upgrade ya está pagado, el alta va aprobada: Luma le manda la
+    // entrada VIP con su QR en el acto, que es justamente lo que compró.
+    ...(opciones.pagado ? { aprobado: true } : {}),
     // La cédula se arrastra del registro de General: la persona ya la dio una
     // vez y volvérsela a pedir por cambiar de entrada sería absurdo.
     ...(registro.luma.cedula
@@ -212,17 +218,42 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
   if (nuevo?.id) await apuntarAInvitado(registro.token, nuevo.id);
 
   const { etiqueta, precio } = precioVigente("vip");
+  const ahora = new Date().toISOString();
   const actualizado = await anotar(
     registro.token,
-    "se pasó a VIP desde WhatsApp",
+    opciones.pagado
+      ? "pagó el upgrade a VIP, verificado a mano en el panel"
+      : "se pasó a VIP desde WhatsApp",
     (r) => ({
       tier: "vip" as const,
-      luma: { ...r.luma, eventId: eventoVip, ...(nuevo?.id ? { guestId: nuevo.id } : {}) },
+      luma: {
+        ...r.luma,
+        eventId: eventoVip,
+        ...(nuevo?.id ? { guestId: nuevo.id } : {}),
+        ...(opciones.pagado ? { estadoAprobacion: "approved" } : {}),
+      },
       // El precio se recalcula: ya no paga General.
-      pago: { ...r.pago, etiquetaEtapa: etiqueta, precio, abiertoEn: undefined, url: undefined },
-      upsell: { ...r.upsell, respondidoEn: new Date().toISOString(), decision: "vip" as const },
+      pago: {
+        ...r.pago,
+        etiquetaEtapa: etiqueta,
+        precio,
+        abiertoEn: undefined,
+        url: undefined,
+        ...(opciones.pagado ? { confirmadoEn: r.pago.confirmadoEn ?? ahora } : {}),
+      },
+      upsell: { ...r.upsell, respondidoEn: ahora, decision: "vip" as const },
+      ...(opciones.pagado
+        ? {
+            etapa: "aprobado" as const,
+            aprobacion: {
+              ...r.aprobacion,
+              decididoEn: r.aprobacion.decididoEn ?? ahora,
+              decididoPor: opciones.decididoPor ?? "panel · upgrade pagado",
+            },
+          }
+        : {}),
     }),
-    precio
+    opciones.pagado ? opciones.decididoPor ?? "panel · upgrade pagado" : precio
   );
 
   // Bajarlo de General va al final y sin correo: que Luma le mande un "no
@@ -231,6 +262,11 @@ export async function pasarAVip(registro: Registro): Promise<{ ok: boolean; nota
     await rechazarInvitado(eventoGeneral, registro.luma.guestId, undefined, false).catch(() => null);
   }
   await soltarCorreo(registro.luma.email);
+
+  // Si el upgrade ya está pagado no hay link que mandar: la entrada VIP salió
+  // de Luma con su QR y la confirmación por los tres canales la dispara quien
+  // llamó (ver `marcarUpgradePagado`).
+  if (opciones.pagado) return { ok: true, nota: "pasado a VIP, pago marcado a mano" };
 
   // La persona acaba de escribirnos, así que la ventana de 24 horas de Meta
   // está abierta y esto puede ir como texto libre, sin plantilla.

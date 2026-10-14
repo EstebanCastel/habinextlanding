@@ -1,5 +1,5 @@
 import { pendientesDePago } from "@/lib/recuperacion";
-import type { Registro } from "@/lib/registros";
+import { aprobadoSinEntrada, type Registro } from "@/lib/registros";
 import { Fila } from "./Fila";
 import { consulta, Paginacion, Pastilla, Vacio } from "./comunes";
 
@@ -16,6 +16,7 @@ const ESTADOS: { id: string; texto: string }[] = [
   { id: "por-atender", texto: "Por atender" },
   { id: "pendientes", texto: "Sin pagar" },
   { id: "aprobados", texto: "Aprobados" },
+  { id: "sin-entrada", texto: "Sin entrada en Luma" },
   { id: "cortesias", texto: "Con código" },
   { id: "rechazados", texto: "Rechazados" },
 ];
@@ -33,6 +34,9 @@ export function filtrarRegistros(registros: Registro[], f: FiltrosRegistros): Re
     }
     if (pendientes && !pendientes.has(r.token)) return false;
     if (f.estado === "aprobados" && r.etapa !== "aprobado") return false;
+    // Los que creemos aprobados pero no existen en Luma: no tienen QR y hay
+    // que darles de alta a mano.
+    if (f.estado === "sin-entrada" && !aprobadoSinEntrada(r)) return false;
     if (f.estado === "cortesias" && !r.cortesia) return false;
     if (f.estado === "rechazados" && r.etapa !== "rechazado") return false;
     if (f.tier !== "todas" && r.tier !== f.tier) return false;
@@ -57,7 +61,7 @@ export default function Registros({ registros, filtros }: { registros: Registro[
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Registros</h2>
           <p className="mt-1 text-sm font-light text-white/50">
-            {registros.length} personas · lo que le pasó a cada una desde que se inscribió hasta que tiene su entrada.
+            {registros.length} personas · {registros.filter((r) => r.etapa === "aprobado" && r.luma.guestId).length} con entrada en Luma · lo que le pasó a cada una desde que se inscribió.
           </p>
         </div>
       </div>
