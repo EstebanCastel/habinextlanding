@@ -1,5 +1,4 @@
 import {
-  agregarInvitado,
   agregarInvitadoConRespaldo,
   buscarInvitadoPorEmail,
   eventoDeTier,
@@ -194,18 +193,22 @@ export async function pasarAVip(
 
   await reservarCorreo(registro.luma.email, registro.token);
 
-  const alta = await agregarInvitado(eventoVip, {
+  const datos = {
     email: registro.luma.email,
     nombre: registro.luma.nombre,
-    // Si el upgrade ya está pagado, el alta va aprobada: Luma le manda la
-    // entrada VIP con su QR en el acto, que es justamente lo que compró.
-    ...(opciones.pagado ? { aprobado: true } : {}),
+    // Si el upgrade ya está pagado, el alta va aprobada —pero muda: la persona
+    // ya sabe lo que compró y el aviso lo da quien cobró, no Luma.
+    ...(opciones.pagado ? { aprobado: true, avisarPorCorreo: false } : {}),
     // La cédula se arrastra del registro de General: la persona ya la dio una
     // vez y volvérsela a pedir por cambiar de entrada sería absurdo.
     ...(registro.luma.cedula
       ? { respuestas: [{ id: "cedula", tipo: "text", valor: registro.luma.cedula }] }
       : {}),
-  });
+  };
+  // Con respaldo porque Luma «salta» algunos correos y responde 200 igual: sin
+  // mirar `skipped` la persona quedaría aprobada acá y sin invitado allá, y el
+  // paso siguiente le quitaría además la General.
+  const alta = await agregarInvitadoConRespaldo(eventoVip, datos);
   if (!alta.ok) {
     await soltarCorreo(registro.luma.email);
     await anotar(registro.token, "no se pudo pasar a VIP", () => ({}), alta.cuerpo);
@@ -214,8 +217,21 @@ export async function pasarAVip(
 
   // El alta no devuelve el id del invitado, así que se busca por correo. Sin
   // ese id no se podría relacionar la aprobación que se haga después en Luma.
-  const nuevo = await buscarInvitadoPorEmail(eventoVip, registro.luma.email);
+  const nuevo = await buscarInvitadoPorEmail(eventoVip, alta.email);
   if (nuevo?.id) await apuntarAInvitado(registro.token, nuevo.id);
+
+  // Sin invitado VIP confirmado no se toca nada más: bajarlo de General acá lo
+  // dejaría sin entrada en los dos eventos.
+  if (!nuevo?.id) {
+    await soltarCorreo(registro.luma.email);
+    await anotar(
+      registro.token,
+      "no se pudo confirmar su invitado en el evento VIP; sigue con su entrada General",
+      () => ({}),
+      "Luma aceptó el alta pero el invitado no aparece en la lista"
+    );
+    return { ok: false, nota: "Luma aceptó el alta pero el invitado VIP no aparece; se dejó la General intacta" };
+  }
 
   const { etiqueta, precio } = precioVigente("vip");
   const ahora = new Date().toISOString();
@@ -258,15 +274,24 @@ export async function pasarAVip(
 
   // Bajarlo de General va al final y sin correo: que Luma le mande un "no
   // asistirás" justo cuando acaba de subir de categoría sería desconcertante.
-  if (eventoGeneral && eventoGeneral !== eventoVip) {
-    await rechazarInvitado(eventoGeneral, registro.luma.guestId, undefined, false).catch(() => null);
+  // Si Luma no acepta la baja queda anotado: la persona estaría ocupando dos
+  // cupos y eso hay que verlo, no perderlo.
+  if (eventoGeneral && eventoGeneral !== eventoVip && registro.luma.guestId) {
+    const baja = await rechazarInvitado(eventoGeneral, registro.luma.guestId, undefined, false).catch(() => null);
+    if (!baja?.ok) {
+      await anotar(
+        registro.token,
+        "quedó en VIP pero Luma no aceptó bajarla de General: revisar que no ocupe dos cupos",
+        () => ({}),
+        `invitado de General ${registro.luma.guestId} · ${baja ? `HTTP ${baja.status}` : "sin respuesta"}`
+      ).catch(() => null);
+    }
   }
   await soltarCorreo(registro.luma.email);
 
-  // Si el upgrade ya está pagado no hay link que mandar: la entrada VIP salió
-  // de Luma con su QR y la confirmación por los tres canales la dispara quien
-  // llamó (ver `marcarUpgradePagado`).
-  if (opciones.pagado) return { ok: true, nota: "pasado a VIP, pago marcado a mano" };
+  // Si el upgrade ya está pagado no se le manda nada: ni Luma ni nosotros. El
+  // aviso lo da quien cobró, que para eso habló con la persona.
+  if (opciones.pagado) return { ok: true, nota: "pasado a VIP, pago marcado a mano, sin avisarle" };
 
   // La persona acaba de escribirnos, así que la ventana de 24 horas de Meta
   // está abierta y esto puede ir como texto libre, sin plantilla.

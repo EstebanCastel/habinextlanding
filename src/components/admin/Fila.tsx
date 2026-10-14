@@ -38,7 +38,8 @@ function UpgradeVip({ r }: { r: Registro }) {
         Pasar a VIP
       </button>
       <p className="text-[10px] leading-snug text-white/35">
-        Queda aprobada en VIP, se le borra la General y le llega la confirmación con el QR nuevo.
+        Marca esto solo con el comprobante a la vista. Queda aprobada en VIP y se le borra la General.
+        No se le manda ninguna comunicación.
       </p>
     </form>
   );
@@ -256,7 +257,7 @@ export function Fila({ r }: { r: Registro }) {
                     type="submit"
                     className="w-full rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 transition-colors hover:border-white/35 hover:text-white"
                   >
-                    Mandarle el link de VIP
+                    Mandarle los pasos del VIP
                   </button>
                 </form>
               ) : null}

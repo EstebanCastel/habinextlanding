@@ -43,12 +43,17 @@ async function pedir(ruta: string, cuerpo: unknown) {
  * Aprueba a la persona. `send_email: true` a propósito: ese correo es la
  * entrada, y es el único artefacto que la persona presenta en la puerta.
  */
-export async function aprobarInvitado(eventId: string, guestId: string, mensaje?: string) {
+export async function aprobarInvitado(
+  eventId: string,
+  guestId: string,
+  mensaje?: string,
+  avisarPorCorreo = true
+) {
   return pedir("/v1/events/guests/update-status", {
     event_id: eventId,
     guest_id: guestId,
     status: "approved",
-    send_email: true,
+    send_email: avisarPorCorreo,
     // Luma corta el mensaje en 200 caracteres.
     ...(mensaje ? { message: mensaje.slice(0, 200) } : {}),
   });
@@ -88,6 +93,12 @@ export async function agregarInvitado(
     nombre: string;
     aprobado?: boolean;
     /**
+     * Por defecto un alta aprobada manda el correo de Luma con el QR, que es
+     * la entrada. Se puede callar cuando la persona ya sabe lo que compró y no
+     * queremos que le llegue nada: el upgrade cobrado a mano, por ejemplo.
+     */
+    avisarPorCorreo?: boolean;
+    /**
      * Respuestas al formulario del evento. **Cada `id` tiene que existir hoy en
      * el evento**: Luma rechaza el alta entera con "The event has no
      * registration question with ID …" si se le manda una que ya no está.
@@ -101,7 +112,7 @@ export async function agregarInvitado(
   return pedir("/v1/events/guests/add", {
     event_id: eventId,
     approval_status: persona.aprobado ? "approved" : "pending_approval",
-    send_email: Boolean(persona.aprobado),
+    send_email: persona.avisarPorCorreo ?? Boolean(persona.aprobado),
     guests: [
       {
         email: persona.email,

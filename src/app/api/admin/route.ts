@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { confirmarEntrada, darDeAltaEnLuma } from "@/lib/altas";
-import { darLaBienvenida, pasarAVip } from "@/lib/bot";
-import { marcarUpgradePagado } from "@/lib/upgrade";
+import { darLaBienvenida } from "@/lib/bot";
+import { mandarLinkDeUpgrade, marcarUpgradePagado } from "@/lib/upgrade";
 import {
   CANALES,
   correrCampana,
@@ -292,12 +292,10 @@ export async function POST(request: Request) {
       const res = await marcarUpgradePagado(registro);
       return volver(request, res.ok ? res.nota : `No se pudo pasar a VIP: ${res.nota}`);
     }
-    const res = await pasarAVip(registro);
-    return volver(request,
-      res.ok
-        ? `${registro.luma.nombre} pasó a VIP y ya tiene su link de pago`
-        : `No se pudo pasar a VIP: ${res.nota}`
-    );
+    // Sin el check, el botón solo le manda los pasos y el link de pago: no la
+    // mueve de evento. Quien se pasa de verdad es quien manda el comprobante.
+    const res = await mandarLinkDeUpgrade(registro);
+    return volver(request, res.nota);
   }
 
   return volver(request, "Acción desconocida");
