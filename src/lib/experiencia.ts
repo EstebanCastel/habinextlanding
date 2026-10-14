@@ -400,7 +400,10 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
         ...q,
         email,
         nombre: partes[0] ?? companero?.nombre ?? q.nombre,
-        apellido: partes.length > 1 ? partes.slice(partes.length > 2 ? 2 : 1).join(" ") || partes[1] : (companero?.apellido ?? q.apellido),
+        // «Sandra Patoa Rodríguez» es un nombre y dos apellidos, no dos nombres
+        // y un apellido: con tres palabras el apellido empieza en la segunda.
+        // Con cuatro, la persona suele tener dos nombres y dos apellidos.
+        apellido: partes.length > 1 ? partes.slice(partes.length >= 4 ? 2 : 1).join(" ") || partes[1] : (companero?.apellido ?? q.apellido),
         ...(companero ? { equipo: true as const } : {}),
         credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora },
         ...(registro ? { registro } : {}),
