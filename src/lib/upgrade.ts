@@ -1,15 +1,23 @@
 import { pasarAVip } from "./bot";
-import { enviarTexto } from "./whatsapp";
-import { aprobarInvitado, buscarInvitadoPorEmail, eventoDeTier, rechazarInvitado } from "./luma";
+import {
+  agregarInvitadoConRespaldo,
+  aprobarInvitado,
+  buscarInvitadoPorEmail,
+  eventoDeTier,
+  rechazarInvitado,
+} from "./luma";
 import {
   anotar,
+  apuntarAInvitado,
+  apuntarTelefono,
   descartar,
   olvidarInvitado,
-  porToken,
   reservarCorreo,
-  tokenDeGuest,
+  soltarCorreo,
+  todos,
   type Registro,
 } from "./registros";
+import { enviarTexto } from "./whatsapp";
 
 /**
  * «Pagó el upgrade a VIP», marcado a mano desde el panel.
@@ -25,10 +33,10 @@ import {
  *
  * Hay dos caminos porque hay dos formas de llegar a este botón:
  *
- * - **Tiene un registro VIP aparte.** Es quien tocó «Prefiero el VIP» en
- *   WhatsApp o se inscribió por su cuenta en el evento VIP: le quedó un
- *   registro VIP esperando el pago y el General viejo sigue vivo. Se aprueba el
- *   VIP y se borra el General, que es lo que sobra.
+ * - **Ya tiene un registro VIP aparte.** Es quien tocó «Prefiero el VIP» en
+ *   WhatsApp, o se inscribió por su cuenta en el evento VIP, o compró el VIP
+ *   desde la landing sin llegar todavía a Luma. Se le confirma ese VIP y se le
+ *   borra el General, que es lo que sobra.
  * - **Solo tiene el General.** Se le sube de categoría ese mismo registro
  *   (`pasarAVip`), que crea el invitado en el evento VIP y baja el de General.
  *
@@ -44,29 +52,33 @@ export async function marcarUpgradePagado(
   const eventoVip = eventoDeTier("vip");
   if (!eventoVip) return { ok: false, nota: "falta LUMA_EVENT_VIP" };
 
-  const correo = registro.luma.email;
+  const correo = registro.luma.email.trim().toLowerCase();
   const nombre = registro.luma.nombreCorto || registro.luma.nombre;
 
-  // ¿Ya existe en el evento VIP? Se pregunta por correo porque el registro
-  // VIP, si lo hay, es otro distinto y no lo conocemos desde acá.
-  const enVip = await buscarInvitadoPorEmail(eventoVip, correo).catch(() => null);
-  const tokenVip = enVip?.id ? await tokenDeGuest(enVip.id).catch(() => null) : null;
-  const otro = tokenVip && tokenVip !== registro.token ? await porToken(tokenVip) : null;
+  // Se busca su otro registro por correo y no por Luma: quien compró el VIP
+  // desde la landing todavía no existe allá, y preguntándole solo a Luma se
+  // caía al otro camino y le abría un segundo VIP.
+  const suyos = (await todos().catch(() => [] as Registro[])).filter(
+    (r) => r.token !== registro.token && r.luma.email.trim().toLowerCase() === correo
+  );
+  const otroVip = suyos.find((r) => r.tier === "vip");
 
-  if (enVip?.id && otro && otro.tier === "vip") {
-    if (enVip.estado !== "approved") {
-      // Sin correo: la aprobación en Luma dispara la entrada por mail y acá no
-      // se le manda nada a nadie.
-      const ap = await aprobarInvitado(eventoVip, enVip.id, undefined, false);
-      if (!ap.ok) return { ok: false, nota: `Luma no aprobó la entrada VIP (${ap.status})` };
-    }
+  if (otroVip) {
+    const vip = await asegurarVipAprobado(otroVip, eventoVip);
+    if (!vip.ok) return { ok: false, nota: vip.nota };
+
     const ahora = new Date().toISOString();
     await anotar(
-      otro.token,
+      otroVip.token,
       "pagó el upgrade a VIP, verificado a mano en el panel",
       (r) => ({
         etapa: "aprobado" as const,
-        luma: { ...r.luma, estadoAprobacion: "approved" },
+        luma: {
+          ...r.luma,
+          eventId: eventoVip,
+          ...(vip.guestId ? { guestId: vip.guestId } : {}),
+          estadoAprobacion: "approved",
+        },
         pago: { ...r.pago, confirmadoEn: r.pago.confirmadoEn ?? ahora },
         aprobacion: {
           ...r.aprobacion,
@@ -76,7 +88,7 @@ export async function marcarUpgradePagado(
       }),
       decididoPor
     );
-    const baja = await borrarLaGeneral(registro, otro.token);
+    const baja = await borrarLaGeneral(registro, otroVip.token);
     return {
       ok: true,
       nota: baja
@@ -92,11 +104,61 @@ export async function marcarUpgradePagado(
 }
 
 /**
+ * Deja a alguien aprobado en el evento VIP de Luma, en silencio.
+ *
+ * Su registro VIP puede estar en tres estados: ya aprobado allá (no se toca),
+ * dado de alta pero pendiente (se aprueba), o sin existir todavía porque compró
+ * desde la landing (se crea). En los tres casos sin correo: el aviso lo da
+ * quien cobró.
+ */
+async function asegurarVipAprobado(
+  registroVip: Registro,
+  eventoVip: string
+): Promise<{ ok: true; guestId: string } | { ok: false; nota: string }> {
+  const correo = registroVip.luma.email;
+  const existente = await buscarInvitadoPorEmail(eventoVip, correo).catch(() => null);
+
+  if (existente?.id) {
+    if (existente.estado !== "approved") {
+      const ap = await aprobarInvitado(eventoVip, existente.id, undefined, false);
+      if (!ap.ok) return { ok: false, nota: `Luma no aprobó la entrada VIP (${ap.status})` };
+    }
+    if (existente.id !== registroVip.luma.guestId) await apuntarAInvitado(registroVip.token, existente.id);
+    return { ok: true, guestId: existente.id };
+  }
+
+  // Compró el VIP y nunca llegó a Luma: se crea ahora, aprobado y mudo. La
+  // reserva evita que el `guest.registered` del alta le abra otro registro.
+  await reservarCorreo(correo, registroVip.token);
+  const alta = await agregarInvitadoConRespaldo(eventoVip, {
+    email: correo,
+    nombre: registroVip.luma.nombre,
+    aprobado: true,
+    avisarPorCorreo: false,
+    ...(registroVip.luma.cedula
+      ? { respuestas: [{ id: "cedula", tipo: "text", valor: registroVip.luma.cedula }] }
+      : {}),
+  });
+  if (!alta.ok) {
+    await soltarCorreo(correo);
+    return { ok: false, nota: `Luma rechazó el alta en VIP (${alta.status})` };
+  }
+  const nuevo = await buscarInvitadoPorEmail(eventoVip, alta.email);
+  await soltarCorreo(correo);
+  if (!nuevo?.id) {
+    return { ok: false, nota: "Luma aceptó el alta pero el invitado VIP no aparece en la lista" };
+  }
+  await apuntarAInvitado(registroVip.token, nuevo.id);
+  return { ok: true, guestId: nuevo.id };
+}
+
+/**
  * Le quita la entrada General a quien acaba de quedar en VIP.
  *
  * Se baja del evento General en Luma sin correo, se borra el registro y se
- * deja el correo apuntando al registro VIP, para que un webhook tardío del
- * invitado viejo no vuelva a abrir una General.
+ * dejan sus índices —correo y teléfono— apuntando al registro VIP: si quedaran
+ * apuntando al registro borrado, un webhook tardío le abriría otra General y
+ * sus WhatsApp entrantes se tirarían en silencio.
  *
  * Si Luma no acepta la baja **no se borra nada**: la persona seguiría aprobada
  * en General con su QR válido, y borrar el registro dejaría esa entrada viva
@@ -122,6 +184,7 @@ async function borrarLaGeneral(registro: Registro, tokenVip: string): Promise<bo
   if (registro.luma.guestId) await olvidarInvitado(registro.luma.guestId).catch(() => null);
   await descartar(registro.token);
   await reservarCorreo(registro.luma.email, tokenVip).catch(() => null);
+  if (registro.telefono) await apuntarTelefono(registro.telefono, tokenVip).catch(() => null);
   return true;
 }
 

@@ -448,6 +448,17 @@ export function unificarPorInvitado(registros: Registro[]): Registro[] {
 export const aprobadoSinEntrada = (r: Registro) => esEfectivo(r) && !r.luma.guestId;
 
 /**
+ * Reapunta el teléfono de alguien a otro registro suyo.
+ *
+ * Los WhatsApp entrantes se resuelven por este índice: si queda apuntando a un
+ * registro borrado, la persona escribe y el bot no la encuentra, así que su
+ * mensaje se tira en silencio.
+ */
+export async function apuntarTelefono(telefono: string, token: string): Promise<void> {
+  await escribir(rutaIndiceTelefono(telefono), { token, en: new Date().toISOString() });
+}
+
+/**
  * Borra el índice de un invitado de Luma que ya no apunta a ningún registro.
  *
  * Se usa al descartar un registro: si el índice se quedara, un webhook tardío

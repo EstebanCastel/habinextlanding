@@ -173,7 +173,8 @@ export function Fila({ r }: { r: Registro }) {
         <div className="flex flex-col gap-1.5">
           {decidido ? (
             <>
-            <p className="text-xs text-white/50">
+            {/* div y no p: adentro hay un <form>, y un <p> no puede contenerlo. */}
+            <div className="text-xs text-white/50">
               {r.etapa === "aprobado" ? "Entrada enviada" : "Rechazado"}
               <span className="block text-white/35">{hora(r.aprobacion.decididoEn)}</span>
               {r.confirmacion?.enviadaEn ? (
@@ -197,7 +198,7 @@ export function Fila({ r }: { r: Registro }) {
                   </button>
                 </form>
               ) : null}
-            </p>
+            </div>
             <UpgradeVip r={r} />
             </>
           ) : !r.luma.guestId ? (

@@ -36,7 +36,15 @@ async function pedir(ruta: string, cuerpo: unknown) {
     signal: AbortSignal.timeout(15_000),
   });
   const texto = await res.text().catch(() => "");
-  return { ok: res.ok, status: res.status, cuerpo: texto.slice(0, 400) };
+  // `cuerpo` es para la bitácora y va recortado; `datos` es el JSON entero,
+  // que es lo único con lo que se puede mirar si Luma saltó un correo.
+  let datos: unknown = null;
+  try {
+    datos = texto ? JSON.parse(texto) : null;
+  } catch {
+    datos = null;
+  }
+  return { ok: res.ok, status: res.status, cuerpo: texto.slice(0, 400), datos };
 }
 
 /**
@@ -218,7 +226,18 @@ export async function contarAprobadosEnLuma(): Promise<{ general: number; vip: n
  * misma bandeja y Luma trata como otro usuario.
  */
 export function fueSaltado(cuerpo: unknown, email: string): boolean {
-  const s = (cuerpo as { skipped?: { email?: string }[] } | null)?.skipped;
+  // Acepta el JSON ya leído o el texto crudo: durante meses se le pasó el
+  // cuerpo recortado como string y `.skipped` daba siempre undefined, así que
+  // el respaldo por alias no se disparó nunca.
+  let dato = cuerpo;
+  if (typeof dato === "string") {
+    try {
+      dato = JSON.parse(dato);
+    } catch {
+      return false;
+    }
+  }
+  const s = (dato as { skipped?: { email?: string }[] } | null)?.skipped;
   return Array.isArray(s) && s.some((x) => String(x?.email ?? "").toLowerCase() === email.toLowerCase());
 }
 
@@ -232,11 +251,11 @@ export async function agregarInvitadoConRespaldo(
   persona: Parameters<typeof agregarInvitado>[1]
 ): Promise<Awaited<ReturnType<typeof agregarInvitado>> & { email: string; conAlias: boolean }> {
   const primero = await agregarInvitado(eventId, persona);
-  if (!primero.ok || !fueSaltado(primero.cuerpo, persona.email)) return { ...primero, email: persona.email, conAlias: false };
+  if (!primero.ok || !fueSaltado(primero.datos, persona.email)) return { ...primero, email: persona.email, conAlias: false };
   const alias = aliasDe(persona.email);
   if (alias === persona.email) return { ...primero, ok: false, email: persona.email, conAlias: false };
   const segundo = await agregarInvitado(eventId, { ...persona, email: alias });
-  if (segundo.ok && !fueSaltado(segundo.cuerpo, alias)) return { ...segundo, email: alias, conAlias: true };
+  if (segundo.ok && !fueSaltado(segundo.datos, alias)) return { ...segundo, email: alias, conAlias: true };
   return { ...segundo, ok: false, email: persona.email, conAlias: false };
 }
 

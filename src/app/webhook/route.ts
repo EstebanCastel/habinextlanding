@@ -147,6 +147,22 @@ export async function POST(request: Request) {
 
       const estado = data.approval_status || "";
       const previo = await porToken(token);
+
+      // La persona pudo haber cambiado de evento: al pasarse a VIP se la baja
+      // del evento General, y esa baja vuelve por acá como `declined` sobre el
+      // invitado viejo, que sigue apuntando a su mismo registro. Aplicarlo la
+      // dejaría «rechazada» justo después de pagar el upgrade. Un cambio en un
+      // evento que ya no es el suyo no la describe.
+      if (previo?.luma.eventId && eventId && previo.luma.eventId !== eventId) {
+        await anotar(
+          token,
+          `cambio en un evento que ya no es el suyo: ${estado || tipo}`,
+          () => ({}),
+          eventId
+        ).catch(() => null);
+        return NextResponse.json({ ok: true, nota: "evento que ya no es el suyo" });
+      }
+
       const yaEstabaAprobado = previo?.etapa === "aprobado";
 
       const actualizado = await anotar(
