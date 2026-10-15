@@ -9,11 +9,13 @@ import { ETAPAS, hora, LUMA_INVITADOS } from "./comunes";
  * conectado—, así que se ve en Wompi y se marca acá. Marcarlo la deja aprobada
  * en VIP y le borra la entrada General: nadie debe ocupar dos cupos.
  *
- * Sale en toda fila de General, esté aprobada o no, porque el upgrade se puede
- * cobrar en cualquier momento, incluso a quien entró con una cortesía.
+ * Sale en TODA fila de General, sin excepción: la cortesía se regala, pero si
+ * esa persona después quiere pagar el VIP puede hacerlo, y eso se marca acá.
+ * También en las rechazadas, porque pagar el upgrade es justamente la forma de
+ * volver a entrar.
  */
 function UpgradeVip({ r }: { r: Registro }) {
-  if (r.tier !== "general" || r.etapa === "rechazado") return null;
+  if (r.tier !== "general") return null;
   // Quien entró con cortesía no pagó nada por la General, así que el upgrade
   // le cuesta la VIP entera; quien sí la pagó, solo la diferencia. Es el mismo
   // precio que queda escrito en el registro al marcarlo.
@@ -227,6 +229,7 @@ export function Fila({ r }: { r: Registro }) {
                   Reenviar link de pago
                 </button>
               </form>
+              <UpgradeVip r={r} />
             </>
           ) : (
             <>

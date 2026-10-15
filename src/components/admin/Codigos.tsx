@@ -207,6 +207,15 @@ export default function Codigos({ codigos, filtros }: { codigos: CodigoConEstado
                             <p className="text-white/85">{r.nombre}</p>
                             <p className="text-white/45">{r.email}</p>
                             {otroCorreo ? <p className="mt-1 text-[10px] uppercase tracking-wider text-amber-200/80">otro correo que el asignado</p> : null}
+                            {/* Acá no se puede hacer nada con la persona: lo suyo
+                                —cambiarle la entrada, cobrarle el upgrade— vive en
+                                su fila de Registros. */}
+                            <a
+                              href={`/admin/registros?q=${encodeURIComponent(r.email)}`}
+                              className="mt-1 inline-block text-[10px] uppercase tracking-wider text-violet-soft underline-offset-2 hover:underline"
+                            >
+                              Ver su registro →
+                            </a>
                           </>
                         ) : (
                           <span className="text-white/25">—</span>
