@@ -153,14 +153,20 @@ export async function POST(request: Request) {
       // invitado viejo, que sigue apuntando a su mismo registro. Aplicarlo la
       // dejaría «rechazada» justo después de pagar el upgrade. Un cambio en un
       // evento que ya no es el suyo no la describe.
-      if (previo?.luma.eventId && eventId && previo.luma.eventId !== eventId) {
+      // Dos guardas, la misma idea: el cambio tiene que ser del invitado al que
+      // su registro apunta HOY. Si cambió de evento —se pasó a VIP— o si lo
+      // reapuntamos a otro invitado del mismo evento —limpieza de un correo
+      // duplicado—, el `declined` del invitado viejo llega igual y, sin esto,
+      // deja «rechazada» a alguien que está perfectamente aprobada.
+      const otroInvitado = Boolean(previo?.luma.guestId && data.id && previo.luma.guestId !== data.id);
+      if (otroInvitado || (previo?.luma.eventId && eventId && previo.luma.eventId !== eventId)) {
         await anotar(
           token,
-          `cambio en un evento que ya no es el suyo: ${estado || tipo}`,
+          `cambio en un invitado que ya no es el suyo: ${estado || tipo}`,
           () => ({}),
-          eventId
+          `invitado ${data.id} · evento ${eventId}`
         ).catch(() => null);
-        return NextResponse.json({ ok: true, nota: "evento que ya no es el suyo" });
+        return NextResponse.json({ ok: true, nota: "invitado que ya no es el suyo" });
       }
 
       const yaEstabaAprobado = previo?.etapa === "aprobado";
