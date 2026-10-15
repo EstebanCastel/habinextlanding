@@ -1,5 +1,6 @@
 import { AVISO_EQUIPO } from "@/config/equipo";
 import { entradaDe, type Entrada } from "@/lib/entrada";
+import { anotar, cambiar } from "@/lib/experiencia";
 import { dentroDelLimite, error, participanteActual, responder, vincularRegistroSiFalta } from "@/lib/experiencia-http";
 
 /**
@@ -39,5 +40,21 @@ export async function GET() {
   if (!entrada) {
     return responder({ ok: true, entrada: null, motivo: "No pudimos leer tu entrada en este momento." });
   }
+
+  // La copia de la entrada que lleva el participante se queda vieja cuando a
+  // alguien lo suben de General a VIP: el QR sale bien, porque se lee del
+  // registro, pero el resto de la experiencia le sigue diciendo «General».
+  // Acá se refresca con lo que acaba de devolver el registro.
+  const guardada = conRegistro.registro;
+  if (guardada.tier !== entrada.tier || guardada.etapa !== entrada.etapa) {
+    await cambiar(conRegistro.id, (q) =>
+      anotar(
+        { ...q, registro: { ...guardada, tier: entrada.tier, etapa: entrada.etapa, vinculadoEn: new Date().toISOString() } },
+        "su entrada cambió",
+        `${guardada.tier}/${guardada.etapa} → ${entrada.tier}/${entrada.etapa}`
+      )
+    ).catch(() => null);
+  }
+
   return responder({ ok: true, entrada });
 }
