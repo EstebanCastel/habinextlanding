@@ -263,7 +263,7 @@ export const SESIONES: Sesion[] = [
     id: "tiktok",
     salon: "taller",
     titulo: "Crea contenidos virales en TikTok",
-    porConfirmar: true,
+    ponente: "Carolina",
     resumen: "El formato que más alcance orgánico da hoy.",
     contenido: [
       "Los cuatro formatos de video inmobiliario que funcionan y por qué.",
@@ -323,7 +323,7 @@ export const SESIONES: Sesion[] = [
     id: "constructores",
     salon: "taller",
     titulo: "¿Cómo ser más atractivos para financiar proyectos inmobiliarios?",
-    ponentes: ["Amarilo", "Bolívar"],
+    ponentes: ["Amarilo", "Conaltura"],
     resumen: "Una conversación con constructores.",
     contenido: [
       "Qué mira una constructora cuando decide con qué asesores trabajar un proyecto.",
@@ -378,7 +378,7 @@ export const SESIONES: Sesion[] = [
     id: "ventas-inversionistas",
     salon: "taller",
     titulo: "Ventas a inversionistas",
-    porConfirmar: true,
+    ponente: "Juan Londoño",
     resumen: "Taller práctico: el guion y los números, en tu computador.",
     contenido: [
       "Armar la ficha de inversión de un inmueble real: renta, valorización y riesgo, con una plantilla que te llevas.",
@@ -393,7 +393,8 @@ export const SESIONES: Sesion[] = [
     id: "score-crediticio",
     salon: "taller",
     titulo: "¿Cómo mejorar el score crediticio de tus clientes?",
-    porConfirmar: true,
+    ponente: "Alternativa",
+    detallePonente: "DataCrédito",
     resumen: "Rescatar la venta que el banco frenó.",
     contenido: [
       "Qué mira realmente un banco y qué pesa más en la decisión.",
