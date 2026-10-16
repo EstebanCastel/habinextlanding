@@ -665,7 +665,9 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   // holgura se reparte arriba y abajo en vez de quedar toda debajo del QR,
   // que dejaba un hueco entre el código y el nombre.
   const Q = {
-    x: (w - lado) / 2,
+    // Redondeado: con `lado` impar quedaba en medio píxel y el QR se
+    // reescalaba desfasado, que es lo que emborrona los módulos.
+    x: Math.round((w - lado) / 2),
     y: Math.round(tope + Math.max(0, (disponible - lado) / 2)),
     s: lado,
     r: Math.round(lado * 0.06),
@@ -725,7 +727,6 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
     ctx.fillStyle = "rgba(255,255,255,0.38)";
     ctx.font = `300 ${Math.round(w * 0.022)}px ${o.familia}`;
     ctx.fillText(o.correo, w / 2, y);
-    y += w * 0.034;
   }
 
   // --- los datos del día ---
@@ -746,11 +747,10 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   // --- UN EVENTO DE habi, igual que al frente ---
   const logoW = P.logoH;
   const logoX = w - D.margen - logoW;
-  const logoY = P.y - P.logoH + P.tam * 0.35;
-  ctx.drawImage(o.recursos.habi, logoX, logoY, logoW, P.logoH);
+  ctx.drawImage(o.recursos.habi, logoX, pieArriba, logoW, P.logoH);
   ctx.font = `500 ${P.tam}px ${o.familia}`;
   const texto = "UN EVENTO DE";
   const anchoTexto = anchoEspaciado(ctx, texto, P.tam * 0.22);
   ctx.fillStyle = "#ffffff";
-  dibujarEspaciado(ctx, texto, logoX - 28 - anchoTexto, logoY + P.logoH / 2 + P.tam * 0.36, P.tam * 0.22);
+  dibujarEspaciado(ctx, texto, logoX - 28 - anchoTexto, pieArriba + P.logoH / 2 + P.tam * 0.36, P.tam * 0.22);
 }

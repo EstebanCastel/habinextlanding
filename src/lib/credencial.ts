@@ -328,13 +328,19 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesReverso) {
     // no es la entrada de un asistente. El QR se genera con corrección alta,
     // así que tapar el centro no lo daña.
     if (o.equipo) {
-      const lado = Q.s * 0.3;
+      const lado = Q.s * 0.26;
       const cx = Q.x + Q.s / 2 - lado / 2;
       const cy = Q.y + Q.s / 2 - lado / 2;
       ctx.fillStyle = "#ffffff";
-      redondeado(ctx, cx - 14, cy - 14, lado + 28, lado + 28, 22);
+      redondeado(ctx, cx - 14, cy - 14, lado + 28, lado + 28, 26);
       ctx.fill();
-      ctx.drawImage(o.recursos.habi, cx, cy, lado, lado);
+      // El isotipo es blanco: sobre el plato blanco desaparecía. Va sobre un
+      // cuadro violeta, igual que en `carnet.ts`.
+      ctx.fillStyle = VIOLETA;
+      redondeado(ctx, cx, cy, lado, lado, lado * 0.26);
+      ctx.fill();
+      const pLogo = lado * 0.19;
+      ctx.drawImage(o.recursos.habi, cx + pLogo, cy + pLogo, lado - pLogo * 2, lado - pLogo * 2);
     }
   } else {
     ctx.fillStyle = "rgba(5,2,8,0.45)";

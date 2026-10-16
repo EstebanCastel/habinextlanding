@@ -19,7 +19,7 @@ import crypto from "node:crypto";
 import forge from "node-forge";
 import { EVENT } from "@/config/event";
 import type { Entrada } from "./entrada";
-import { RECURSOS_PASE } from "./wallet-recursos";
+import { RECURSOS_PASE, TIRAS_PASE } from "./wallet-recursos";
 
 const COLOR_FONDO = "rgb(7,4,13)";
 const COLOR_TEXTO = "rgb(255,255,255)";
@@ -40,6 +40,17 @@ const etiquetaTier = (t: Entrada["tier"]) => (t === "vip" ? "VIP" : "General");
  * mira en la puerta.
  */
 const rotulo = (e: Entrada) => (e.equipo ? "Equipo" : etiquetaTier(e.tier));
+
+/**
+ * Qué cara lleva el pase. En la pila de Wallet solo se ve la cabecera de la
+ * tarjeta, así que la franja y el color de las etiquetas son lo que distingue
+ * un VIP de un General sin abrir nada.
+ */
+const varianteDe = (e: Entrada): "general" | "vip" | "equipo" =>
+  e.equipo ? "equipo" : e.tier === "vip" ? "vip" : "general";
+
+/** El oro del VIP; el resto va en el violeta de la marca. */
+const COLOR_ORO = "rgb(232,197,114)";
 
 /** Una variable pegada desde un archivo suele llegar con `\n` literal. */
 const conSaltos = (s: string) => s.replace(/\\n/g, "\n");
@@ -100,6 +111,7 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
   if (!c) return { ok: false, falta: FALTA_APPLE };
   if (!e.qr) return { ok: false, falta: "Tu entrada todavía no tiene QR." };
 
+  const variante = varianteDe(e);
   const pass = {
     formatVersion: 1,
     passTypeIdentifier: c.tipo,
@@ -111,7 +123,7 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
     serialNumber: e.token,
     backgroundColor: COLOR_FONDO,
     foregroundColor: COLOR_TEXTO,
-    labelColor: COLOR_ETIQUETA,
+    labelColor: variante === "vip" ? COLOR_ORO : COLOR_ETIQUETA,
     relevantDate: EVENT.startsAt,
     expirationDate: VENCE,
     // La entrada es personal: sin esto, iOS ofrece «Compartir pase» y el QR
@@ -167,7 +179,9 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
   };
 
   const archivos: Record<string, Buffer> = { "pass.json": Buffer.from(JSON.stringify(pass)) };
-  for (const [nombre, b64] of Object.entries(RECURSOS_PASE)) archivos[nombre] = Buffer.from(b64, "base64");
+  for (const [nombre, b64] of Object.entries({ ...RECURSOS_PASE, ...TIRAS_PASE[variante] })) {
+    archivos[nombre] = Buffer.from(b64, "base64");
+  }
 
   const manifest: Record<string, string> = {};
   for (const [nombre, contenido] of Object.entries(archivos)) {
@@ -371,11 +385,20 @@ function claseGoogle(id: string, sitio: string) {
 
 /** La entrada de una persona: su nombre, su tipo y el QR de Luma tal cual. */
 function objetoGoogle(id: string, clase: string, e: Entrada, sitio: string) {
+  const variante = varianteDe(e);
   return {
     id,
     classId: clase,
     state: "ACTIVE",
-    hexBackgroundColor: "#07040d",
+    hexBackgroundColor: variante === "vip" ? "#0f0b03" : variante === "equipo" ? "#2a0f5c" : "#07040d",
+    // El banner de arriba: es lo primero que se ve al abrir el pase y antes no
+    // había ninguno, así que la tarjeta era un rectángulo oscuro y nada más.
+    heroImage: {
+      sourceUri: { uri: `${sitio}/img/wallet/hero-${variante}.png` },
+      contentDescription: {
+        defaultValue: { language: "es", value: `${EVENT.fullName} · ${rotulo(e)}` },
+      },
+    },
     // El valor del código es el QR de Luma tal cual: es lo que lee la puerta.
     barcode: { type: "QR_CODE", value: e.qr, alternateText: rotulo(e) },
     ticketHolderName: e.nombre,
