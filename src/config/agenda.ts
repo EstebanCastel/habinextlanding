@@ -99,6 +99,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "marca-personal",
     salon: "inspira",
+    desde: "16:00",
     titulo: "Construcción de marca personal con IA",
     ponente: "Camilo Olarte",
     resumen: "Que te busquen a ti y no a la inmobiliaria.",
@@ -113,6 +114,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "agente-futuro",
     salon: "inspira",
+    desde: "09:00",
     titulo: "El agente inmobiliario del futuro",
     ponente: "Pipe Restrepo",
     resumen: "Cómo se ve el oficio dentro de cinco años.",
@@ -125,6 +127,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "receso-manana",
     salon: "inspira",
+    desde: "11:00",
     titulo: "Receso corto",
     tipo: "pausa",
     resumen: "Café, baño y una vuelta por los stands.",
@@ -134,6 +137,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-habi",
     salon: "inspira",
+    desde: "11:15",
     titulo: "El futuro de Habi",
     ponente: "Sebastián Noguera",
     detallePonente: "Cofundador y presidente de Habi",
@@ -147,6 +151,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-mi-red",
     salon: "inspira",
+    desde: "11:30",
     titulo: "El futuro de Habi · Mi Red",
     ponente: "Agustín Iglesias",
     resumen: "La red de aliados y cómo se gana dentro de ella.",
@@ -159,6 +164,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-habi-capital",
     salon: "inspira",
+    desde: "11:45",
     titulo: "El futuro de Habi · Habi Capital",
     ponente: "Martín Oviedo",
     resumen: "El brazo de inversión, explicado sin jerga.",
@@ -171,6 +177,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-habi-credit",
     salon: "inspira",
+    desde: "12:00",
     titulo: "El futuro de Habi · Habi Credit",
     ponente: "Gabriel Morris",
     resumen: "Crédito hipotecario como parte de tu cierre.",
@@ -184,6 +191,7 @@ export const SESIONES: Sesion[] = [
     // La hoja dice «Edwin Alejo o Matías»; va Edwin mientras el equipo lo cierra.
     id: "futuro-franquicias",
     salon: "inspira",
+    desde: "12:15",
     titulo: "El futuro de Habi · Franquicias",
     ponente: "Edwin Alejo",
     resumen: "El modelo de franquicia, de frente.",
@@ -196,14 +204,24 @@ export const SESIONES: Sesion[] = [
   {
     id: "almuerzo",
     salon: "inspira",
+    desde: "12:30",
     titulo: "Almuerzo",
     tipo: "pausa",
     resumen: "Zona de comida y networking. Los VIP tienen su propia sala.",
   },
   {
+    id: "premiacion-bogota",
+    salon: "inspira",
+    desde: "14:00",
+    titulo: "Premiación del Banco de Bogotá",
+    tipo: "pausa",
+    resumen: "Justo al volver del almuerzo, antes de la charla de las 2:15.",
+  },
+  {
     id: "venderle-inversionistas",
     salon: "inspira",
-    titulo: "¿Cómo venderle a inversionistas? Y volverme uno de ellos",
+    desde: "14:15",
+    titulo: "Construcción patrimonial a través de bienes raíces",
     ponente: "Mis Propias Finanzas",
     resumen: "El cliente que compra por números, y cómo pensar como él.",
     contenido: [
@@ -216,6 +234,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "receso-tarde",
     salon: "inspira",
+    desde: "15:45",
     titulo: "Receso corto",
     tipo: "pausa",
     resumen: "Café y una vuelta por los stands.",
@@ -223,19 +242,21 @@ export const SESIONES: Sesion[] = [
   {
     id: "maraton-herramientas",
     salon: "inspira",
+    desde: "15:15",
     titulo: "Maratón de herramientas para asesores inmobiliarios y financieros",
-    ponentes: ["Dapta", "Auco", "Wekall", "Funnel Chat"],
-    resumen: "Cuatro herramientas, una detrás de otra, con demostración en vivo.",
+    ponentes: ["Auco · Santiago Montoya", "Dapta · Aron", "Wekall · Felipe Sánchez", "Palomma · Cipriano Echavarría", "Funnel Chat · Alejandro Sánchez"],
+    resumen: "Cinco herramientas, una detrás de otra, con demostración en vivo.",
     contenido: [
-      "Dapta: automatizaciones que responden y hacen seguimiento por ti.",
       "Auco: firma electrónica y validación de identidad sin papeleo.",
+      "Dapta: automatizaciones que responden y hacen seguimiento por ti.",
       "Wekall: la llamada y el WhatsApp de tu operación en un solo lugar.",
-      "Funnel Chat: cómo no perder un lead entre tantas conversaciones.",
+      "Palomma y Funnel Chat: cobros y conversaciones que no se caen entre tantos chats.",
     ],
   },
   {
     id: "confianza-negocios",
     salon: "inspira",
+    desde: "17:00",
     titulo: "¿Cómo construir confianza y hacer negocios?",
     ponente: "Mabel Quintero",
     resumen: "Lo que decide una venta y no está en el inmueble.",
@@ -248,6 +269,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "segundo-cerebro",
     salon: "inspira",
+    desde: "10:00",
     titulo: "Crea tu segundo cerebro con IA",
     ponente: "Dani Bravo",
     resumen: "Todo lo que sabes, buscable en un segundo.",
@@ -262,6 +284,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "tiktok",
     salon: "taller",
+    desde: "09:00",
     titulo: "Crea contenidos virales en TikTok",
     ponente: "Carolina",
     resumen: "El formato que más alcance orgánico da hoy.",
@@ -276,9 +299,9 @@ export const SESIONES: Sesion[] = [
   {
     id: "asistente-claude",
     salon: "taller",
+    desde: "11:15",
     titulo: "Crea tu asistente personal con Claude",
-    // La hoja trae también a «Carlos M.»; va solo Juanfe hasta tener el nombre completo.
-    ponente: "Juanfe Quiñones",
+    ponente: "Federico Sánchez",
     resumen: "Sales del evento con tu asistente funcionando.",
     contenido: [
       "Cómo se le enseña a un asistente tu forma de trabajar, tus inmuebles y tus clientes.",
@@ -290,6 +313,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "ventas-ia",
     salon: "taller",
+    desde: "10:00",
     titulo: "Ventas con inteligencia artificial",
     ponente: "Dapta",
     resumen: "Una demostración corta, con tu operación en mente.",
@@ -301,16 +325,17 @@ export const SESIONES: Sesion[] = [
   {
     id: "bloqueo-taller",
     salon: "taller",
-    titulo: "Sala en pausa",
+    desde: "09:45",
+    titulo: "Reservado por si la entrada se demora",
     tipo: "bloqueo",
     resumen: "Mientras tanto, en Inspira: El futuro de Habi.",
   },
   {
     id: "conversatorio-brokers",
     salon: "taller",
+    desde: "11:00",
     titulo: "Conversatorio: los mejores brokers",
-    // Entrevista Germán Rueda; los brokers (Anderson por hipoteca y uno de vivienda) se confirman.
-    ponente: "Germán Rueda",
+    ponentes: ["Germán Rueda", "Anderson"],
     detallePonente: "Entrevista · Habi",
     resumen: "Los que más venden, contando cómo lo hacen.",
     contenido: [
@@ -320,34 +345,22 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
-    id: "constructores",
+    id: "valor-inmuebles",
     salon: "taller",
-    titulo: "¿Cómo ser más atractivos para financiar proyectos inmobiliarios?",
-    ponentes: ["Amarilo", "Conaltura"],
-    resumen: "Una conversación con constructores.",
+    desde: "12:30",
+    titulo: "Cómo determinar el valor real de un inmueble",
+    ponente: "Juan Sokoloff",
+    resumen: "Todo lo que hay que saber sobre el precio, sin adivinar.",
     contenido: [
-      "Qué mira una constructora cuando decide con qué asesores trabajar un proyecto.",
-      "Cómo entrar a una sala de ventas y salir con un acuerdo, y qué le resuelves tú que ella no puede sola.",
-      "La conversación de crédito con el comprador de vivienda nueva: cuándo empezarla y con quién.",
+      "Qué mueve de verdad el precio de un inmueble y qué no, con datos del mercado.",
+      "Cómo sustentarle un precio a un propietario que pide más de lo que vale.",
+      "En qué se equivocan los avalúos de oído, y cómo no quedar colgado con un inmueble sobrevalorado.",
     ],
-  },
-  {
-    id: "recorridos-virtuales",
-    salon: "taller",
-    titulo: "Crea contenidos con IA: recorridos virtuales",
-    ponente: "Camilo Olarte",
-    resumen: "Un inmueble vacío que se ve habitado.",
-    contenido: [
-      "Cómo armar un recorrido virtual con lo que ya tienes: fotos y celular.",
-      "Amoblar digitalmente un inmueble vacío sin que se note falso.",
-      "Qué está permitido mostrar y qué cruza la línea de la publicidad engañosa.",
-      "Te llevas uno hecho con tus propias fotos.",
-    ],
-    necesitas: "Fotos de un inmueble tuyo en el computador o el celular.",
   },
   {
     id: "campanas-meta",
     salon: "taller",
+    desde: "13:30",
     titulo: "¿Cómo crear campañas en Meta que sí venden?",
     ponente: "Olivia Robles Gorriti",
     resumen: "Dejar de quemar plata en Facebook e Instagram.",
@@ -362,6 +375,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "crm",
     salon: "taller",
+    desde: "16:00",
     titulo: "Aprende a implementar un CRM",
     ponente: "Mateo Jaramillo",
     detallePonente: "Grapez Studio",
@@ -377,6 +391,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "ventas-inversionistas",
     salon: "taller",
+    desde: "15:15",
     titulo: "Ventas a inversionistas",
     ponente: "Juan Londoño",
     resumen: "Taller práctico: el guion y los números, en tu computador.",
@@ -392,6 +407,7 @@ export const SESIONES: Sesion[] = [
     // dicta. Por eso va sin nombre y por confirmar.
     id: "score-crediticio",
     salon: "taller",
+    desde: "17:00",
     titulo: "¿Cómo mejorar el score crediticio de tus clientes?",
     ponente: "Alternativa",
     detallePonente: "DataCrédito",

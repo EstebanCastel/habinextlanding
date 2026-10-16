@@ -18,14 +18,23 @@ import { clasesBoton, pedirJson } from "./util";
  * texto; al abrirla, el retrato ocupa el afiche con el nombre en serif y la
  * ficha de la sesión se puede descargar.
  *
- * No hay horas a propósito: el equipo las está cerrando y es mejor un
- * programa sin reloj que un reloj que después se desdice.
+ * Cada tarjeta abre con su hora de inicio. Las dos salas corren en paralelo,
+ * así que a una misma hora siempre hay dos cosas pasando y la gracia de la
+ * pantalla es poder compararlas de un vistazo.
  *
  * Cada sesión se puede marcar con «me interesa»: la persona arma su día y el
  * equipo ve qué charlas tienen más expectativa. No da puntos.
  */
 
 const serif = Cormorant_Garamond({ subsets: ["latin"], weight: ["500", "600"], display: "swap" });
+
+/** «14:15» se lee mejor como «2:15 p. m.»: es como la gente dice la hora acá. */
+function hora12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const sufijo = h < 12 ? "a. m." : "p. m.";
+  const doce = h % 12 === 0 ? 12 : h % 12;
+  return `${doce}:${String(m).padStart(2, "0")} ${sufijo}`;
+}
 
 /** Las palabras que corren por el borde del afiche, como en la credencial. */
 const PALABRAS = ["GLOBAL", "EXPERIENCIA", "OPORTUNIDAD", "BOGOTÁ", "IA", "OCT. 2026"];
@@ -191,8 +200,8 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
       </div>
 
       <p className="mt-10 max-w-xl text-sm font-light leading-relaxed text-white/45">
-        Las horas de cada sesión se publican apenas el equipo las confirme. El orden ya es el del programa. Toca
-        una sesión para ver quién la dicta, qué te llevas y descargar su ficha.
+        Las dos salas corren en paralelo, así que a una misma hora hay dos cosas pasando. Toca una sesión para
+        ver quién la dicta, qué te llevas y descargar su ficha.
       </p>
 
       {abierta ? <Panel sesion={abierta} intereses={intereses} onCerrar={() => setAbierta(null)} /> : null}
@@ -458,7 +467,9 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
       >
         <CapaVisual s={s} />
         <span className="relative z-10 flex w-[64%] flex-col p-5 pb-16 sm:w-[60%] sm:p-6 sm:pb-16">
-          <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">SESIÓN {n}</span>
+          <span className="block font-mono text-[11px] font-medium tracking-[0.2em] text-violet-soft">
+            {s.desde ? hora12(s.desde) : `SESIÓN ${n}`}
+          </span>
           <span className="mt-1.5 block text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
           {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
         </span>
@@ -616,7 +627,7 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
           ) : null}
 
           <p data-linea className="mt-5 text-xs font-light text-white/45">
-            {salon.nombre} · {salon.aforo}. La hora se publica cuando el equipo la confirme.
+            {salon.nombre} · {salon.aforo}.
           </p>
         </div>
       </div>
