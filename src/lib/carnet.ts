@@ -641,9 +641,35 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   const esp = w * 0.022 * 0.3;
   dibujarEspaciado(ctx, rotulo, w / 2 - anchoEspaciado(ctx, rotulo, esp) / 2, arriba, esp);
 
+  // El reverso se arma de abajo hacia arriba. El pie va clavado en `P.y`, así
+  // que el bloque del día tiene que caber encima sí o sí; lo único con holgura
+  // es el QR y es lo que se encoge. Antes el bloque bajaba flotando desde el
+  // nombre y en el formato de publicación aterrizaba justo sobre el «UN EVENTO
+  // DE»: la fecha y el isotipo salían montados uno encima del otro.
+  const P = D.pie;
+  const pieArriba = P.y - P.logoH + P.tam * 0.35;
+  const ySede = pieArriba - w * 0.028;
+  const yFecha = ySede - w * 0.038;
+  const yLinea = yFecha - w * 0.05;
+  const lineasContacto = (o.cedula ? 1 : 0) + (o.correo ? 1 : 0);
+  const yNombre = yLinea - w * 0.03 - lineasContacto * w * 0.034;
+
   // --- el QR, en blanco y con aire: es lo que lee el lector ---
-  const lado = Math.round(w * 0.6);
-  const Q = { x: (w - lado) / 2, y: arriba + 44, s: lado, r: Math.round(lado * 0.06) };
+  const hueco = o.formato === "story" ? 110 : 86;
+  const tope = arriba + 44;
+  // Nunca más chico que esto: por debajo deja de leerse de lejos, y es
+  // preferible rozar el nombre a entregar un QR que no sirve en la puerta.
+  const disponible = yNombre - hueco - tope;
+  const lado = Math.round(Math.max(w * 0.42, Math.min(w * 0.6, disponible)));
+  // Cuando sobra sitio —la historia es mucho más alta que la publicación— la
+  // holgura se reparte arriba y abajo en vez de quedar toda debajo del QR,
+  // que dejaba un hueco entre el código y el nombre.
+  const Q = {
+    x: (w - lado) / 2,
+    y: Math.round(tope + Math.max(0, (disponible - lado) / 2)),
+    s: lado,
+    r: Math.round(lado * 0.06),
+  };
   ctx.fillStyle = "#ffffff";
   redondeado(ctx, Q.x, Q.y, Q.s, Q.s, Q.r);
   ctx.fill();
@@ -654,14 +680,21 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
     // no es la entrada de un asistente, y el QR se genera con corrección alta,
     // así que tapar el centro no impide leerlo.
     if (o.equipo) {
-      const l = Math.round(Q.s * 0.28);
+      const l = Math.round(Q.s * 0.26);
       const cx = Q.x + Q.s / 2 - l / 2;
       const cy = Q.y + Q.s / 2 - l / 2;
-      const aire = Math.round(l * 0.16);
+      const aire = Math.round(l * 0.18);
       ctx.fillStyle = "#ffffff";
-      redondeado(ctx, cx - aire, cy - aire, l + aire * 2, l + aire * 2, Math.round(l * 0.2));
+      redondeado(ctx, cx - aire, cy - aire, l + aire * 2, l + aire * 2, Math.round(l * 0.3));
       ctx.fill();
-      ctx.drawImage(o.recursos.habi, cx, cy, l, l);
+      // El isotipo es blanco (`fill:#fff` en habi.svg): sobre el plato blanco
+      // desaparecía y el QR quedaba con un hueco vacío en el medio. Va sobre
+      // un cuadro violeta, que además lo hace reconocible de lejos.
+      ctx.fillStyle = VIOLETA;
+      redondeado(ctx, cx, cy, l, l, Math.round(l * 0.26));
+      ctx.fill();
+      const pLogo = Math.round(l * 0.19);
+      ctx.drawImage(o.recursos.habi, cx + pLogo, cy + pLogo, l - pLogo * 2, l - pLogo * 2);
     }
   } else {
     ctx.fillStyle = "rgba(5,2,8,0.5)";
@@ -679,7 +712,6 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   ctx.fillStyle = "#ffffff";
   const tNombre = ajustar(ctx, completo, 700, Math.round(w * 0.046), o.familia, w - D.margen * 2, 0.04);
   ctx.font = `700 ${tNombre}px ${o.familia}`;
-  const yNombre = Q.y + Q.s + (o.formato === "story" ? 110 : 86);
   ctx.fillText(completo, w / 2, yNombre);
 
   let y = yNombre + w * 0.04;
@@ -697,7 +729,6 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   }
 
   // --- los datos del día ---
-  const yLinea = y + w * 0.02;
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -706,14 +737,13 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   ctx.stroke();
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.font = `600 ${Math.round(w * 0.027)}px ${o.familia}`;
-  ctx.fillText("Martes 20 de octubre de 2026", w / 2, yLinea + w * 0.05);
+  ctx.fillText("Martes 20 de octubre de 2026", w / 2, yFecha);
   ctx.fillStyle = "rgba(255,255,255,0.5)";
   ctx.font = `300 ${Math.round(w * 0.025)}px ${o.familia}`;
-  ctx.fillText("Centro de Convenciones Av. 68 · Bogotá", w / 2, yLinea + w * 0.088);
+  ctx.fillText("Centro de Convenciones Av. 68 · Bogotá", w / 2, ySede);
   ctx.textAlign = "left";
 
   // --- UN EVENTO DE habi, igual que al frente ---
-  const P = D.pie;
   const logoW = P.logoH;
   const logoX = w - D.margen - logoW;
   const logoY = P.y - P.logoH + P.tam * 0.35;
