@@ -10,6 +10,8 @@ export type EntradaVista = {
   correo: string;
   cedula?: string;
   qr: string | null;
+  /** Del equipo de Habi: su QR es la credencial de staff, no una entrada. */
+  equipo?: boolean;
   motivo?: string;
   enLuma?: string;
   etapa: string;

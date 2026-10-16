@@ -21,8 +21,10 @@ export type Entrada = {
   nombre: string;
   correo: string;
   cedula?: string;
-  /** URL que codifica el QR de Luma; null mientras no haya entrada emitida. */
+  /** URL que codifica el QR; null mientras no haya entrada emitida. */
   qr: string | null;
+  /** Del equipo de Habi: su QR es su credencial, no una entrada de Luma. */
+  equipo?: boolean;
   /** Por qué todavía no hay QR, en palabras que se le puedan mostrar a alguien. */
   motivo?: string;
   /** Página de la entrada en Luma, para quien prefiera abrirla allá. */

@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 /**
  * El equipo de Habi que acompaña Habi Next.
  *
@@ -44,6 +46,20 @@ export const EQUIPO: Companero[] = [
   { email: "caterinsierra@habi.co", nombre: "Caterin Andrea", apellido: "Sierra Murcia", cedula: "1075675301", ciudad: "Bogotá", cargo: "Buyer" },
   { email: "elainerodriguez@habi.co", nombre: "Elaine", apellido: "Rodríguez Díaz", cedula: "1065576843", ciudad: "Barranquilla", cargo: "Buyer" },
   { email: "paolarubio@habi.co", nombre: "Paola", apellido: "Rubio", cedula: "1030560035", ciudad: "Bogotá", cargo: "Buyer" },
+  // Suman el 16 de octubre: entran a la experiencia sin registro en Luma.
+  { email: "paolacastro@habi.co", nombre: "Paola Andrea", apellido: "Castro Rubiano", cedula: "52838208", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "madianchitiva@habi.co", nombre: "Madian Gustavo", apellido: "Chitiva", cedula: "80502270", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "lorenarico@habi.co", nombre: "Lorena", apellido: "Rico Avilés", cedula: "1073707024", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "lorenagutierrez@habi.co", nombre: "Lorena", apellido: "Gutiérrez Suárez", cedula: "1109417758", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "juangalan@habicredit.co", nombre: "Juan Felipe", apellido: "Galán Landínez", cedula: "1000725854", ciudad: "Bogotá", cargo: "Habi Credit" },
+  { email: "carlosrios@habicredit.co", nombre: "Carlos Giovanny", apellido: "Ríos Caro", cedula: "80762092", ciudad: "Bogotá", cargo: "Habi Credit" },
+  { email: "luisaquijano@habicredit.co", nombre: "Luisa Fernanda", apellido: "Quijano Lozano", cedula: "1018444639", ciudad: "Bogotá", cargo: "Habi Credit" },
+  { email: "madeleingonzalez@habicredit.co", nombre: "Madelein Solimar", apellido: "González Montero", cedula: "1030661117", ciudad: "Bogotá", cargo: "Directora comercial · Habi Credit" },
+  { email: "michaelfelix@habicredit.co", nombre: "Michael Jair", apellido: "Félix Méndez", cedula: "1018500858", ciudad: "Bogotá", cargo: "Habi Credit" },
+  { email: "nadiapardo@habicredit.co", nombre: "Nadia Gretti", apellido: "Pardo Santana", ciudad: "Bogotá", cargo: "Habi Credit" },
+  { email: "sammyvargas@habicredit.co", nombre: "Sammy Jo", apellido: "Vargas Flórez", cedula: "1032370808", ciudad: "Bogotá", cargo: "Habi Credit" },
+  { email: "fernandopico@habi.co", nombre: "Fernando Enrique", apellido: "Pico Forero", cedula: "72219904", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "johanatrianavasallo@habi.co", nombre: "Nersi Johana", apellido: "Triana Vasallo", cedula: "52845292", ciudad: "Bogotá", cargo: "Equipo Habi" },
 ];
 
 const POR_CORREO = new Map(EQUIPO.map((c) => [c.email.toLowerCase(), c]));
@@ -60,3 +76,23 @@ export function esDelEquipo(email: string): boolean {
 /** Lo que ve el compañero en el reverso del carnet, donde los demás ven su QR. */
 export const AVISO_EQUIPO =
   "Eres del equipo Habi: tu escarapela no lleva QR porque no necesitas entrada. Compártela y nos vemos el 20 en la Av. 68.";
+
+/**
+ * El carnet del equipo lleva su propio QR, no el de Luma.
+ *
+ * Ellos no tienen entrada que escanear en la puerta, pero sí necesitan
+ * identificarse: el QR abre una página que dice quién es y de qué equipo, y
+ * lleva el logo de Habi encima para que de lejos se vea que es del staff y no
+ * de un asistente.
+ *
+ * El `hmac` evita que alguien se invente una credencial cambiando el correo
+ * en la dirección.
+ */
+export function selloDeEquipo(email: string, secreto: string): string {
+  return createHmac("sha256", secreto).update(`equipo:${email.trim().toLowerCase()}`).digest("base64url").slice(0, 16);
+}
+
+export function urlDeEquipo(email: string, secreto: string, sitio: string): string {
+  const e = encodeURIComponent(email.trim().toLowerCase());
+  return `${sitio}/staff/${e}?k=${selloDeEquipo(email, secreto)}`;
+}

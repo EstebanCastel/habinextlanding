@@ -593,6 +593,8 @@ export type OpcionesDeReverso = {
   cedula?: string;
   /** Qué falta para que haya QR, en palabras para la persona. */
   aviso?: string;
+  /** Del equipo de Habi: el QR es su credencial de staff, no una entrada. */
+  equipo?: boolean;
   recursos: Recursos;
   familia: string;
 };
@@ -635,7 +637,7 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   const arriba = D.lockup.y + lockupH + (o.formato === "story" ? 120 : 70);
   ctx.fillStyle = VIOLETA;
   ctx.font = `700 ${Math.round(w * 0.022)}px ${o.familia}`;
-  const rotulo = o.tier === "vip" ? "TU ENTRADA VIP" : "TU ENTRADA GENERAL";
+  const rotulo = o.equipo ? "EQUIPO HABI" : o.tier === "vip" ? "TU ENTRADA VIP" : "TU ENTRADA GENERAL";
   const esp = w * 0.022 * 0.3;
   dibujarEspaciado(ctx, rotulo, w / 2 - anchoEspaciado(ctx, rotulo, esp) / 2, arriba, esp);
 
@@ -648,6 +650,19 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesDeReverso) 
   if (o.qr) {
     const p = Math.round(lado * 0.07);
     ctx.drawImage(o.qr, Q.x + p, Q.y + p, Q.s - p * 2, Q.s - p * 2);
+    // El QR del equipo lleva el logo de Habi en el centro. De lejos se ve que
+    // no es la entrada de un asistente, y el QR se genera con corrección alta,
+    // así que tapar el centro no impide leerlo.
+    if (o.equipo) {
+      const l = Math.round(Q.s * 0.28);
+      const cx = Q.x + Q.s / 2 - l / 2;
+      const cy = Q.y + Q.s / 2 - l / 2;
+      const aire = Math.round(l * 0.16);
+      ctx.fillStyle = "#ffffff";
+      redondeado(ctx, cx - aire, cy - aire, l + aire * 2, l + aire * 2, Math.round(l * 0.2));
+      ctx.fill();
+      ctx.drawImage(o.recursos.habi, cx, cy, l, l);
+    }
   } else {
     ctx.fillStyle = "rgba(5,2,8,0.5)";
     ctx.font = `300 ${Math.round(w * 0.026)}px ${o.familia}`;

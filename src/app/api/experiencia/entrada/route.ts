@@ -1,4 +1,4 @@
-import { AVISO_EQUIPO } from "@/config/equipo";
+import { AVISO_EQUIPO, fichaDeEquipo, urlDeEquipo } from "@/config/equipo";
 import { entradaDe, type Entrada } from "@/lib/entrada";
 import { anotar, cambiar } from "@/lib/experiencia";
 import { dentroDelLimite, error, participanteActual, responder, vincularRegistroSiFalta } from "@/lib/experiencia-http";
@@ -24,7 +24,28 @@ export async function GET() {
   // Buscar la entrada recorre todos los registros: se intenta unas pocas
   // veces por persona cada diez minutos, no en cada recarga de la página.
   // Al equipo de Habi no se le busca entrada: no la tiene ni la necesita.
-  if (p.equipo && !p.registro) return responder({ ok: true, entrada: null, motivo: AVISO_EQUIPO });
+  // El equipo no tiene entrada en Luma, pero sí credencial: un QR propio que
+  // abre su ficha de staff. Es lo que los distingue de un asistente.
+  if (p.equipo && !p.registro) {
+    const ficha = p.email ? fichaDeEquipo(p.email) : undefined;
+    const secreto = process.env.EXPERIENCIA_SECRET ?? "";
+    const sitio = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+    if (!ficha || !secreto) return responder({ ok: true, entrada: null, motivo: AVISO_EQUIPO });
+    return responder({
+      ok: true,
+      entrada: {
+        tier: "general",
+        nombre: `${ficha.nombre ?? ""} ${ficha.apellido ?? ""}`.trim() || p.email!,
+        correo: p.email!,
+        ...(ficha.cedula ? { cedula: ficha.cedula } : {}),
+        qr: urlDeEquipo(p.email!, secreto, sitio),
+        equipo: true,
+        etapa: "aprobado",
+        token: "",
+      },
+      motivo: AVISO_EQUIPO,
+    });
+  }
 
   const buscar = !p.registro && dentroDelLimite(`entrada:${p.id}`, 4, 10 * 60_000);
   const conRegistro = p.registro || !buscar ? p : await vincularRegistroSiFalta(p);

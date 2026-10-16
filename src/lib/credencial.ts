@@ -286,6 +286,8 @@ export type OpcionesReverso = {
   familia: string;
   /** Qué mostrar si todavía no hay entrada aprobada. */
   aviso?: string;
+  /** Del equipo de Habi: el QR es su credencial y lleva el logo encima. */
+  equipo?: boolean;
 };
 
 /** El reverso: el QR de ingreso y los datos de la jornada. */
@@ -310,7 +312,8 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesReverso) {
   // --- rótulo ---
   ctx.fillStyle = VIOLETA;
   ctx.font = `700 22px ${o.familia}`;
-  dibujarEspaciado(ctx, "TU ENTRADA", w / 2 - anchoEspaciado(ctx, "TU ENTRADA", 22 * 0.3) / 2, 226, 22 * 0.3);
+  const rotulo = o.equipo ? "EQUIPO HABI" : "TU ENTRADA";
+  dibujarEspaciado(ctx, rotulo, w / 2 - anchoEspaciado(ctx, rotulo, 22 * 0.3) / 2, 226, 22 * 0.3);
   ctx.textAlign = "center";
 
   // --- el QR, en blanco y con aire: es lo que lee el lector ---
@@ -321,6 +324,18 @@ export function dibujarReverso(canvas: HTMLCanvasElement, o: OpcionesReverso) {
   if (o.qr) {
     const p = 44;
     ctx.drawImage(o.qr, Q.x + p, Q.y + p, Q.s - p * 2, Q.s - p * 2);
+    // El QR del equipo lleva el logo de Habi en el centro: de lejos se ve que
+    // no es la entrada de un asistente. El QR se genera con corrección alta,
+    // así que tapar el centro no lo daña.
+    if (o.equipo) {
+      const lado = Q.s * 0.3;
+      const cx = Q.x + Q.s / 2 - lado / 2;
+      const cy = Q.y + Q.s / 2 - lado / 2;
+      ctx.fillStyle = "#ffffff";
+      redondeado(ctx, cx - 14, cy - 14, lado + 28, lado + 28, 22);
+      ctx.fill();
+      ctx.drawImage(o.recursos.habi, cx, cy, lado, lado);
+    }
   } else {
     ctx.fillStyle = "rgba(5,2,8,0.45)";
     ctx.font = `300 26px ${o.familia}`;
