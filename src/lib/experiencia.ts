@@ -6,6 +6,7 @@ import { hmacHex, igualSeguro } from "./seguridad";
 import { anotar as anotarRegistro, porToken as registroPorToken, todos as todosLosRegistros, type Etapa, type Registro, type Tier } from "./registros";
 import type { Perfil } from "./linkedin";
 import { EVENT } from "@/config/event";
+import { turnoDe } from "@/config/agenda";
 import {
   MISIONES,
   NIVELES,
@@ -104,6 +105,11 @@ export type Participante = {
   vistasPrevias: Record<string, string>;
   /** Las sesiones de la agenda que marcó como «me interesa», con la fecha. */
   agenda?: Record<string, string>;
+  /**
+   * El turno de almuerzo que escogió, solo para quien tiene entrada VIP. El
+   * almuerzo va de 12:30 a 2:00 y la sala no da para todos a la vez.
+   */
+  almuerzo?: { turno: string; escogidoEn: string };
   /** Qué pases de billetera bajó (Apple, Google): cuándo la primera vez y cuántas veces. */
   pases?: Partial<Record<"apple" | "google", { primeraVez: string; veces: number }>>;
   bitacora: { en: string; que: string; detalle?: string }[];
@@ -678,6 +684,8 @@ export async function registrarVistaPrevia(id: string, red: string): Promise<voi
 /** Lo que la página necesita de la persona. Nunca incluye el token. */
 export type Vista = {
   id: string;
+  /** El turno de almuerzo que escogió, solo para VIP. */
+  almuerzo?: string;
   nombre: string;
   apellido: string;
   email?: string;
@@ -725,6 +733,7 @@ export function vistaDe(p: Participante): Vista {
     invitacion: p.invitacion,
     vistasPrevias: p.vistasPrevias,
     agenda: Object.keys(p.agenda ?? {}),
+    ...(p.almuerzo ? { almuerzo: p.almuerzo.turno } : {}),
     puntos: puntos(p),
     nivel: nivel(p),
   };
@@ -767,6 +776,61 @@ export async function marcarInteres(id: string, sesionId: string, gusta: boolean
     }).catch(() => null);
   }
   return { participante, conteos: await interesPorSesion() };
+}
+
+// ---------- almuerzo del VIP ----------
+
+const RUTA_ALMUERZO = "experiencia/almuerzo-cupos.json";
+type Cupos = { actualizadoEn: string; conteos: Record<string, number> };
+
+/** Cuántos escogieron cada turno. Es lo que decide si un turno sigue abierto. */
+export async function cuposDeAlmuerzo(): Promise<Record<string, number>> {
+  const d = await leer<Cupos>(RUTA_ALMUERZO);
+  return d?.conteos ?? {};
+}
+
+/**
+ * Guarda el turno de almuerzo de alguien.
+ *
+ * Solo para VIP: la entrada General no incluye almuerzo y ofrecérselo sería
+ * prometer algo que no compró. Cambiar de turno libera el anterior, así que el
+ * contador sube y baja; si el turno nuevo ya está lleno, no se cambia nada.
+ */
+export async function escogerAlmuerzo(
+  id: string,
+  turnoId: string
+): Promise<{ participante: Participante | null; cupos: Record<string, number>; motivo?: string }> {
+  const turno = turnoDe(turnoId);
+  if (!turno) return { participante: null, cupos: await cuposDeAlmuerzo(), motivo: "Ese turno no existe." };
+
+  const p = await porId(id);
+  if (!p) return { participante: null, cupos: await cuposDeAlmuerzo(), motivo: "No encontramos tu sesión." };
+  if (p.registro?.tier !== "vip") {
+    return { participante: null, cupos: await cuposDeAlmuerzo(), motivo: "El almuerzo va con la entrada VIP." };
+  }
+  const previo = p.almuerzo?.turno;
+  if (previo === turnoId) return { participante: p, cupos: await cuposDeAlmuerzo() };
+
+  let lleno = false;
+  const cupos = await modificar<Cupos>(RUTA_ALMUERZO, (d) => {
+    const conteos = { ...(d?.conteos ?? {}) };
+    if ((conteos[turnoId] ?? 0) >= turno.cupo) {
+      lleno = true;
+      return d ?? { actualizadoEn: new Date().toISOString(), conteos };
+    }
+    conteos[turnoId] = (conteos[turnoId] ?? 0) + 1;
+    if (previo) conteos[previo] = Math.max(0, (conteos[previo] ?? 0) - 1);
+    return { actualizadoEn: new Date().toISOString(), conteos };
+  }).catch(() => null);
+  if (lleno) {
+    return { participante: p, cupos: cupos?.conteos ?? (await cuposDeAlmuerzo()), motivo: "Ese turno se llenó. Escoge otro." };
+  }
+
+  const actualizado = await cambiar(id, (q) =>
+    anotar({ ...q, almuerzo: { turno: turnoId, escogidoEn: new Date().toISOString() } },
+      "escogió turno de almuerzo", `${turno.rotulo} · ${turno.desde} a ${turno.hasta}`)
+  );
+  return { participante: actualizado, cupos: cupos?.conteos ?? (await cuposDeAlmuerzo()) };
 }
 
 // ---------- panel ----------

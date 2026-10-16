@@ -496,3 +496,53 @@ export function proximo(ahora = new Date()): Proximo {
   }
   return { tipo: "hoy", sesion: sesionesDe("inspira").find(esSesion) ?? null, arranca: true };
 }
+
+/**
+ * Los tres turnos de almuerzo del VIP.
+ *
+ * El almuerzo va de 12:30 a 2:00 y la sala no da para todos a la vez, así que
+ * se parte en tres turnos de media hora. Escoger turno no es un trámite: es
+ * escoger qué charla no te pierdes, porque al mediodía va el bloque del futuro
+ * de Habi en el Salón Inspira. Por eso cada turno dice qué te pierdes y qué
+ * alcanzas si lo tomas.
+ *
+ * El cupo es por orden de llegada: cuando un turno se llena, deja de ofrecerse.
+ */
+export type TurnoAlmuerzo = {
+  id: string;
+  rotulo: string;
+  desde: string;
+  hasta: string;
+  /** Qué está pasando en los salones mientras dura este turno. */
+  teAlcanza: string;
+  cupo: number;
+};
+
+export const ALMUERZOS: TurnoAlmuerzo[] = [
+  {
+    id: "turno-1",
+    rotulo: "Primer turno",
+    desde: "12:30",
+    hasta: "1:00 p. m.",
+    teAlcanza: "Sales antes de que arranque la charla de construcción patrimonial.",
+    cupo: 90,
+  },
+  {
+    id: "turno-2",
+    rotulo: "Segundo turno",
+    desde: "1:00",
+    hasta: "1:30 p. m.",
+    teAlcanza: "Alcanzas el final del bloque del futuro de Habi y entras completo a la tarde.",
+    cupo: 90,
+  },
+  {
+    id: "turno-3",
+    rotulo: "Tercer turno",
+    desde: "1:30",
+    hasta: "2:00 p. m.",
+    teAlcanza: "Ves todo el bloque del futuro de Habi y almuerzas justo antes de la tarde.",
+    cupo: 90,
+  },
+];
+
+export const turnoDe = (id: string) => ALMUERZOS.find((t) => t.id === id);
