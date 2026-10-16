@@ -27,6 +27,16 @@ import type { EntradaVista } from "./entrada";
 import { avisarFallo, cargarImagenDeArchivo, claseCampo, clasesBoton, compartirArchivos, descargar, pedir, useMovil } from "./util";
 
 /**
+ * Cuándo se desplegó el diseño de la escarapela VIP (commit a217988).
+ *
+ * Los carnets guardados antes de esa hora no anotaban con qué entrada se
+ * dibujaron y salieron todos con el diseño de General, así que para un VIP
+ * cualquiera de esos está desfasado. Es una fecha fija a propósito: el dato
+ * que haría falta no existe hacia atrás y no se puede inventar.
+ */
+const VIP_DESDE = "2026-10-09T19:50:30.000Z";
+
+/**
  * El carnet: una carta con dos caras y un formulario.
  *
  * Al frente la pieza que se publica, con los dos asteriscos vivos encima
@@ -155,8 +165,19 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
     };
   }, [entrada?.qr]);
 
+  // El carnet guardado deja de valer cuando la persona cambió de entrada: quien
+  // pasó a VIP después de armarlo seguía viendo, descargando y publicando el
+  // diseño de General. Los carnets viejos no anotaban con qué entrada se
+  // dibujaron, así que para esos manda la fecha: cualquiera guardado antes de
+  // que existiera el diseño VIP es de General con certeza.
+  const carnetDesfasado = yo?.carnet
+    ? yo.carnet.tier
+      ? yo.carnet.tier !== tier
+      : tier === "vip" && yo.carnet.renderizadoEn < VIP_DESDE
+    : false;
+
   // Sin foto nueva, se muestra el carnet guardado tal cual; con foto, el vivo.
-  const mostrandoGuardado = !foto && Boolean(guardado[formato]);
+  const mostrandoGuardado = !foto && !carnetDesfasado && Boolean(guardado[formato]);
 
   // Redibujo del frente con cada cambio, agrupado por cuadro de animación.
   useEffect(() => {
@@ -164,7 +185,7 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
     cancelAnimationFrame(cuadro.current);
     const c = lienzo.current;
     cuadro.current = requestAnimationFrame(() => {
-      const listo = guardado[formato];
+      const listo = carnetDesfasado ? undefined : guardado[formato];
       if (!foto && listo) {
         const D = DISENO[formato];
         c.width = D.w;
@@ -175,7 +196,7 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
       dibujar(c, { formato, nombre, apellido, foto, encuadre, recursos: recursos[formato], familia, sinAsteriscos: true, tier });
     });
     return () => cancelAnimationFrame(cuadro.current);
-  }, [recursos, formato, nombre, apellido, foto, encuadre, familia, guardado, tier]);
+  }, [recursos, formato, nombre, apellido, foto, encuadre, familia, guardado, tier, carnetDesfasado]);
 
   // El reverso cambia menos: nombre, formato y la entrada.
   useEffect(() => {
@@ -375,7 +396,9 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
         ? "Este es tu QR de equipo: dice quién eres y que trabajas en el evento. Toca la carta para volver al frente."
         : "Este es el QR que leen en la puerta. Toca la carta para volver al frente."
       : "Atrás va tu entrada: el QR aparece cuando esté confirmada."
-    : !hayQr || faltaBilletera
+    : carnetDesfasado && !foto
+      ? "Tu entrada cambió a VIP y tu carnet tiene el diseño anterior. Vuelve a poner tu foto y descárgalo otra vez."
+      : !hayQr || faltaBilletera
       ? notaBilletera(hayQr, billetera, aparato)
       : foto
         ? "Arrastra la foto para acomodarla. El carnet sale en blanco y negro, como la pieza oficial."

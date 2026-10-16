@@ -75,7 +75,8 @@ export type Participante = {
   nombre?: string;
   apellido?: string;
   email?: string;
-  carnet?: { renderizadoEn: string; formatos: Formato[]; veces: number };
+  /** `tier` es con qué entrada se dibujó: si cambia, el guardado deja de valer. */
+  carnet?: { renderizadoEn: string; formatos: Formato[]; veces: number; tier?: Tier };
   linkedin?: {
     sub: string;
     nombre: string;

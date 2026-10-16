@@ -50,7 +50,14 @@ export async function POST(request: Request) {
       ...q,
       nombre: nombre || q.nombre,
       apellido: apellido || q.apellido,
-      carnet: { renderizadoEn: new Date().toISOString(), formatos, veces: (q.carnet?.veces ?? 0) + 1 },
+      carnet: {
+        renderizadoEn: new Date().toISOString(),
+        formatos,
+        veces: (q.carnet?.veces ?? 0) + 1,
+        // Con qué entrada se dibujó. Sin esto, a quien pasaba a VIP le seguía
+        // saliendo —y compartiendo— el carnet de General que ya tenía guardado.
+        ...(q.registro?.tier ? { tier: q.registro.tier } : {}),
+      },
     };
     return marcar(anotar(conCarnet, "guardó su carnet", formato), "carnet");
   });
