@@ -13,6 +13,7 @@
  * quedarse en blanco.
  */
 
+import { fichaDeEquipo, selloDeEquipo, urlDeEquipo } from "@/config/equipo";
 import { eventoDeTier, traerInvitado } from "./luma";
 import { porToken, type Registro, type Tier } from "./registros";
 
@@ -74,5 +75,40 @@ export async function entradaDe(token: string): Promise<Entrada | null> {
     qr,
     ...(qr ? {} : { motivo: "Tu entrada está aprobada; el QR tarda unos minutos en emitirse." }),
     ...(typeof g?.url === "string" ? { enLuma: g.url } : {}),
+  };
+}
+
+/**
+ * La «entrada» de quien trabaja en el evento.
+ *
+ * El equipo no tiene cupo en Luma —entra sin registro— pero sí necesita
+ * identificarse, así que su QR no es el de la puerta sino el de su propia
+ * ficha de staff, firmada con el sello del correo. Con esto su credencial se
+ * arma igual que la de un asistente y cabe en los mismos sitios: el reverso
+ * del carnet y el pase de la billetera.
+ *
+ * El token de un registro abre su expediente; el equipo no tiene registro.
+ * En su lugar va el sello, que sirve para lo mismo acá —distinguir un pase de
+ * otro y mantenerlo estable entre descargas— y que de todos modos ya viaja
+ * dentro de su propio QR.
+ *
+ * Devuelve `null` cuando ese correo no está en la lista o falta el secreto:
+ * sin sello no hay credencial que valga, y una sin firmar sería peor que
+ * ninguna.
+ */
+export function entradaDeEquipo(email: string, secreto: string, sitio: string): Entrada | null {
+  const correo = email.trim().toLowerCase();
+  const ficha = correo ? fichaDeEquipo(correo) : undefined;
+  if (!ficha || !secreto) return null;
+
+  return {
+    tier: "general",
+    nombre: `${ficha.nombre ?? ""} ${ficha.apellido ?? ""}`.trim() || correo,
+    correo,
+    ...(ficha.cedula ? { cedula: ficha.cedula } : {}),
+    qr: urlDeEquipo(correo, secreto, sitio),
+    equipo: true,
+    etapa: "aprobado",
+    token: `equipo:${selloDeEquipo(correo, secreto)}`,
   };
 }

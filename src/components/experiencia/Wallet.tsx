@@ -124,6 +124,7 @@ export default function Wallet({
   listo,
   disponible,
   tier,
+  equipo = false,
   alinear = "centro",
   segunAparato = false,
   conNota = true,
@@ -132,6 +133,8 @@ export default function Wallet({
   listo: boolean;
   disponible: { apple: boolean; google: boolean };
   tier: Tier;
+  /** Del equipo de Habi: lo que guarda es su credencial de staff, no una entrada. */
+  equipo?: boolean;
   /** Centrado bajo una pieza, o pegado a la izquierda dentro de un formulario. */
   alinear?: "centro" | "inicio";
   /** Solo el distintivo del aparato: Apple en iPhone/Mac, Google en Android; los dos si no se sabe. */
@@ -154,6 +157,7 @@ export default function Wallet({
             key={destino}
             destino={destino}
             tier={tier}
+            equipo={equipo}
             href={conQr && disponible[destino] && token ? `/api/entrada/${destino}?t=${encodeURIComponent(token)}` : null}
           />
         ))}
@@ -173,9 +177,11 @@ const BADGES: Record<Destino, { src: string; nombre: string; ancho: number; form
  * Un distintivo. Sin `href` queda atenuado y sin acción, pero visible: la
  * persona ve que la opción existe y la nota de abajo dice cuándo se enciende.
  */
-function Distintivo({ destino, tier, href }: { destino: Destino; tier: Tier; href: string | null }) {
+function Distintivo({ destino, tier, equipo, href }: { destino: Destino; tier: Tier; equipo: boolean; href: string | null }) {
   const b = BADGES[destino];
-  const etiqueta = `Agregar tu entrada ${etiquetaTier(tier)} a ${b.nombre}`;
+  const etiqueta = equipo
+    ? `Agregar tu credencial de equipo a ${b.nombre}`
+    : `Agregar tu entrada ${etiquetaTier(tier)} a ${b.nombre}`;
   const base = `inline-flex shrink-0 ${b.forma} transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-soft/70 focus-visible:ring-offset-2 focus-visible:ring-offset-night`;
   // Es un SVG estático servido desde /public: next/image no le aporta nada y
   // los lineamientos de Google piden mostrarlo tal cual.

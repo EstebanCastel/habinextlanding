@@ -33,6 +33,14 @@ const VENCE = "2026-10-21T06:00:00-05:00";
 
 const etiquetaTier = (t: Entrada["tier"]) => (t === "vip" ? "VIP" : "General");
 
+/**
+ * Lo que dice el pase de un vistazo: el tipo de entrada, o «Equipo» para
+ * quien trabaja en el evento. El equipo no tiene entrada en Luma; su QR abre
+ * su ficha de staff, así que llamarlo «General» sería mentirle a quien lo
+ * mira en la puerta.
+ */
+const rotulo = (e: Entrada) => (e.equipo ? "Equipo" : etiquetaTier(e.tier));
+
 /** Una variable pegada desde un archivo suele llegar con `\n` literal. */
 const conSaltos = (s: string) => s.replace(/\\n/g, "\n");
 
@@ -97,7 +105,9 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
     passTypeIdentifier: c.tipo,
     teamIdentifier: c.equipo,
     organizationName: "Habi",
-    description: `${EVENT.fullName} · Entrada ${etiquetaTier(e.tier)}`,
+    description: e.equipo
+      ? `${EVENT.fullName} · Credencial del equipo`
+      : `${EVENT.fullName} · Entrada ${etiquetaTier(e.tier)}`,
     serialNumber: e.token,
     backgroundColor: COLOR_FONDO,
     foregroundColor: COLOR_TEXTO,
@@ -109,7 +119,7 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
     sharingProhibited: true,
     locations: [{ latitude: 4.66016, longitude: -74.0993, relevantText: `Estás en ${EVENT.venue}` }],
     // El mensaje del código es el QR de Luma tal cual: es lo que lee la puerta.
-    barcodes: [{ format: "PKBarcodeFormatQR", message: e.qr, messageEncoding: "iso-8859-1", altText: etiquetaTier(e.tier) }],
+    barcodes: [{ format: "PKBarcodeFormatQR", message: e.qr, messageEncoding: "iso-8859-1", altText: rotulo(e) }],
     // Lo que Wallet usa para sugerir el pase a la hora y en el lugar del evento.
     semantics: {
       eventType: "PKEventTypeGeneric",
@@ -125,7 +135,7 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
     // un nombre largo se montaba sobre los asteriscos. El nombre va debajo,
     // a tamaño normal; el tipo de entrada arriba a la derecha.
     eventTicket: {
-      headerFields: [{ key: "tier", label: "ENTRADA", value: etiquetaTier(e.tier) }],
+      headerFields: [{ key: "tier", label: e.equipo ? "ACCESO" : "ENTRADA", value: rotulo(e) }],
       secondaryFields: [{ key: "nombre", label: "ASISTENTE", value: e.nombre }],
       // Sin hora: el horario del día todavía se está cerrando.
       auxiliaryFields: [
@@ -135,6 +145,16 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
       backFields: [
         { key: "correo", label: "Correo", value: e.correo },
         // Sin la cédula: es la clave con la que se entra a la experiencia.
+        ...(e.equipo
+          ? [
+              {
+                key: "equipo",
+                label: "Equipo Habi",
+                value:
+                  "Esta no es una entrada y no ocupa cupo: el equipo entra sin registro. El QR abre tu ficha de staff.",
+              },
+            ]
+          : []),
         {
           key: "credencial",
           label: "Tu credencial y tu carnet",
@@ -357,9 +377,11 @@ function objetoGoogle(id: string, clase: string, e: Entrada, sitio: string) {
     state: "ACTIVE",
     hexBackgroundColor: "#07040d",
     // El valor del código es el QR de Luma tal cual: es lo que lee la puerta.
-    barcode: { type: "QR_CODE", value: e.qr, alternateText: etiquetaTier(e.tier) },
+    barcode: { type: "QR_CODE", value: e.qr, alternateText: rotulo(e) },
     ticketHolderName: e.nombre,
-    ticketType: { defaultValue: { language: "es", value: `Entrada ${etiquetaTier(e.tier)}` } },
+    ticketType: {
+      defaultValue: { language: "es", value: e.equipo ? "Equipo Habi" : `Entrada ${etiquetaTier(e.tier)}` },
+    },
     linksModuleData: {
       uris: [
         { uri: `${sitio}/experiencia/carnet`, description: "Tu credencial y tu carnet", id: "carnet" },
@@ -369,7 +391,18 @@ function objetoGoogle(id: string, clase: string, e: Entrada, sitio: string) {
     },
     // Sin la cédula: en la puerta se lee el QR, y la cédula es la clave con
     // la que se entra a la experiencia; no va en algo que se muestra.
-    textModulesData: [{ header: "Lugar", body: `${EVENT.venue}, ${EVENT.city}`, id: "lugar" }],
+    textModulesData: [
+      { header: "Lugar", body: `${EVENT.venue}, ${EVENT.city}`, id: "lugar" },
+      ...(e.equipo
+        ? [
+            {
+              header: "Equipo Habi",
+              body: "Esta no es una entrada y no ocupa cupo: el equipo entra sin registro. El QR abre tu ficha de staff.",
+              id: "equipo",
+            },
+          ]
+        : []),
+    ],
   };
 }
 

@@ -73,9 +73,9 @@ export function esDelEquipo(email: string): boolean {
   return POR_CORREO.has(email.trim().toLowerCase());
 }
 
-/** Lo que ve el compañero en el reverso del carnet, donde los demás ven su QR. */
+/** Lo que acompaña al carnet del compañero, para que sepa qué es ese QR. */
 export const AVISO_EQUIPO =
-  "Eres del equipo Habi: tu escarapela no lleva QR porque no necesitas entrada. Compártela y nos vemos el 20 en la Av. 68.";
+  "Eres del equipo Habi: tu QR no es una entrada de Luma ni ocupa cupo, es tu credencial de staff. Guárdala en el teléfono y nos vemos el 20 en la Av. 68.";
 
 /**
  * El carnet del equipo lleva su propio QR, no el de Luma.

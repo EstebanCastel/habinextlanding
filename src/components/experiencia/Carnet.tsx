@@ -364,11 +364,16 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
   const D = DISENO[formato];
   const A = D.asteriscos;
   const hayQr = Boolean(entrada?.qr) && entrada?.etapa !== "rechazado";
+  // El equipo no tiene entrada: su QR abre su ficha de staff. Lo que cambia
+  // son las palabras, no el camino: guarda su credencial igual que los demás.
+  const esEquipo = Boolean(entrada?.equipo);
   const aparato = useAparato();
   const faltaBilletera = !(aparato === "android" ? billetera.google : aparato === "apple" ? billetera.apple : billetera.apple && billetera.google);
   const pista = volteado
     ? hayQr
-      ? "Este es el QR que leen en la puerta. Toca la carta para volver al frente."
+      ? esEquipo
+        ? "Este es tu QR de equipo: dice quién eres y que trabajas en el evento. Toca la carta para volver al frente."
+        : "Este es el QR que leen en la puerta. Toca la carta para volver al frente."
       : "Atrás va tu entrada: el QR aparece cuando esté confirmada."
     : !hayQr || faltaBilletera
       ? notaBilletera(hayQr, billetera, aparato)
@@ -478,9 +483,9 @@ export default function Carnet({ yo, alCambiar, entrada, motivo, billetera, li, 
               cuando no se sabe cuál es. */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             <button type="button" onClick={() => setVolteado((v) => !v)} className={`${clasesBoton.borde} !py-3`} aria-pressed={volteado}>
-              {volteado ? "Ver el frente" : hayQr ? "Ver mi QR de entrada" : "Ver el reverso"}
+              {volteado ? "Ver el frente" : hayQr ? (esEquipo ? "Ver mi QR de equipo" : "Ver mi QR de entrada") : "Ver el reverso"}
             </button>
-            <Wallet token={entrada?.token} listo={hayQr} disponible={billetera} tier={tier} segunAparato conNota={false} />
+            <Wallet token={entrada?.token} listo={hayQr} disponible={billetera} tier={tier} equipo={esEquipo} segunAparato conNota={false} />
             {volteado && hayQr ? (
               <button type="button" onClick={guardarQr} className={clasesBoton.suave}>
                 Guardar el QR como imagen

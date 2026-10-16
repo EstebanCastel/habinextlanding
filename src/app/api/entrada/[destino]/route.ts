@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import { entradaDe } from "@/lib/entrada";
+import { entradaDe, entradaDeEquipo } from "@/lib/entrada";
 import { anotar, cambiar } from "@/lib/experiencia";
 import { participanteActual } from "@/lib/experiencia-http";
 import { paseApple, paseGoogle } from "@/lib/wallet";
@@ -10,6 +10,10 @@ import { paseApple, paseGoogle } from "@/lib/wallet";
  * El token llega por la URL, pero no basta con tenerlo: se comprueba que sea
  * el del participante en sesión. Un token que circule en un WhatsApp no debe
  * servirle a otra persona para bajarse una entrada ajena.
+ *
+ * El equipo de Habi también baja su pase por acá. No tiene entrada en Luma,
+ * así que el suyo se arma con su ficha de staff (`entradaDeEquipo`): mismo
+ * pase, mismo camino, pero el QR abre su credencial y no la puerta.
  *
  * Se atiende de dos maneras, según la cabecera `Accept`:
  *
@@ -50,7 +54,9 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
 
   try {
     const p = await participanteActual();
-    if (!p?.registro) return fallar("sin-sesion", "Entra con tu correo para bajar tu entrada.", 401);
+    if (!p || (!p.registro && !p.equipo)) {
+      return fallar("sin-sesion", "Entra con tu correo para bajar tu entrada.", 401);
+    }
     // Queda anotado quién bajó qué pase y cuántas veces: es la única forma de
     // medir Apple Wallet (el pase no avisa cuando se guarda). Va después de
     // responder para no demorar la entrega del archivo.
@@ -65,11 +71,13 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
           );
         }).catch(() => null)
       );
-    const pedido = new URL(request.url).searchParams.get("t");
-    if (pedido && pedido !== p.registro.token) return fallar("ajena", "Esa entrada no es tuya.", 403);
-
-    const entrada = await entradaDe(p.registro.token).catch(() => null);
+    const entrada = p.registro
+      ? await entradaDe(p.registro.token).catch(() => null)
+      : entradaDeEquipo(p.email ?? "", process.env.EXPERIENCIA_SECRET ?? "", SITIO);
     if (!entrada) return fallar("sin-entrada", "No encontramos tu entrada.", 404);
+
+    const pedido = new URL(request.url).searchParams.get("t");
+    if (pedido && pedido !== entrada.token) return fallar("ajena", "Esa entrada no es tuya.", 403);
     if (!entrada.qr) return fallar("sin-qr", entrada.motivo ?? "Tu entrada todavía no tiene QR.", 409);
 
     if (destino === "google") {
@@ -91,7 +99,7 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
     return new NextResponse(new Uint8Array(r.archivo), {
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
-        "Content-Disposition": `attachment; filename="habinext-${entrada.tier === "vip" ? "vip" : "general"}.pkpass"`,
+        "Content-Disposition": `attachment; filename="habinext-${entrada.equipo ? "equipo" : entrada.tier === "vip" ? "vip" : "general"}.pkpass"`,
         "Cache-Control": "no-store",
       },
     });
