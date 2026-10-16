@@ -1,4 +1,4 @@
-import { fichaDeEquipo } from "@/config/equipo";
+import { esDelEquipo, fichaDeEquipo } from "@/config/equipo";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { borrar, crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
@@ -243,7 +243,23 @@ export async function crear(): Promise<Participante> {
 
 export async function porId(id: string): Promise<Participante | null> {
   if (!esId(id)) return null;
-  return leer<Participante>(rutaPersona(id));
+  return conEquipoAlDia(await leer<Participante>(rutaPersona(id)));
+}
+
+/**
+ * Resuelve «¿es del equipo?» contra la lista de hoy, no contra lo que se
+ * guardó el día que la persona entró.
+ *
+ * La lista del equipo creció después de que varios ya habían entrado, y su
+ * documento se quedó sin la marca: seguían viendo el carnet de asistente —o
+ * peor, el aviso de un registro viejo de Luma— en vez de su credencial. La
+ * lista manda, así que se resuelve al leer.
+ */
+function conEquipoAlDia(p: Participante | null): Participante | null {
+  if (!p?.email) return p;
+  const toca = esDelEquipo(p.email);
+  if (toca === Boolean(p.equipo)) return p;
+  return toca ? { ...p, equipo: true } : { ...p, equipo: undefined };
 }
 
 export async function porLinkedIn(sub: string): Promise<Participante | null> {

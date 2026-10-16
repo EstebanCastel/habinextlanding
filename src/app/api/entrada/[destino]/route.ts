@@ -71,9 +71,13 @@ export async function GET(request: Request, contexto: { params: Promise<{ destin
           );
         }).catch(() => null)
       );
-    const entrada = p.registro
-      ? await entradaDe(p.registro.token).catch(() => null)
-      : entradaDeEquipo(p.email ?? "", process.env.EXPERIENCIA_SECRET ?? "", SITIO);
+    // El equipo va primero, tenga o no un registro de Luma encima: su pase es
+    // su credencial de staff, no una entrada.
+    const entrada = p.equipo
+      ? entradaDeEquipo(p.email ?? "", process.env.EXPERIENCIA_SECRET ?? "", SITIO)
+      : p.registro
+        ? await entradaDe(p.registro.token).catch(() => null)
+        : null;
     if (!entrada) return fallar("sin-entrada", "No encontramos tu entrada.", 404);
 
     const pedido = new URL(request.url).searchParams.get("t");

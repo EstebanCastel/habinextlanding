@@ -26,7 +26,12 @@ export async function GET() {
   // Al equipo de Habi no se le busca entrada: no la tiene ni la necesita.
   // El equipo no tiene entrada en Luma, pero sí credencial: un QR propio que
   // abre su ficha de staff. Es lo que los distingue de un asistente.
-  if (p.equipo && !p.registro) {
+  //
+  // Gana sobre cualquier registro de Luma que arrastre esa persona, incluso
+  // uno rechazado: a varios del equipo se les dio acceso a la experiencia sin
+  // pasar por Luma, y a quien quedó con un registro viejo encima el carnet le
+  // mostraba «este registro no está activo» en vez de su credencial.
+  if (p.equipo) {
     const credencial = entradaDeEquipo(
       p.email ?? "",
       process.env.EXPERIENCIA_SECRET ?? "",
