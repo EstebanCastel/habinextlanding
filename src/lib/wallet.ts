@@ -136,7 +136,7 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
     // a tamaño normal; el tipo de entrada arriba a la derecha.
     eventTicket: {
       headerFields: [{ key: "tier", label: e.equipo ? "ACCESO" : "ENTRADA", value: rotulo(e) }],
-      secondaryFields: [{ key: "nombre", label: "ASISTENTE", value: e.nombre }],
+      secondaryFields: [{ key: "nombre", label: e.equipo ? "NOMBRE" : "ASISTENTE", value: e.nombre }],
       // Sin hora: el horario del día todavía se está cerrando.
       auxiliaryFields: [
         { key: "sede", label: "LUGAR", value: "Centro de Convenciones Av. 68" },
