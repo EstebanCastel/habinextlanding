@@ -60,6 +60,14 @@ export const EQUIPO: Companero[] = [
   { email: "sammyvargas@habicredit.co", nombre: "Sammy Jo", apellido: "Vargas Flórez", cedula: "1032370808", ciudad: "Bogotá", cargo: "Habi Credit" },
   { email: "fernandopico@habi.co", nombre: "Fernando Enrique", apellido: "Pico Forero", cedula: "72219904", ciudad: "Bogotá", cargo: "Equipo Habi" },
   { email: "johanatrianavasallo@habi.co", nombre: "Nersi Johana", apellido: "Triana Vasallo", cedula: "52845292", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  // Trabajan el evento: entran con credencial de equipo, no con entrada. Su
+  // registro General en Luma se dio de baja el 16 de octubre para que no
+  // ocupara cupo. A Mariam no se le pone cédula porque la que traía su
+  // registro (1111111110) era de relleno: la fija ella al entrar.
+  { email: "feliperestrepo@habi.co", nombre: "Felipe", apellido: "Restrepo Pérez", cedula: "1128282029", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "mariamsantiago.ext@tuhabi.mx", nombre: "Mariam", apellido: "Santiago", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "estebancastelblanco@habi.co", nombre: "Esteban", apellido: "Castelblanco", cedula: "1021632809", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "sebastian@habi.co", nombre: "Sebastián", apellido: "Noguera Escallón", cedula: "1020718014", ciudad: "Bogotá", cargo: "Equipo Habi" },
 ];
 
 const POR_CORREO = new Map(EQUIPO.map((c) => [c.email.toLowerCase(), c]));
