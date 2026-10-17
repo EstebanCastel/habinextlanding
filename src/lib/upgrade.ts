@@ -47,6 +47,7 @@ export async function marcarUpgradePagado(
   registro: Registro,
   decididoPor = "panel · upgrade pagado"
 ): Promise<{ ok: boolean; nota: string }> {
+  if (!UPGRADE_ABIERTO) return { ok: false, nota: UPGRADE_CERRADO };
   if (registro.tier === "vip") return { ok: false, nota: "Esa persona ya es VIP" };
 
   const eventoVip = eventoDeTier("vip");
@@ -188,6 +189,23 @@ async function borrarLaGeneral(registro: Registro, tokenVip: string): Promise<bo
   return true;
 }
 
+/**
+ * El upgrade a VIP está cerrado desde el 17 de octubre, por orden de Esteban.
+ *
+ * Faltan tres días para el evento: mover gente entre los dos eventos de Luma a
+ * estas alturas deja duplicados que después hay que deshacer a mano, y el cupo
+ * VIP ya está donde tiene que estar. Apagarlo acá cubre las tres puertas: el
+ * check del panel, el botón que manda el link de pago, y el «Prefiero el VIP»
+ * que llega por WhatsApp.
+ *
+ * Para reabrirlo basta poner esto en `true`; no hay nada más que tocar.
+ */
+export const UPGRADE_ABIERTO = false;
+
+/** Lo que se responde cuando alguien intenta usar el upgrade estando cerrado. */
+export const UPGRADE_CERRADO =
+  "El upgrade a VIP está cerrado. Si hay que mover a alguien, se hace a mano y con permiso.";
+
 /** El cobro del cambio de General a VIP: un link de Wompi de monto fijo. */
 export const UPGRADE_VIP = {
   monto: "$160.000",
@@ -206,6 +224,7 @@ export const UPGRADE_VIP = {
  * gasta el código y ocupa un cupo que después hay que deshacer.
  */
 export async function mandarLinkDeUpgrade(registro: Registro): Promise<{ ok: boolean; nota: string }> {
+  if (!UPGRADE_ABIERTO) return { ok: false, nota: UPGRADE_CERRADO };
   const nombre = registro.luma.nombreCorto || registro.luma.nombre || "";
   if (!registro.telefono) return { ok: false, nota: `${nombre || "Esa persona"} no tiene un celular usable` };
 

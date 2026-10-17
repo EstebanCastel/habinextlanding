@@ -1,4 +1,5 @@
 import { CANALES, NOMBRE_CANAL } from "@/lib/recuperacion";
+import { UPGRADE_ABIERTO } from "@/lib/upgrade";
 import { diferenciaVip, precioVigente, type Registro } from "@/lib/registros";
 import { ETAPAS, hora, LUMA_INVITADOS } from "./comunes";
 
@@ -15,6 +16,10 @@ import { ETAPAS, hora, LUMA_INVITADOS } from "./comunes";
  * volver a entrar.
  */
 function UpgradeVip({ r }: { r: Registro }) {
+  // Cerrado desde el 17 de octubre: ver `UPGRADE_ABIERTO` en `lib/upgrade`.
+  // Se esconde el formulario entero en vez de dejarlo dando un error, que
+  // invita a insistir.
+  if (!UPGRADE_ABIERTO) return null;
   if (r.tier !== "general") return null;
   // Quien entró con cortesía no pagó nada por la General, así que el upgrade
   // le cuesta la VIP entera; quien sí la pagó, solo la diferencia. Es el mismo

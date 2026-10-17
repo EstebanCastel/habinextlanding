@@ -11,6 +11,7 @@ import {
   RESPUESTA_BAJA,
 } from "@/lib/bot";
 import { tokenValido } from "@/lib/seguridad";
+import { UPGRADE_ABIERTO } from "@/lib/upgrade";
 import { anotar, normalizarTelefono, porTelefono, porToken, type Registro } from "@/lib/registros";
 import { enviarTexto } from "@/lib/whatsapp";
 import { escribir, modificar } from "@/lib/almacen";
@@ -413,6 +414,21 @@ async function procesarEntrantes(resultados: Resultado[]): Promise<number> {
     // Se hace en línea y no en `after` porque toca Luma en dos eventos y hay
     // que saber si salió bien antes de responderle.
     if (esBotonVip) {
+      // El upgrade está cerrado: la plantilla de Meta todavía trae el botón
+      // —cambiarla rompe el envío en silencio— pero tocarlo ya no mueve a
+      // nadie de evento. Lo recoge una persona.
+      if (!UPGRADE_ABIERTO) {
+        await escalarAUnaPersona(registro, "tocó «Prefiero el VIP» con el upgrade ya cerrado");
+        if (registro.telefono) {
+          await enviarTexto({
+            a: registro.telefono,
+            texto:
+              "¡Gracias por avisarnos! Ya estamos muy cerca del evento y el cambio a VIP lo estamos " +
+              "haciendo uno por uno. Una persona del equipo te escribe por acá.",
+          }).catch(() => null);
+        }
+        continue;
+      }
       const res = await pasarAVip(registro);
       if (!res.ok) {
         console.warn("[bot] no se pudo pasar a VIP:", res.nota);
