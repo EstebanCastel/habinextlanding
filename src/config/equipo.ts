@@ -68,6 +68,10 @@ export const EQUIPO: Companero[] = [
   { email: "mariamsantiago.ext@tuhabi.mx", nombre: "Mariam", apellido: "Santiago", ciudad: "Bogotá", cargo: "Equipo Habi" },
   { email: "estebancastelblanco@habi.co", nombre: "Esteban", apellido: "Castelblanco", cedula: "1021632809", ciudad: "Bogotá", cargo: "Equipo Habi" },
   { email: "sebastian@habi.co", nombre: "Sebastián", apellido: "Noguera Escallón", cedula: "1020718014", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  // Cuenta de prueba, para revisar el carnet de equipo y su QR sin tocar el de
+  // una persona de verdad. Su correo lleva `+` para que todo lo que salga
+  // caiga en la bandeja de Esteban, y por eso los conteos la descartan.
+  { email: "estebancastelblanco+equipo@habi.co", nombre: "Prueba", apellido: "Equipo", cedula: "3333333333", ciudad: "Bogotá", cargo: "Cuenta de prueba" },
 ];
 
 const POR_CORREO = new Map(EQUIPO.map((c) => [c.email.toLowerCase(), c]));

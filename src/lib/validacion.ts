@@ -36,7 +36,18 @@ export type Asistente = {
   correo: string;
   /** El cargo, solo para el equipo. */
   cargo?: string;
+  /** Cuenta de prueba: se escanea igual, pero no cuenta en el padrón. */
+  prueba?: boolean;
 };
+
+/**
+ * Las cuentas con las que se revisa que todo funcione.
+ *
+ * Se escanean como cualquiera —ese es el punto— pero no entran en el
+ * denominador: si el padrón dice «742 con entrada» ese número tiene que ser
+ * el de gente de verdad, no el de gente más tres pruebas.
+ */
+const esPrueba = (correo: string) => /prueba|ejemplo|estebancastelblanco\+/i.test(correo);
 
 export type Marca = {
   id: string;
@@ -108,7 +119,13 @@ export async function armarPadron(): Promise<Padron> {
       if (g.estado !== "approved") continue;
       const id = pkDeQr(g.qr) || g.id;
       if (!id) continue;
-      gente.push({ id, tipo, nombre: g.nombre || g.email, correo: g.email });
+      gente.push({
+        id,
+        tipo,
+        nombre: g.nombre || g.email,
+        correo: g.email,
+        ...(esPrueba(g.email) ? { prueba: true } : {}),
+      });
     }
   }
 
@@ -120,6 +137,7 @@ export async function armarPadron(): Promise<Padron> {
       nombre: `${c.nombre ?? ""} ${c.apellido ?? ""}`.trim() || c.email,
       correo: c.email,
       ...(c.cargo ? { cargo: c.cargo } : {}),
+      ...(esPrueba(c.email) ? { prueba: true } : {}),
     });
   }
 
@@ -309,10 +327,10 @@ export async function conteo(): Promise<Conteo> {
     equipo,
     total: general + vip + equipo,
     padron: {
-      general: gente.filter((p) => p.tipo === "general").length,
-      vip: gente.filter((p) => p.tipo === "vip").length,
-      equipo: gente.filter((p) => p.tipo === "equipo").length,
-      total: gente.length,
+      general: gente.filter((p) => p.tipo === "general" && !p.prueba).length,
+      vip: gente.filter((p) => p.tipo === "vip" && !p.prueba).length,
+      equipo: gente.filter((p) => p.tipo === "equipo" && !p.prueba).length,
+      total: gente.filter((p) => !p.prueba).length,
     },
     almuerzo: { total: rutasAlmuerzo.length, porTurno },
     actualizadoEn: new Date().toISOString(),
@@ -326,6 +344,20 @@ export async function ultimas(modo: Modo, cuantas = 12): Promise<Marca[]> {
     (m): m is Marca => Boolean(m)
   );
   return marcas.sort((a, b) => b.en.localeCompare(a.en)).slice(0, cuantas);
+}
+
+/**
+ * Borra todas las marcas de un modo: la puerta vuelve a cero.
+ *
+ * Existe para una sola cosa: el día del evento, antes de abrir, hay que
+ * limpiar lo que dejaron las pruebas. Sin esto el primer número que ve el
+ * equipo en la puerta ya viene sucio y nadie sabe cuánto de eso es real.
+ */
+export async function vaciar(modo: Modo): Promise<number> {
+  const { borrar } = await import("./almacen");
+  const rutas = await listarRutas(`validacion/${modo}/`, 5000).catch(() => [] as string[]);
+  await Promise.all(rutas.map((r) => borrar(r).catch(() => null)));
+  return rutas.length;
 }
 
 /** Deshace una marca, para cuando alguien escanea por error. */
