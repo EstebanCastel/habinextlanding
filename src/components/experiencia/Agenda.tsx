@@ -306,14 +306,17 @@ function MeInteresa({ sesion, intereses, grande = false }: { sesion: Sesion; int
       aria-label={etiqueta}
       disabled={intereses.ocupada === sesion.id || sinCupo}
       className={`inline-flex items-center gap-1.5 rounded-full border transition-colors disabled:opacity-60 ${
-        grande ? "px-5 py-3 text-base font-medium" : "h-8 px-2.5 text-xs"
+        grande ? "px-5 py-3 text-base font-medium" : `h-8 text-xs ${esTaller ? "px-3" : "px-2.5"}`
       } ${marcada ? "border-violet bg-violet text-white" : "border-white/20 text-white/75 hover:border-violet/60 hover:text-white"}`}
     >
       <Corazon lleno={marcada} className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} />
-      {grande ? <span>{etiqueta}</span> : null}
+      {/* En el Salón Taller la palabra va siempre, incluso en la tarjeta
+          pequeña: un corazón con un número al lado se lee como «a 58 personas
+          les interesa», y acá ese número son puestos que quedan. */}
+      {grande || esTaller ? <span className="font-medium">{etiqueta}</span> : null}
       {n ? <span className="font-semibold tabular-nums">{n}</span> : null}
-      {esTaller && !grande && !marcada && typeof libres === "number" ? (
-        <span className="font-semibold tabular-nums">{libres}</span>
+      {esTaller && !marcada && typeof libres === "number" ? (
+        <span className="font-semibold tabular-nums opacity-75">· {libres}</span>
       ) : null}
     </button>
   );
