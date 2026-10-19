@@ -48,7 +48,9 @@ const CARA: Record<
   repetido: { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "Ya había entrado", vibra: [70, 60, 70] },
   desconocido: { fondo: "bg-rose-500", borde: "border-rose-300", texto: "text-rose-50", titulo: "No está en la lista", vibra: [120, 70, 120] },
   "no-es-vip": { fondo: "bg-rose-500", borde: "border-rose-300", texto: "text-rose-50", titulo: "No tiene almuerzo", vibra: [120, 70, 120] },
-  "sin-turno": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "Sin turno escogido", vibra: [70, 60, 70] },
+  // Pasa igual: hay puestos de sobra y el turno es para repartir la sala, no
+  // para dejar a nadie afuera. El ámbar es para el restaurante, no un «no».
+  "sin-turno": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "Adelante · sin turno", vibra: [90] },
   "fuera-de-turno": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "No es su turno", vibra: [70, 60, 70] },
   "pase-equivocado": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "Ese no es el pase", vibra: [70, 60, 70] },
   "sin-reserva": { fondo: "bg-rose-500", borde: "border-rose-300", texto: "text-rose-50", titulo: "Sin reserva", vibra: [120, 70, 120] },

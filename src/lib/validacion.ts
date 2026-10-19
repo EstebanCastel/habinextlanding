@@ -68,7 +68,7 @@ export type Veredicto =
   | { ok: true; estado: "entra"; asistente: Asistente; marca: Marca; turno?: TurnoVista }
   | { ok: true; estado: "repetido"; asistente: Asistente; marca: Marca; previa: Marca }
   | { ok: false; estado: "desconocido"; detalle: string }
-  | { ok: false; estado: "sin-turno"; asistente: Asistente; detalle: string }
+  | { ok: true; estado: "sin-turno"; asistente: Asistente; marca: Marca }
   | { ok: false; estado: "no-es-vip"; asistente: Asistente; detalle: string }
   | { ok: false; estado: "fuera-de-turno"; asistente: Asistente; turno: TurnoVista; detalle: string }
   | { ok: false; estado: "pase-equivocado"; detalle: string }
@@ -335,15 +335,12 @@ async function validarPase(
     if (asistente.tipo === "general") {
       return { ok: false, estado: "no-es-vip", asistente, detalle: "El almuerzo va con la entrada VIP." };
     }
+    // Sin turno escogido **pasa igual**. Los tres turnos suman 270 puestos
+    // para 179 VIP: el turno existe para repartir la sala, no para dejar a
+    // nadie afuera. Devolverle a alguien su almuerzo porque no tocó un botón
+    // en una app sería un mal recuerdo del evento, y además no hace falta.
+    // Se avisa para que en el restaurante sepan que ese no estaba contado.
     const escogido = p.almuerzo?.turno;
-    if (!escogido && asistente.tipo !== "equipo") {
-      return {
-        ok: false,
-        estado: "sin-turno",
-        asistente,
-        detalle: "No escogió turno. Que entre a habinext.com/experiencia y lo elija.",
-      };
-    }
     const turno = escogido ? turnoVista(escogido) : undefined;
     const marca: Marca = {
       id: p.id, tipo: asistente.tipo, nombre: asistente.nombre, correo: asistente.correo,
@@ -354,6 +351,9 @@ async function validarPase(
     const previa = await leer<Marca>(ruta).catch(() => null);
     if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
     await escribir(ruta, marca);
+    if (!turno && asistente.tipo !== "equipo") {
+      return { ok: true, estado: "sin-turno", asistente, marca } as Veredicto;
+    }
     return { ok: true, estado: "entra", asistente, marca, ...(turno ? { turno } : {}) };
   }
 
