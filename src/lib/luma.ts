@@ -186,6 +186,47 @@ export async function listarInvitados(eventId: string): Promise<InvitadoLuma[]> 
 }
 
 /**
+ * Los invitados con su QR de entrada, para armar el padrón de la puerta.
+ *
+ * Es el mismo listado de arriba más `check_in_qr_code`, que es lo que lleva
+ * el `pk` con el que se reconoce a alguien al escanearlo. Va aparte porque
+ * `InvitadoLuma` lo usan media docena de pantallas y no tienen por qué cargar
+ * un campo que solo le sirve al lector.
+ */
+export async function listarInvitadosConQr(
+  eventId: string
+): Promise<{ id: string; email: string; nombre: string; estado: string; qr: string }[]> {
+  const salida: { id: string; email: string; nombre: string; estado: string; qr: string }[] = [];
+  let cursor: string | undefined;
+  for (let pagina = 0; pagina < 60; pagina += 1) {
+    const url = new URL(`${BASE}/v1/events/guests/list`);
+    url.searchParams.set("event_id", eventId);
+    url.searchParams.set("pagination_limit", "100");
+    if (cursor) url.searchParams.set("pagination_cursor", cursor);
+    const res = await fetch(url, { headers: { "x-luma-api-key": llave() }, signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) throw new Error(`Luma respondió ${res.status} al listar invitados`);
+    const data = (await res.json().catch(() => null)) as {
+      entries?: { guest?: Record<string, unknown> }[];
+      has_more?: boolean;
+      next_cursor?: string;
+    } | null;
+    for (const fila of data?.entries ?? []) {
+      const g = (fila.guest ?? fila) as Record<string, unknown>;
+      salida.push({
+        id: String(g.api_id ?? g.id ?? ""),
+        email: String(g.user_email ?? "").trim().toLowerCase(),
+        nombre: String(g.user_name ?? g.name ?? "").trim(),
+        estado: String(g.approval_status ?? ""),
+        qr: String(g.check_in_qr_code ?? ""),
+      });
+    }
+    if (!data?.has_more || !data.next_cursor) break;
+    cursor = data.next_cursor;
+  }
+  return salida;
+}
+
+/**
  * Cuántas entradas hay aprobadas en Luma, que es el número que manda.
  *
  * El panel contaba sus propios registros y por eso mostraba de más: la misma

@@ -1,0 +1,336 @@
+import { escribir, leer, listarRutas } from "./almacen";
+import { esDelEquipo, fichaDeEquipo, selloDeEquipo } from "@/config/equipo";
+import { ALMUERZOS } from "@/config/agenda";
+import { eventoDeTier } from "./luma";
+import { porCorreo } from "./experiencia";
+
+/**
+ * La puerta: un solo lector para las tres entradas.
+ *
+ * El día del evento llegan tres cosas distintas a la misma fila —la entrada
+ * General, la VIP y la credencial del equipo— y hasta ahora cada una se leía
+ * con su propia herramienta. Eso obliga a adivinar qué es cada quien antes de
+ * escanear, y en una fila de seiscientas personas eso no escala. Acá se lee
+ * cualquiera de las tres y el sistema decide qué es.
+ *
+ * **Por qué el check-in no vive en Luma.** Su API pública no tiene endpoint de
+ * check-in: deja crear invitados, cambiar su estado y sus tickets, nada más.
+ * Así que el registro de quién entró es nuestro. Eso además resuelve el caso
+ * del equipo, que no existe en Luma.
+ *
+ * El padrón se arma una vez y se guarda: pedirle la lista a Luma en cada
+ * escaneo serían catorce llamadas por persona en la puerta. Se refresca solo
+ * cuando se le pide.
+ */
+
+// ------------------------------------------------------------- tipos ----
+
+export type Tipo = "general" | "vip" | "equipo";
+export type Modo = "entrada" | "almuerzo";
+
+export type Asistente = {
+  /** Lo que identifica el QR: el `pk` de Luma, o el correo para el equipo. */
+  id: string;
+  tipo: Tipo;
+  nombre: string;
+  correo: string;
+  /** El cargo, solo para el equipo. */
+  cargo?: string;
+};
+
+export type Marca = {
+  id: string;
+  tipo: Tipo;
+  nombre: string;
+  correo: string;
+  en: string;
+  por: string;
+  modo: Modo;
+  /** El turno de almuerzo, cuando la marca es del restaurante. */
+  turno?: string;
+};
+
+export type Veredicto =
+  | { ok: true; estado: "entra"; asistente: Asistente; marca: Marca; turno?: TurnoVista }
+  | { ok: true; estado: "repetido"; asistente: Asistente; marca: Marca; previa: Marca }
+  | { ok: false; estado: "desconocido"; detalle: string }
+  | { ok: false; estado: "sin-turno"; asistente: Asistente; detalle: string }
+  | { ok: false; estado: "no-es-vip"; asistente: Asistente; detalle: string }
+  | { ok: false; estado: "fuera-de-turno"; asistente: Asistente; turno: TurnoVista; detalle: string };
+
+export type TurnoVista = { id: string; rotulo: string; desde: string; hasta: string };
+
+export type Conteo = {
+  general: number;
+  vip: number;
+  equipo: number;
+  total: number;
+  /** Cuántos hay en el padrón, para saber contra qué se compara. */
+  padron: { general: number; vip: number; equipo: number; total: number };
+  almuerzo: { total: number; porTurno: Record<string, number> };
+  actualizadoEn: string;
+};
+
+// ------------------------------------------------------------ rutas ----
+
+const RUTA_PADRON = "validacion/padron.json";
+/**
+ * El tipo va en el nombre del archivo, no dentro: así el conteo es listar
+ * rutas y mirar el prefijo, sin abrir setecientos documentos uno por uno.
+ */
+const rutaMarca = (modo: Modo, tipo: Tipo, id: string) =>
+  `validacion/${modo}/${tipo}__${id.replace(/[^A-Za-z0-9._@-]/g, "_")}.json`;
+
+// ----------------------------------------------------------- padrón ----
+
+type Padron = { armadoEn: string; gente: Asistente[] };
+
+/**
+ * Arma el padrón desde Luma y desde la lista del equipo.
+ *
+ * Solo entran los aprobados: alguien pendiente o rechazado no debe pasar, y
+ * dejarlo en el padrón obligaría a comprobar su estado en cada escaneo.
+ *
+ * El identificador es el `pk` del QR de Luma y no el id del invitado, porque
+ * es lo único que viaja dentro del código que se escanea.
+ */
+export async function armarPadron(): Promise<Padron> {
+  const { listarInvitadosConQr } = await import("./luma");
+  const eventos: [Tipo, string | undefined][] = [
+    ["general", eventoDeTier("general")],
+    ["vip", eventoDeTier("vip")],
+  ];
+
+  const gente: Asistente[] = [];
+  for (const [tipo, evento] of eventos) {
+    if (!evento) continue;
+    for (const g of await listarInvitadosConQr(evento)) {
+      if (g.estado !== "approved") continue;
+      const id = pkDeQr(g.qr) || g.id;
+      if (!id) continue;
+      gente.push({ id, tipo, nombre: g.nombre || g.email, correo: g.email });
+    }
+  }
+
+  const { EQUIPO } = await import("@/config/equipo");
+  for (const c of EQUIPO) {
+    gente.push({
+      id: c.email.trim().toLowerCase(),
+      tipo: "equipo",
+      nombre: `${c.nombre ?? ""} ${c.apellido ?? ""}`.trim() || c.email,
+      correo: c.email,
+      ...(c.cargo ? { cargo: c.cargo } : {}),
+    });
+  }
+
+  const padron: Padron = { armadoEn: new Date().toISOString(), gente };
+  await escribir(RUTA_PADRON, padron);
+  return padron;
+}
+
+export async function traerPadron(): Promise<Padron | null> {
+  return leer<Padron>(RUTA_PADRON);
+}
+
+/** El padrón guardado, o uno recién armado si nunca se armó. */
+async function padronVigente(): Promise<Padron> {
+  return (await traerPadron()) ?? (await armarPadron());
+}
+
+// -------------------------------------------------------- identidad ----
+
+/**
+ * El `pk` del QR de Luma: `https://luma.com/check-in/evt-XXX?pk=g-YYY`.
+ *
+ * Se acepta la URL completa o el `pk` suelto, porque algunos lectores
+ * devuelven solo el parámetro y porque en la puerta alguien puede teclearlo
+ * a mano si la cámara no coopera.
+ */
+export function pkDeQr(texto: string): string {
+  const t = String(texto ?? "").trim();
+  if (!t) return "";
+  if (/^g-[A-Za-z0-9]+$/.test(t)) return t;
+  try {
+    const u = new URL(t);
+    const pk = u.searchParams.get("pk");
+    if (pk) return pk;
+  } catch {
+    // no era una URL; se sigue con las otras formas
+  }
+  const suelto = t.match(/[?&]pk=(g-[A-Za-z0-9]+)/);
+  return suelto ? suelto[1] : "";
+}
+
+/**
+ * El correo de una credencial de equipo, si la firma cuadra.
+ *
+ * Sin comprobar el sello cualquiera podría escribir la dirección de otro y
+ * entrar como staff, que es justo lo que el HMAC existe para impedir.
+ */
+export function correoDeCredencial(texto: string, secreto: string): string {
+  if (!secreto) return "";
+  try {
+    const u = new URL(String(texto ?? "").trim());
+    const m = u.pathname.match(/^\/staff\/(.+)$/);
+    if (!m) return "";
+    const correo = decodeURIComponent(m[1]).trim().toLowerCase();
+    const k = u.searchParams.get("k") ?? "";
+    if (!correo || !k || !esDelEquipo(correo)) return "";
+    return k === selloDeEquipo(correo, secreto) ? correo : "";
+  } catch {
+    return "";
+  }
+}
+
+/** A quién corresponde lo que se escaneó, o null si no es de los nuestros. */
+export async function identificar(texto: string, secreto: string): Promise<Asistente | null> {
+  const correo = correoDeCredencial(texto, secreto);
+  if (correo) {
+    const f = fichaDeEquipo(correo);
+    return {
+      id: correo,
+      tipo: "equipo",
+      nombre: `${f?.nombre ?? ""} ${f?.apellido ?? ""}`.trim() || correo,
+      correo,
+      ...(f?.cargo ? { cargo: f.cargo } : {}),
+    };
+  }
+
+  const pk = pkDeQr(texto);
+  if (!pk) return null;
+  const padron = await padronVigente();
+  return padron.gente.find((p) => p.id === pk) ?? null;
+}
+
+// ------------------------------------------------------- validación ----
+
+const turnoVista = (id: string): TurnoVista | undefined => {
+  const t = ALMUERZOS.find((x) => x.id === id);
+  return t ? { id: t.id, rotulo: t.rotulo, desde: t.desde, hasta: t.hasta } : undefined;
+};
+
+/**
+ * Lee un QR y decide. Nunca lanza: en la puerta un error sin respuesta deja a
+ * la persona parada sin saber qué pasó.
+ *
+ * En modo `almuerzo` el filtro es más estrecho: solo pasa quien tiene entrada
+ * VIP y además escogió turno. El equipo pasa siempre —trabaja el evento y
+ * come con el resto— y la General no, porque el almuerzo va con la VIP.
+ */
+export async function validar(
+  texto: string,
+  opciones: { modo: Modo; por: string; secreto: string }
+): Promise<Veredicto> {
+  const asistente = await identificar(texto, opciones.secreto).catch(() => null);
+  if (!asistente) {
+    return {
+      ok: false,
+      estado: "desconocido",
+      detalle: "Ese código no está en la lista. Revisa en el panel con su correo o su cédula.",
+    };
+  }
+
+  let turno: TurnoVista | undefined;
+  if (opciones.modo === "almuerzo" && asistente.tipo !== "equipo") {
+    if (asistente.tipo !== "vip") {
+      return {
+        ok: false,
+        estado: "no-es-vip",
+        asistente,
+        detalle: "El almuerzo va con la entrada VIP.",
+      };
+    }
+    const p = await porCorreo(asistente.correo).catch(() => null);
+    const escogido = p?.almuerzo?.turno;
+    if (!escogido) {
+      return {
+        ok: false,
+        estado: "sin-turno",
+        asistente,
+        detalle: "No escogió turno. Que entre a habinext.com/experiencia y lo elija.",
+      };
+    }
+    turno = turnoVista(escogido);
+  }
+
+  const marca: Marca = {
+    id: asistente.id,
+    tipo: asistente.tipo,
+    nombre: asistente.nombre,
+    correo: asistente.correo,
+    en: new Date().toISOString(),
+    por: opciones.por,
+    modo: opciones.modo,
+    ...(turno ? { turno: turno.id } : {}),
+  };
+
+  const ruta = rutaMarca(opciones.modo, asistente.tipo, asistente.id);
+  const previa = await leer<Marca>(ruta).catch(() => null);
+  if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
+
+  await escribir(ruta, marca);
+  return { ok: true, estado: "entra", asistente, marca, ...(turno ? { turno } : {}) };
+}
+
+// ----------------------------------------------------------- conteo ----
+
+/**
+ * Las cuentas de la puerta, en vivo.
+ *
+ * Se cuentan rutas, no documentos: el tipo va en el nombre del archivo, así
+ * que saber cuántos VIP entraron no exige abrir ninguno. Con setecientas
+ * personas la diferencia entre listar y leer es de segundos a minutos.
+ */
+export async function conteo(): Promise<Conteo> {
+  const [rutasEntrada, rutasAlmuerzo, padron] = await Promise.all([
+    listarRutas("validacion/entrada/", 5000).catch(() => [] as string[]),
+    listarRutas("validacion/almuerzo/", 5000).catch(() => [] as string[]),
+    traerPadron().catch(() => null),
+  ]);
+
+  const cuenta = (rutas: string[], tipo: Tipo) =>
+    rutas.filter((r) => r.split("/").pop()?.startsWith(`${tipo}__`)).length;
+
+  const general = cuenta(rutasEntrada, "general");
+  const vip = cuenta(rutasEntrada, "vip");
+  const equipo = cuenta(rutasEntrada, "equipo");
+  const gente = padron?.gente ?? [];
+
+  // El desglose por turno sí exige abrir los documentos, pero son pocos: solo
+  // los VIP que ya almorzaron, no los seiscientos de la puerta.
+  const porTurno: Record<string, number> = {};
+  for (const t of ALMUERZOS) porTurno[t.id] = 0;
+  const marcas = await Promise.all(rutasAlmuerzo.map((r) => leer<Marca>(r).catch(() => null)));
+  for (const m of marcas) if (m?.turno && m.turno in porTurno) porTurno[m.turno] += 1;
+
+  return {
+    general,
+    vip,
+    equipo,
+    total: general + vip + equipo,
+    padron: {
+      general: gente.filter((p) => p.tipo === "general").length,
+      vip: gente.filter((p) => p.tipo === "vip").length,
+      equipo: gente.filter((p) => p.tipo === "equipo").length,
+      total: gente.length,
+    },
+    almuerzo: { total: rutasAlmuerzo.length, porTurno },
+    actualizadoEn: new Date().toISOString(),
+  };
+}
+
+/** Las últimas marcas, para que la pantalla muestre quién acaba de entrar. */
+export async function ultimas(modo: Modo, cuantas = 12): Promise<Marca[]> {
+  const rutas = await listarRutas(`validacion/${modo}/`, 5000).catch(() => [] as string[]);
+  const marcas = (await Promise.all(rutas.map((r) => leer<Marca>(r).catch(() => null)))).filter(
+    (m): m is Marca => Boolean(m)
+  );
+  return marcas.sort((a, b) => b.en.localeCompare(a.en)).slice(0, cuantas);
+}
+
+/** Deshace una marca, para cuando alguien escanea por error. */
+export async function deshacer(modo: Modo, tipo: Tipo, id: string): Promise<boolean> {
+  const { borrar } = await import("./almacen");
+  await borrar(rutaMarca(modo, tipo, id));
+  return true;
+}
