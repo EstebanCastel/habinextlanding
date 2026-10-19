@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Agenda from "@/components/experiencia/Agenda";
-import Almuerzo from "@/components/experiencia/Almuerzo";
 import Talleres from "@/components/experiencia/Talleres";
 import Marco from "@/components/experiencia/Marco";
 import { EVENT } from "@/config/event";
@@ -33,9 +32,6 @@ export default async function PaginaAgenda() {
       }
       bajada="Dos salones en paralelo durante todo el día, en el orden en que pasan. Marca las que te interesan y toca una para ver qué te llevas."
     >
-      <div id="almuerzo" className="scroll-mt-24">
-        <Almuerzo yo={yo} />
-      </div>
       <div id="taller" className="scroll-mt-24">
         <Talleres yo={yo} />
       </div>

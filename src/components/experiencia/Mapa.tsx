@@ -163,8 +163,8 @@ export default function Mapa({ yo, fase, alCambiar }: Props) {
         </div>
 
         {/* El plano ocupa todo el ancho; en el celular se desliza de lado. */}
-        <div className="overflow-x-auto rounded-[26px] border border-white/12 shadow-[0_40px_90px_-40px_rgba(128,46,246,0.5)]">
-          <div className="min-w-[960px]">
+        <div className="overflow-hidden rounded-[26px] border border-white/12 shadow-[0_40px_90px_-40px_rgba(128,46,246,0.5)]">
+          <div>
           <Plano
             hechas={hechas}
             seleccion={seleccion}
@@ -175,7 +175,7 @@ export default function Mapa({ yo, fase, alCambiar }: Props) {
           />
           </div>
         </div>
-        <p className="-mt-2 text-xs font-light text-white/40 lg:hidden">Desliza el mapa hacia los lados para verlo completo.</p>
+        <p className="-mt-2 text-xs font-light text-white/40">Toca un número para ver qué hay que hacer en esa parada.</p>
 
       {/* La parada elegida y las dos rutas */}
       <aside className="grid gap-4 lg:grid-cols-3 lg:items-start">

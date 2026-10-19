@@ -60,21 +60,26 @@ export default function Portada({
     setEntrarVisto(entrar);
     if (entrar && !yo) setModal({ abierta: true, destino: entrar });
   }
-  // Las tres experiencias, en el mismo formato que el resto de accesos: antes
-  // tenían su propia rejilla y su propio aspecto, que era una segunda forma
-  // de decir lo mismo en la misma pantalla.
-  const experiencias = EXPERIENCIAS.map((e) => {
-    const { hechos, posibles } = puntosEn(yo, e.id);
-    const cierre = BLOQUEADAS[e.id];
-    return {
-      href: e.ruta,
-      rotulo: e.nombre,
-      nota: e.resumen,
-      imagen: e.imagen,
-      puntos: { hechos, posibles },
-      ...(cierre ? { cerrada: `${cierre.nota} ${cierre.desde}.` } : {}),
-    };
-  });
+  // Lo que da puntos, resuelto acá y entregado a `Accesos` por id: el carnet
+  // se funde con «Mi entrada» y el mapa y las redes van como una tarjeta más.
+  // Antes esto era una rejilla aparte y «Tu carnet» salía dos veces.
+  const experiencias = Object.fromEntries(
+    EXPERIENCIAS.map((e) => {
+      const { hechos, posibles } = puntosEn(yo, e.id);
+      const cierre = BLOQUEADAS[e.id];
+      return [
+        e.id,
+        {
+          href: e.ruta,
+          rotulo: e.id === "mapa" ? "Mapa" : e.nombre,
+          nota: e.id === "mapa" ? "Nueve paradas por el recinto" : e.resumen,
+          imagen: e.imagen,
+          puntos: { hechos, posibles },
+          ...(cierre ? { cerrada: `${cierre.nota} ${cierre.desde}.` } : {}),
+        },
+      ];
+    })
+  );
 
   const cierreAviso = cerrada ? BLOQUEADAS[cerrada] : undefined;
   const avisoCerrada = cierreAviso ? EXPERIENCIAS.find((e) => e.id === cerrada) : null;
@@ -90,104 +95,92 @@ export default function Portada({
         </p>
       ) : null}
 
-      {/* Lo que la gente busca el día del evento, antes que nada: su QR, la
-          agenda, su almuerzo, su taller. Lo demás —puntos, podio, las tres
-          experiencias— es de los días previos y queda debajo. */}
-      <Accesos yo={yo} experiencias={experiencias} alPedirEntrada={pedirEntrada} />
-
-      {/* Avance y podio */}
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
-        <div className="rounded-[28px] border border-white/12 bg-gradient-to-b from-violet-shade to-night p-6 md:p-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Tu avance</p>
-              <p className="mt-2 flex items-baseline gap-2">
-                <span className="text-6xl font-bold tabular-nums tracking-tighter md:text-7xl">{yo?.puntos ?? 0}</span>
-                <span className="text-lg font-light text-white/50">/ {PUNTOS_TOTALES} puntos</span>
-              </p>
-              <p className="mt-1 text-base font-light text-white/60">
-                {yo ? (
+      {/* El avance, arriba y en una línea. Es un dato de contexto —cuánto
+          llevo— no una pantalla: el bloque grande que había antes empujaba
+          los accesos fuera del primer pantallazo. */}
+      <section className="mb-6 rounded-2xl border border-white/12 bg-gradient-to-r from-violet-shade to-night px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2">
+          <p className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold tabular-nums tracking-tighter text-white sm:text-4xl">
+              {yo?.puntos ?? 0}
+            </span>
+            <span className="text-sm font-light text-white/45">/ {PUNTOS_TOTALES} puntos</span>
+          </p>
+          <p className="text-sm font-light text-white/60">
+            {yo ? (
+              <>
+                Nivel <span className="font-semibold text-white">{yo.nivel}</span>
+                {puesto ? (
                   <>
-                    Nivel <span className="font-semibold text-white">{yo.nivel}</span>
-                    {puesto ? (
-                      <>
-                        {" · "}puesto <span className="font-semibold text-white">{puesto.puesto}</span> de {puesto.total}
-                      </>
-                    ) : (
-                      <> · completa tu primera misión para entrar al ranking</>
-                    )}
+                    {" · "}vas de <span className="font-semibold text-white">{puesto.puesto}</span> de {puesto.total}
                   </>
                 ) : (
-                  <>Entra con el correo y la cédula de tu entrada para jugar y guardar tu avance.</>
+                  <> · completa una misión para entrar al ranking</>
                 )}
-              </p>
-            </div>
-            {!yo ? (
-              <button type="button" onClick={() => pedirEntrada("/experiencia")} className="rounded-full bg-violet px-7 py-3.5 text-base font-semibold tracking-tight text-white shadow-[0_18px_44px_-14px_rgba(128,46,246,0.9)] transition-colors hover:bg-violet-press">
-                Entrar
-              </button>
-            ) : null}
-          </div>
-
-          {/* La barra global, partida en las tres experiencias a proporción de
-              sus puntos: se ve de un golpe cuánto falta y dónde. Lo cerrado va
-              rayado: esos puntos existen, pero todavía no se pueden ganar. */}
-          <div className="mt-6 flex h-3 gap-1 overflow-hidden rounded-full">
-            {EXPERIENCIAS.map((e) => {
-              const { hechos, posibles } = puntosEn(yo, e.id);
-              const cerradaE = bloqueada(e.id);
-              return (
-                <div
-                  key={e.id}
-                  className="h-full bg-white/10"
-                  style={{
-                    flex: `${posibles} 0 0`,
-                    ...(cerradaE
-                      ? { backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.14) 0 4px, transparent 4px 9px)" }
-                      : {}),
-                  }}
-                  title={`${e.nombre}: ${cerradaE ? "cerrada" : `${hechos} de ${posibles}`}`}
-                >
-                  <div className="h-full rounded-full bg-violet transition-[width] duration-700" style={{ width: `${posibles ? Math.round((hechos / posibles) * 100) : 0}%` }} />
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
-            {EXPERIENCIAS.map((e) => {
-              const { hechos, posibles } = puntosEn(yo, e.id);
-              const cerradaE = bloqueada(e.id);
-              return (
-                <span key={e.id} className={`flex items-center gap-2 text-xs ${cerradaE ? "text-white/40" : "text-white/55"}`}>
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-white/10 text-[10px] font-bold text-white/80">
-                    {cerradaE ? <Candado className="h-2.5 w-2.5" /> : e.numero}
-                  </span>
-                  <span className={`font-medium ${cerradaE ? "text-white/55" : "text-white/75"}`}>{e.nombre}</span>
-                  <span className="tabular-nums">{cerradaE ? `${posibles} en espera` : `${hechos}/${posibles}`}</span>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-[28px] border border-white/12 bg-white/[0.03] p-6 md:p-8">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Los tres primeros</p>
-            {podio.length === 0 ? null : <p className="text-xs font-light text-white/40">se cierra el 20 de octubre</p>}
-          </div>
-          {podio.length === 0 ? (
-            <p className="mt-3 text-base font-light text-white/50">El ranking arranca con la primera misión completada. Puede ser la tuya.</p>
+              </>
+            ) : (
+              <>Entra con el correo y la cédula de tu entrada para jugar.</>
+            )}
+          </p>
+          {!yo ? (
+            <button
+              type="button"
+              onClick={() => pedirEntrada("/experiencia")}
+              className="rounded-full bg-violet px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-press"
+            >
+              Entrar
+            </button>
           ) : null}
-          <div className="mt-5">
+        </div>
+        <div className="mt-3 flex h-2 gap-1 overflow-hidden rounded-full">
+          {EXPERIENCIAS.map((e) => {
+            const { hechos, posibles } = puntosEn(yo, e.id);
+            const cerradaE = bloqueada(e.id);
+            return (
+              <div
+                key={e.id}
+                className="h-full bg-white/10"
+                style={{
+                  flex: `${posibles} 0 0`,
+                  ...(cerradaE
+                    ? { backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.14) 0 4px, transparent 4px 9px)" }
+                    : {}),
+                }}
+                title={`${e.nombre}: ${cerradaE ? "cerrada" : `${hechos} de ${posibles}`}`}
+              >
+                <div
+                  className="h-full rounded-full bg-violet transition-[width] duration-700"
+                  style={{ width: `${posibles ? Math.round((hechos / posibles) * 100) : 0}%` }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <Accesos yo={yo} experiencias={experiencias} alPedirEntrada={pedirEntrada} />
+
+      {/* El podio, debajo de los accesos: se mira, no se opera. */}
+      <section className="mt-8 rounded-2xl border border-white/12 bg-white/[0.03] p-5 sm:p-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Los tres primeros</p>
+          {podio.length ? <p className="text-xs font-light text-white/40">se cierra el 20 de octubre</p> : null}
+        </div>
+        {podio.length === 0 ? (
+          <p className="mt-3 text-base font-light text-white/50">
+            El ranking arranca con la primera misión completada. Puede ser la tuya.
+          </p>
+        ) : (
+          <div className="mt-4">
             <Podio podio={podio} />
           </div>
-          {yo && puesto && puesto.puesto > 3 ? (
-            <p className="mt-5 text-sm font-light text-white/50">
-              Tú vas de <span className="font-semibold text-white">{puesto.puesto}</span>. Te faltan{" "}
-              {Math.max(0, (podio[2]?.puntos ?? 0) - yo.puntos + 1)} puntos para alcanzar al tercero.
-            </p>
-          ) : null}
-        </div>
+        )}
+        {yo && puesto && puesto.puesto > 3 ? (
+          <p className="mt-4 text-sm font-light text-white/50">
+            Tú vas de <span className="font-semibold text-white">{puesto.puesto}</span>. Te faltan{" "}
+            {Math.max(0, (podio[2]?.puntos ?? 0) - yo.puntos + 1)} puntos para alcanzar al tercero.
+          </p>
+        ) : null}
       </section>
 
       {/* Las tres experiencias */}

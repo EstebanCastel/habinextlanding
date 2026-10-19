@@ -60,8 +60,8 @@ export const EXPERIENCIAS: {
   {
     id: "mapa",
     numero: 2,
-    nombre: "El mapa del tesoro",
-    resumen: "Dos rutas por el recinto: visita cada parada y súbenos la foto.",
+    nombre: "Mapa Habi Next",
+    resumen: "Nueve paradas por el recinto: visita cada una y súbenos la foto.",
     imagen: "/img/experiencia/tarjeta-mapa.jpg",
     ruta: "/experiencia/mapa",
   },
@@ -163,7 +163,12 @@ export type Parada = {
   sitio?: string;
   ruta: RutaId;
   orden: number;
-  /** Posición sobre el plano (viewBox 1200×900): el frente del stand o el centro del escenario. */
+  /**
+   * Dónde cae la parada sobre el plano oficial, en porcentaje del ancho y del
+   * alto de la imagen. Va en porcentaje y no en píxeles porque el plano se
+   * mira en un teléfono de 380 px y en una pantalla de 1400: lo único estable
+   * entre los dos es la proporción.
+   */
   x: number;
   y: number;
   /** Qué tiene que hacer ahí. */
@@ -174,31 +179,44 @@ export type Parada = {
 export const RUTAS: { id: RutaId; nombre: string; color: string; resumen: string; bono: number }[] = [
   {
     id: "morada",
-    nombre: "Ruta morada",
+    nombre: "Primera mitad",
     color: "#802ef6",
-    resumen: "Financiación, taller y firma digital: la ruta del negocio que cierra.",
+    resumen: "Del café del registro a los stands: la primera mitad del recorrido.",
     bono: 25,
   },
   {
     id: "dorada",
-    nombre: "Ruta dorada",
+    nombre: "Segunda mitad",
     color: "#f2b134",
-    resumen: "Inspiración y herramientas: la ruta de lo que viene.",
+    resumen: "Los salones, el estudio y la zona VIP: la segunda mitad.",
     bono: 25,
   },
 ];
 
 const RETO_STAND = "Tómale una foto al stand con el logo visible y súbela desde aquí.";
 
+/**
+ * Las nueve paradas del recinto, en el orden del plano oficial.
+ *
+ * Las coordenadas son las del plano que se imprimió para la señalización, en
+ * un lienzo de 1200×900: el mapa de la app y el del piso tienen que ser el
+ * mismo dibujo, o la gente mira uno y busca en el otro.
+ *
+ * Las dos rutas parten el recorrido en dos mitades de cinco y cuatro. No es
+ * un orden obligatorio —en el plano dice que el recorrido es sugerido— pero
+ * sí da un hilo: empezar por el café del registro y terminar en el Salón VIP
+ * es el camino que de verdad hace alguien que llega a las ocho.
+ */
 export const PARADAS: Parada[] = [
-  { id: "caja-social", nombre: "Banco Caja Social", marca: "Banco Caja Social", tipo: "stand", logo: "/img/marcas/caja-social.svg", sitio: "https://www.bancocajasocial.com", ruta: "morada", orden: 1, x: 200, y: 445, reto: RETO_STAND, puntos: 10 },
-  { id: "taller", nombre: "Escenario Taller", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 2, x: 890, y: 165, reto: "Entra al Escenario Taller y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
-  { id: "auco", nombre: "Auco", marca: "Auco", tipo: "stand", logo: "/img/marcas/auco.png", sitio: "https://auco.ai", ruta: "morada", orden: 3, x: 800, y: 445, reto: RETO_STAND, puntos: 10 },
-  { id: "inspira", nombre: "Escenario Inspira", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 1, x: 310, y: 165, reto: "Entra al Escenario Inspira y tómale una foto a la tarima.", puntos: 10 },
-  { id: "wekall", nombre: "Wekall", marca: "Wekall", tipo: "stand", logo: "/img/marcas/wekall.svg", sitio: "https://wekall.co", ruta: "dorada", orden: 2, x: 500, y: 445, reto: RETO_STAND, puntos: 10 },
-  { id: "palomma", nombre: "Palomma", marca: "Palomma", tipo: "stand", logo: "/img/marcas/palomma.png", sitio: "https://palomma.com", ruta: "dorada", orden: 3, x: 200, y: 612, reto: RETO_STAND, puntos: 10 },
-  { id: "banco-bogota", nombre: "Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", sitio: "https://www.bancodebogota.com", ruta: "dorada", orden: 4, x: 500, y: 612, reto: RETO_STAND, puntos: 10 },
-  { id: "grapez", nombre: "Grapez Studio", marca: "Grapez Studio", tipo: "stand", logo: "/img/marcas/grapez.png", fondo: "#161616", sitio: "https://www.grapezstudio.com", ruta: "dorada", orden: 5, x: 800, y: 612, reto: RETO_STAND, puntos: 10 },
+  { id: "cafe-registro", nombre: "Café · Registro", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 1, x: 82.3, y: 57.2, reto: "Recoge tu café en el registro y tómale una foto al punto.", puntos: 10 },
+  { id: "spot-fotos", nombre: "Spot para fotos", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 2, x: 80.2, y: 43.1, reto: "Tómate una foto en el spot y súbela desde aquí.", puntos: 10 },
+  { id: "stand-habi", nombre: "Stand Habi", marca: "Habi", tipo: "stand", ruta: "morada", orden: 3, x: 55.7, y: 43.1, reto: "Pásate por el stand de Habi y tómale una foto.", puntos: 10 },
+  { id: "stands-comerciales", nombre: "Stands comerciales", marca: "Aliados", tipo: "stand", ruta: "morada", orden: 4, x: 57.8, y: 35.0, reto: "Visita los stands de los aliados y tómale una foto a uno.", puntos: 10 },
+  { id: "bar-bogota", nombre: "Bar Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", ruta: "morada", orden: 5, x: 35.2, y: 43.1, reto: RETO_STAND, puntos: 10 },
+  { id: "inspira", nombre: "Salón Inspira", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 1, x: 43.0, y: 57.5, reto: "Entra al Salón Inspira y tómale una foto a la tarima.", puntos: 10 },
+  { id: "caja-social", nombre: "Salón Banco Caja Social", marca: "Banco Caja Social", tipo: "escenario", logo: "/img/marcas/caja-social.svg", ruta: "dorada", orden: 2, x: 64.4, y: 57.5, reto: "Entra al salón y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
+  { id: "estudio-foto", nombre: "Estudio fotográfico", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 3, x: 17.6, y: 42.7, reto: "Hazte tu retrato en el estudio y súbelo desde aquí.", puntos: 10 },
+  { id: "salon-vip", nombre: "Salón VIP", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 4, x: 21.4, y: 31.8, reto: "Pásate por el Salón VIP y tómale una foto.", puntos: 10 },
 ];
 
 export const paradasDe = (ruta: RutaId) => PARADAS.filter((p) => p.ruta === ruta).sort((a, b) => a.orden - b.orden);
@@ -230,9 +248,9 @@ export const puntosDeExperiencia = (id: ExperienciaId) =>
  * las APIs que dan puntos. Para abrir una, se quita de esta lista.
  */
 export const BLOQUEADAS: Partial<Record<ExperienciaId, { desde: string; nota: string; hasta?: string }>> = {
-  // El mapa se abre solo el día del evento, a la medianoche de Bogotá.
-  mapa: { desde: "Se abre el 20 de octubre", nota: "Las paradas se activan en el recinto, el día del evento.", hasta: "2026-10-20T00:00:00-05:00" },
-  redes: { desde: "Se abre muy pronto", nota: "Las misiones de redes se activan unos días antes del evento." },
+  // Todo abierto desde el 19 de octubre. El mapa esperaba al día del evento
+  // —las paradas son físicas— pero tenerlo cerrado la víspera escondía el
+  // plano justo cuando la gente está planeando por dónde entrar.
 };
 
 /** Cerrada hoy: está en la lista y, si tiene fecha de apertura, todavía no llegó. */
