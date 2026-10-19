@@ -312,13 +312,15 @@ function gente(s: Sesion): Quien[] {
   });
 }
 
-/** «Juanfe Quiñones» → «JQ»; para quien no tiene foto. */
-function iniciales(nombre: string): string {
-  const partes = nombre.replace(/\(.*?\)/g, "").trim().split(/\s+/).filter((p) => p && !/^(y|o|de|del|la|el)$/i.test(p));
-  return partes.slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
-}
-
-/** Lo que va en el cuadro de alguien sin foto: su logo o sus iniciales. */
+/**
+ * Lo que va en el cuadro de alguien sin foto: su logo si lo trae, y si no la
+ * marca del evento.
+ *
+ * Antes iban las iniciales. Dos letras sobre un cuadro morado se leían como
+ * un hueco —como si faltara algo— y además hacían que una agenda con varias
+ * fotos pendientes pareciera a medio armar. El asterisco de Habi Next es una
+ * ausencia a propósito: se ve igual de intencional que un retrato.
+ */
 function Relleno({ q, className = "" }: { q: Quien; className?: string }) {
   if (q.ficha?.logo) {
     return (
@@ -329,7 +331,9 @@ function Relleno({ q, className = "" }: { q: Quien; className?: string }) {
     );
   }
   return (
-    <span className={`grid place-items-center bg-violet-shade text-2xl font-bold tracking-wide text-violet-soft ${className}`}>{iniciales(q.nombre)}</span>
+    <span className={`relative grid place-items-center overflow-hidden bg-violet-shade ${className}`}>
+      <Asterisk color="var(--violet-soft)" className="h-1/2 w-1/2 opacity-35" />
+    </span>
   );
 }
 
@@ -424,7 +428,9 @@ function CapaVisual({ s }: { s: Sesion }) {
             <span className="absolute inset-0" style={velo} />
           </>
         ) : (
-          <span className="absolute inset-0 grid place-items-center text-5xl font-bold tracking-wide text-violet-soft/60" style={fundido}>{iniciales(q.nombre)}</span>
+          <span className="absolute inset-0 grid place-items-center" style={fundido}>
+            <Asterisk color="var(--violet-soft)" className="h-28 w-28 opacity-30 sm:h-36 sm:w-36" />
+          </span>
         )}
       </span>
       <span className="pointer-events-none absolute bottom-0 right-0 w-[58%] bg-gradient-to-t from-night via-night/85 to-transparent px-5 pb-5 pt-10 text-right sm:px-6 sm:pb-6">

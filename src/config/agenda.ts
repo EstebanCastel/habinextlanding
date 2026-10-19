@@ -439,6 +439,11 @@ export const SESIONES: Sesion[] = [
 export type Ficha = { foto?: string; cargo?: string; logo?: string; fondo?: string; foco?: string };
 
 export const PONENTES: Record<string, Ficha> = {
+  // Los aliados que traen marca y no retrato: su logo es lo que la gente
+  // reconoce, más que la cara de quien lo representa.
+  "Wekall · Felipe Sánchez": { logo: "/img/ponentes/wekall.png", cargo: "Wekall", fondo: "#0b0618" },
+  "Funnel Chat · Alejandro Sánchez": { logo: "/img/ponentes/funnel-chat.png", cargo: "Funnel Chat", fondo: "#ffffff" },
+  "Dapta · Aron": { logo: "/img/ponentes/dapta.png", cargo: "Dapta", fondo: "#ffffff" },
   "Sebastián Noguera": { foto: "/img/ponentes/sebastian-noguera.jpg", cargo: "Cofundador y presidente de Habi" },
   "Pipe Restrepo": { foto: "/img/ponentes/pipe-restrepo.jpg", cargo: "VP de Growth · Habi" },
   "Camilo Olarte": { foto: "/img/ponentes/camilo-olarte.jpg", cargo: "Cofundador de LOKL" },
