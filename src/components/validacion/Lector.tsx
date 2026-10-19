@@ -24,12 +24,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * seguridad: el script que la dispara ya viene firmado con nonce.
  */
 
-type Modo = "entrada" | "almuerzo";
+type Modo = "entrada" | "almuerzo" | "taller";
 type Tipo = "general" | "vip" | "equipo";
 
 type Veredicto = {
   ok: boolean;
-  estado: "entra" | "repetido" | "desconocido" | "sin-turno" | "no-es-vip" | "fuera-de-turno";
+  estado: "entra" | "repetido" | "desconocido" | "sin-turno" | "no-es-vip" | "fuera-de-turno" | "pase-equivocado" | "sin-reserva";
   asistente?: { id: string; tipo: Tipo; nombre: string; correo: string; cargo?: string };
   marca?: { en: string };
   previa?: { en: string; por: string };
@@ -50,6 +50,8 @@ const CARA: Record<
   "no-es-vip": { fondo: "bg-rose-500", borde: "border-rose-300", texto: "text-rose-50", titulo: "No tiene almuerzo", vibra: [120, 70, 120] },
   "sin-turno": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "Sin turno escogido", vibra: [70, 60, 70] },
   "fuera-de-turno": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "No es su turno", vibra: [70, 60, 70] },
+  "pase-equivocado": { fondo: "bg-amber-400", borde: "border-amber-200", texto: "text-amber-950", titulo: "Ese no es el pase", vibra: [70, 60, 70] },
+  "sin-reserva": { fondo: "bg-rose-500", borde: "border-rose-300", texto: "text-rose-50", titulo: "Sin reserva", vibra: [120, 70, 120] },
 };
 
 /** Carga jsQR una sola vez, y solo si el teléfono no trae lector propio. */
@@ -264,7 +266,7 @@ export default function Lector({
 
       <div className="flex items-center justify-between gap-4 bg-night px-5 py-4">
         <p className="text-sm font-medium text-white/70">
-          {modo === "almuerzo" ? "Almuerzo VIP" : "Entrada"}
+          {modo === "almuerzo" ? "Almuerzo VIP" : modo === "taller" ? "Salón Taller" : "Entrada"}
         </p>
         <button
           type="button"

@@ -1,6 +1,19 @@
 import { ALMUERZOS } from "@/config/agenda";
 import { cuposDeAlmuerzo, escogerAlmuerzo, vistaDe } from "@/lib/experiencia";
 import { dentroDelLimite, error, ipDe, mismoOrigen, participanteActual, responder } from "@/lib/experiencia-http";
+import { urlDePase } from "@/lib/pases";
+
+const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+
+/**
+ * El pase del almuerzo: un QR propio, distinto al de la entrada.
+ *
+ * En el restaurante se comprueba el turno, que es algo que el QR de Luma no
+ * lleva. Y separa los errores: quien enseña el de la entrada recibe «ese no
+ * es el pase del almuerzo» en vez de un «ya entró» que no le dice nada.
+ */
+const paseDe = (id: string) =>
+  urlDePase("almuerzo", id, process.env.EXPERIENCIA_SECRET ?? "", SITIO);
 
 /**
  * El turno de almuerzo de quien tiene entrada VIP.
@@ -35,6 +48,7 @@ export async function GET() {
     turnos: conCupo(conteos),
     mio: p?.almuerzo?.turno ?? null,
     puede: p?.registro?.tier === "vip",
+    ...(p ? { pase: paseDe(p.id) } : {}),
   });
 }
 
@@ -59,5 +73,6 @@ export async function POST(request: Request) {
     yo: vistaDe(r.participante),
     turnos: conCupo(r.cupos),
     mio: r.participante.almuerzo?.turno ?? null,
+    pase: paseDe(r.participante.id),
   });
 }

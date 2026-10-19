@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Asterisk from "@/components/Asterisk";
 import type { Vista } from "@/lib/experiencia";
+import PaseQr from "./PaseQr";
 import { pedirJson } from "./util";
 
 /**
@@ -26,7 +27,7 @@ type Turno = {
   libres: number;
 };
 
-type Respuesta = { ok: boolean; turnos: Turno[]; mio: string | null; puede: boolean; motivo?: string };
+type Respuesta = { ok: boolean; turnos: Turno[]; mio: string | null; puede: boolean; motivo?: string; pase?: string };
 
 export default function Almuerzo({ yo }: { yo: Vista | null }) {
   const esVip = yo?.registro?.tier === "vip";
@@ -34,6 +35,7 @@ export default function Almuerzo({ yo }: { yo: Vista | null }) {
   const [mio, setMio] = useState<string | null>(yo?.almuerzo ?? null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [pase, setPase] = useState<string | null>(null);
 
   useEffect(() => {
     if (!esVip) return;
@@ -44,6 +46,7 @@ export default function Almuerzo({ yo }: { yo: Vista | null }) {
         if (!vivo || !d?.turnos) return;
         setTurnos(d.turnos);
         setMio(d.mio);
+        if (d.pase) setPase(d.pase);
       })
       .catch(() => null);
     return () => {
@@ -61,6 +64,7 @@ export default function Almuerzo({ yo }: { yo: Vista | null }) {
       const d = await pedirJson<Respuesta>("/api/experiencia/almuerzo", { turno: t.id });
       if (d?.turnos) setTurnos(d.turnos);
       if (d?.mio !== undefined) setMio(d.mio);
+      if (d?.pase) setPase(d.pase);
       if (d?.motivo) setAviso(d.motivo);
     } catch {
       setAviso("No se pudo guardar tu turno. Intenta otra vez.");
@@ -130,11 +134,22 @@ export default function Almuerzo({ yo }: { yo: Vista | null }) {
       </div>
 
       {aviso ? <p className="mt-4 text-sm text-amber-200/90">{aviso}</p> : null}
-      {escogido && !aviso ? (
-        <p className="mt-4 text-sm text-white/55">
-          Tu almuerzo queda de {escogido.desde} a {escogido.hasta}. Puedes cambiarlo hasta el día del
-          evento tocando otro turno.
-        </p>
+
+      {/* El pase del restaurante. Es otro QR, distinto al de la puerta: acá se
+          comprueba el turno, que el de Luma no lleva. */}
+      {escogido && pase ? (
+        <div className="mt-6 grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
+          <PaseQr url={pase} rotulo="Tu pase del almuerzo" />
+          <div>
+            <p className="text-lg font-semibold text-white">
+              {escogido.desde} a {escogido.hasta}
+            </p>
+            <p className="mt-1 text-sm font-light leading-relaxed text-white/55">
+              Enseña este QR en el restaurante. No es el mismo de la entrada. Puedes cambiar de
+              turno tocando otro: el pase sigue sirviendo.
+            </p>
+          </div>
+        </div>
       ) : null}
     </section>
   );

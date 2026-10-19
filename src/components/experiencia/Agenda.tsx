@@ -40,6 +40,12 @@ function hora12(hhmm: string): string {
 const PALABRAS = ["GLOBAL", "EXPERIENCIA", "OPORTUNIDAD", "BOGOTÁ", "IA", "OCT. 2026"];
 
 type Intereses = {
+  /** Cuántos puestos quedan en cada taller; vacío para las de Inspira. */
+  libres: Record<string, number>;
+  /** Los talleres que esta persona ya reservó. */
+  reservados: Set<string>;
+  /** Reserva o suelta un taller. En el Salón Taller reemplaza a `alternar`. */
+  reservar: (s: Sesion) => void | Promise<void>;
   gustan: Set<string>;
   conteos: Record<string, number>;
   alternar: (s: Sesion) => void;
@@ -78,6 +84,8 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
   const [gustan, setGustan] = useState<Set<string>>(() => new Set(yo?.agenda ?? []));
   const [conteos, setConteos] = useState(conteosIniciales);
   const [ocupada, setOcupada] = useState<string | null>(null);
+  /** El aviso cuando una reserva no se pudo: sin cupo, o dos a la misma hora. */
+  const [choque, setChoque] = useState<string | null>(null);
 
   // Lo guardado en el navegador: se lee al montar (el servidor no lo conoce) y,
   // si ya hay sesión, se lleva a la cuenta y se limpia.
@@ -149,7 +157,48 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
     }
   };
 
-  const intereses: Intereses = { gustan, conteos, alternar, ocupada };
+  // Las reservas del Salón Taller viven en el mismo gesto que el «me
+  // interesa»: en esa sala marcar una sesión ES reservar el puesto, porque
+  // tiene cupo. Separarlo en otra pantalla obligaba a marcarla dos veces.
+  const [libres, setLibres] = useState<Record<string, number>>({});
+  const [reservados, setReservados] = useState<Set<string>>(new Set(yo?.talleres ?? []));
+
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/experiencia/taller")
+      .then((r) => r.json())
+      .then((d: { talleres?: { id: string; libres: number }[]; mios?: string[] }) => {
+        if (!vivo || !d?.talleres) return;
+        setLibres(Object.fromEntries(d.talleres.map((t) => [t.id, t.libres])));
+        setReservados(new Set(d.mios ?? []));
+      })
+      .catch(() => null);
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const reservar = async (s: Sesion) => {
+    if (!yo) return;
+    if (ocupada) return;
+    setOcupada(s.id);
+    try {
+      const r = await pedirJson<{ talleres: { id: string; libres: number }[]; mios: string[]; motivo?: string }>(
+        "/api/experiencia/taller",
+        { taller: s.id }
+      );
+      if (r.talleres) setLibres(Object.fromEntries(r.talleres.map((t) => [t.id, t.libres])));
+      if (r.mios) setReservados(new Set(r.mios));
+      if (r.motivo) setChoque(r.motivo);
+      else setChoque(null);
+    } catch {
+      setChoque("No se pudo guardar tu reserva. Intenta otra vez.");
+    } finally {
+      setOcupada(null);
+    }
+  };
+
+  const intereses: Intereses = { gustan, conteos, alternar, ocupada, libres, reservados, reservar };
 
   return (
     <div>
@@ -204,6 +253,12 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
         ver quién la dicta, qué te llevas y descargar su ficha.
       </p>
 
+      {choque ? (
+        <p role="status" className="sticky bottom-4 z-30 mx-auto mt-6 w-fit max-w-[90vw] rounded-full border border-amber-300/50 bg-amber-400 px-5 py-2.5 text-sm font-semibold text-amber-950 shadow-lg">
+          {choque}
+        </p>
+      ) : null}
+
       {abierta ? <Panel sesion={abierta} intereses={intereses} onCerrar={() => setAbierta(null)} /> : null}
     </div>
   );
@@ -217,24 +272,49 @@ function Corazon({ lleno, className = "" }: { lleno: boolean; className?: string
   );
 }
 
-/** El corazón de una sesión, con cuánta gente la marcó. */
+/**
+ * El botón de una sesión. En Inspira marca interés; en el Salón Taller
+ * reserva el puesto.
+ *
+ * Es el mismo gesto porque para quien lo toca es la misma intención —«voy a
+ * esta»— y lo que cambia es la consecuencia: Inspira tiene aforo amplio y el
+ * Salón Taller no. Tenerlo en dos sitios obligaba a marcar la misma sesión
+ * dos veces, y la segunda se olvidaba.
+ */
 function MeInteresa({ sesion, intereses, grande = false }: { sesion: Sesion; intereses: Intereses; grande?: boolean }) {
-  const gusta = intereses.gustan.has(sesion.id);
-  const n = intereses.conteos[sesion.id] ?? 0;
+  const esTaller = sesion.salon === "taller";
+  const marcada = esTaller ? intereses.reservados.has(sesion.id) : intereses.gustan.has(sesion.id);
+  const libres = intereses.libres[sesion.id];
+  const sinCupo = esTaller && !marcada && libres === 0;
+  const n = esTaller ? undefined : intereses.conteos[sesion.id] ?? 0;
+
+  const etiqueta = esTaller
+    ? marcada
+      ? "Reservado"
+      : sinCupo
+        ? "Sin cupo"
+        : "Reservar"
+    : marcada
+      ? "Te interesa"
+      : "Me interesa";
+
   return (
     <button
       type="button"
-      onClick={() => intereses.alternar(sesion)}
-      aria-pressed={gusta}
-      aria-label={gusta ? "Ya no me interesa" : "Me interesa"}
-      disabled={intereses.ocupada === sesion.id}
+      onClick={() => (esTaller ? intereses.reservar(sesion) : intereses.alternar(sesion))}
+      aria-pressed={marcada}
+      aria-label={etiqueta}
+      disabled={intereses.ocupada === sesion.id || sinCupo}
       className={`inline-flex items-center gap-1.5 rounded-full border transition-colors disabled:opacity-60 ${
         grande ? "px-5 py-3 text-base font-medium" : "h-8 px-2.5 text-xs"
-      } ${gusta ? "border-violet bg-violet text-white" : "border-white/20 text-white/75 hover:border-violet/60 hover:text-white"}`}
+      } ${marcada ? "border-violet bg-violet text-white" : "border-white/20 text-white/75 hover:border-violet/60 hover:text-white"}`}
     >
-      <Corazon lleno={gusta} className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} />
-      {grande ? <span>{gusta ? "Te interesa" : "Me interesa"}</span> : null}
-      {n > 0 ? <span className="font-semibold tabular-nums">{n}</span> : null}
+      <Corazon lleno={marcada} className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} />
+      {grande ? <span>{etiqueta}</span> : null}
+      {n ? <span className="font-semibold tabular-nums">{n}</span> : null}
+      {esTaller && !grande && !marcada && typeof libres === "number" ? (
+        <span className="font-semibold tabular-nums">{libres}</span>
+      ) : null}
     </button>
   );
 }

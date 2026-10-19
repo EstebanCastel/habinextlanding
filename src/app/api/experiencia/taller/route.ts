@@ -1,6 +1,20 @@
 import { CUPO_TALLER, SESIONES } from "@/config/agenda";
 import { cuposDeTalleres, reservarTaller, vistaDe } from "@/lib/experiencia";
 import { dentroDelLimite, error, ipDe, mismoOrigen, participanteActual, responder } from "@/lib/experiencia-http";
+import { urlDePase } from "@/lib/pases";
+
+const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
+const secreto = () => process.env.EXPERIENCIA_SECRET ?? "";
+
+/**
+ * El pase de cada taller reservado.
+ *
+ * Uno por taller y no uno solo para todos: en la puerta del salón se valida
+ * una sesión concreta, y un pase genérico obligaría a preguntar «¿a cuál
+ * vienes?» justo cuando hay fila.
+ */
+const pases = (id: string, talleres: string[]) =>
+  Object.fromEntries(talleres.map((t) => [t, urlDePase("taller", id, secreto(), SITIO, t)]));
 
 /**
  * Las reservas del Salón Taller.
@@ -35,10 +49,12 @@ const conCupo = (conteos: Record<string, number>) =>
 
 export async function GET() {
   const [p, conteos] = await Promise.all([participanteActual(), cuposDeTalleres()]);
+  const mios = (p?.talleres ?? []).map((t) => t.id);
   return responder({
     ok: true,
     talleres: conCupo(conteos),
-    mios: (p?.talleres ?? []).map((t) => t.id),
+    mios,
+    ...(p ? { pases: pases(p.id, mios) } : {}),
   });
 }
 
@@ -56,11 +72,13 @@ export async function POST(request: Request) {
 
   const r = await reservarTaller(p.id, taller);
   if (!r.participante) return error(r.motivo ?? "No se pudo guardar tu reserva.", 404);
+  const mios = (r.participante.talleres ?? []).map((t) => t.id);
   return responder({
     ok: !r.motivo,
     ...(r.motivo ? { motivo: r.motivo } : {}),
     yo: vistaDe(r.participante),
     talleres: conCupo(r.cupos),
-    mios: (r.participante.talleres ?? []).map((t) => t.id),
+    mios,
+    pases: pases(r.participante.id, mios),
   });
 }

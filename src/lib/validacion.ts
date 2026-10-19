@@ -1,8 +1,9 @@
 import { escribir, leer, listarRutas } from "./almacen";
 import { esDelEquipo, fichaDeEquipo, selloDeEquipo } from "@/config/equipo";
-import { ALMUERZOS } from "@/config/agenda";
+import { ALMUERZOS, SESIONES } from "@/config/agenda";
+import { leerPase } from "./pases";
+import { porId } from "./experiencia";
 import { eventoDeTier } from "./luma";
-import { porCorreo } from "./experiencia";
 
 /**
  * La puerta: un solo lector para las tres entradas.
@@ -26,7 +27,7 @@ import { porCorreo } from "./experiencia";
 // ------------------------------------------------------------- tipos ----
 
 export type Tipo = "general" | "vip" | "equipo";
-export type Modo = "entrada" | "almuerzo";
+export type Modo = "entrada" | "almuerzo" | "taller";
 
 export type Asistente = {
   /** Lo que identifica el QR: el `pk` de Luma, o el correo para el equipo. */
@@ -59,6 +60,8 @@ export type Marca = {
   modo: Modo;
   /** El turno de almuerzo, cuando la marca es del restaurante. */
   turno?: string;
+  /** El taller, cuando la marca es de la puerta del Salón Taller. */
+  taller?: string;
 };
 
 export type Veredicto =
@@ -67,7 +70,9 @@ export type Veredicto =
   | { ok: false; estado: "desconocido"; detalle: string }
   | { ok: false; estado: "sin-turno"; asistente: Asistente; detalle: string }
   | { ok: false; estado: "no-es-vip"; asistente: Asistente; detalle: string }
-  | { ok: false; estado: "fuera-de-turno"; asistente: Asistente; turno: TurnoVista; detalle: string };
+  | { ok: false; estado: "fuera-de-turno"; asistente: Asistente; turno: TurnoVista; detalle: string }
+  | { ok: false; estado: "pase-equivocado"; detalle: string }
+  | { ok: false; estado: "sin-reserva"; asistente: Asistente; detalle: string };
 
 export type TurnoVista = { id: string; rotulo: string; desde: string; hasta: string };
 
@@ -79,6 +84,7 @@ export type Conteo = {
   /** Cuántos hay en el padrón, para saber contra qué se compara. */
   padron: { general: number; vip: number; equipo: number; total: number };
   almuerzo: { total: number; porTurno: Record<string, number> };
+  taller: { total: number; porSesion: Record<string, number> };
   actualizadoEn: string;
 };
 
@@ -239,6 +245,41 @@ export async function validar(
   texto: string,
   opciones: { modo: Modo; por: string; secreto: string }
 ): Promise<Veredicto> {
+  // Adentro se usan pases propios —el del almuerzo y el de cada taller— y en
+  // la puerta el de Luma. Enseñar el que no es tiene que decirlo con esas
+  // palabras: un «no está en la lista» ahí manda a buscar un problema que no
+  // existe.
+  const pase = leerPase(texto, opciones.secreto);
+
+  if (opciones.modo === "entrada" && pase) {
+    return {
+      ok: false,
+      estado: "pase-equivocado",
+      detalle: `Ese es el pase ${pase.tipo === "taller" ? "de un taller" : "del almuerzo"}. En la puerta va el QR de la entrada.`,
+    };
+  }
+
+  if (opciones.modo !== "entrada") {
+    if (!pase) {
+      return {
+        ok: false,
+        estado: "pase-equivocado",
+        detalle:
+          opciones.modo === "almuerzo"
+            ? "Ese no es el pase del almuerzo. Está en habinext.com/experiencia, en «Mi almuerzo»."
+            : "Ese no es el pase del taller. Está en habinext.com/experiencia, en «Mis talleres».",
+      };
+    }
+    if ((opciones.modo === "almuerzo") !== (pase.tipo === "almuerzo")) {
+      return {
+        ok: false,
+        estado: "pase-equivocado",
+        detalle: `Ese es el pase ${pase.tipo === "taller" ? "de un taller" : "del almuerzo"}, no el de acá.`,
+      };
+    }
+    return validarPase(pase, opciones);
+  }
+
   const asistente = await identificar(texto, opciones.secreto).catch(() => null);
   if (!asistente) {
     return {
@@ -248,29 +289,6 @@ export async function validar(
     };
   }
 
-  let turno: TurnoVista | undefined;
-  if (opciones.modo === "almuerzo" && asistente.tipo !== "equipo") {
-    if (asistente.tipo !== "vip") {
-      return {
-        ok: false,
-        estado: "no-es-vip",
-        asistente,
-        detalle: "El almuerzo va con la entrada VIP.",
-      };
-    }
-    const p = await porCorreo(asistente.correo).catch(() => null);
-    const escogido = p?.almuerzo?.turno;
-    if (!escogido) {
-      return {
-        ok: false,
-        estado: "sin-turno",
-        asistente,
-        detalle: "No escogió turno. Que entre a habinext.com/experiencia y lo elija.",
-      };
-    }
-    turno = turnoVista(escogido);
-  }
-
   const marca: Marca = {
     id: asistente.id,
     tipo: asistente.tipo,
@@ -278,16 +296,96 @@ export async function validar(
     correo: asistente.correo,
     en: new Date().toISOString(),
     por: opciones.por,
-    modo: opciones.modo,
-    ...(turno ? { turno: turno.id } : {}),
+    modo: "entrada",
   };
 
-  const ruta = rutaMarca(opciones.modo, asistente.tipo, asistente.id);
+  const ruta = rutaMarca("entrada", asistente.tipo, asistente.id);
   const previa = await leer<Marca>(ruta).catch(() => null);
   if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
 
   await escribir(ruta, marca);
-  return { ok: true, estado: "entra", asistente, marca, ...(turno ? { turno } : {}) };
+  return { ok: true, estado: "entra", asistente, marca };
+}
+
+/**
+ * El almuerzo y los talleres, que se validan contra lo que la persona reservó
+ * y no contra el padrón de la puerta.
+ *
+ * El pase lleva quién es; lo que vale —el turno, la reserva— se lee en el
+ * momento, porque cambia: alguien puede mover su turno después de guardar el
+ * QR en el teléfono y el pase tiene que seguir sirviendo.
+ */
+async function validarPase(
+  pase: { tipo: "almuerzo" | "taller"; participanteId: string; extra: string },
+  opciones: { modo: Modo; por: string; secreto: string }
+): Promise<Veredicto> {
+  const p = await porId(pase.participanteId).catch(() => null);
+  if (!p) {
+    return { ok: false, estado: "desconocido", detalle: "No encontramos a esa persona. Que entre a la experiencia otra vez." };
+  }
+
+  const asistente: Asistente = {
+    id: p.id,
+    tipo: p.equipo ? "equipo" : p.registro?.tier === "vip" ? "vip" : "general",
+    nombre: `${p.nombre ?? ""} ${p.apellido ?? ""}`.trim() || (p.email ?? p.id),
+    correo: p.email ?? "",
+  };
+
+  if (pase.tipo === "almuerzo") {
+    if (asistente.tipo === "general") {
+      return { ok: false, estado: "no-es-vip", asistente, detalle: "El almuerzo va con la entrada VIP." };
+    }
+    const escogido = p.almuerzo?.turno;
+    if (!escogido && asistente.tipo !== "equipo") {
+      return {
+        ok: false,
+        estado: "sin-turno",
+        asistente,
+        detalle: "No escogió turno. Que entre a habinext.com/experiencia y lo elija.",
+      };
+    }
+    const turno = escogido ? turnoVista(escogido) : undefined;
+    const marca: Marca = {
+      id: p.id, tipo: asistente.tipo, nombre: asistente.nombre, correo: asistente.correo,
+      en: new Date().toISOString(), por: opciones.por, modo: "almuerzo",
+      ...(turno ? { turno: turno.id } : {}),
+    };
+    const ruta = rutaMarca("almuerzo", asistente.tipo, p.id);
+    const previa = await leer<Marca>(ruta).catch(() => null);
+    if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
+    await escribir(ruta, marca);
+    return { ok: true, estado: "entra", asistente, marca, ...(turno ? { turno } : {}) };
+  }
+
+  // Taller: el pase dice a cuál, y hay que comprobar que de verdad lo reservó.
+  const taller = SESIONES.find((x) => x.id === pase.extra);
+  const reservado = (p.talleres ?? []).some((t) => t.id === pase.extra);
+  if (!taller || !reservado) {
+    return {
+      ok: false,
+      estado: "sin-reserva",
+      asistente,
+      detalle: taller
+        ? `No tiene reservado «${taller.titulo}». Si hay cupo puede reservarlo en la experiencia.`
+        : "Ese taller no existe.",
+    };
+  }
+
+  const marca: Marca = {
+    id: `${p.id}__${taller.id}`,
+    tipo: asistente.tipo,
+    nombre: asistente.nombre,
+    correo: asistente.correo,
+    en: new Date().toISOString(),
+    por: opciones.por,
+    modo: "taller",
+    taller: taller.id,
+  };
+  const ruta = rutaMarca("taller", asistente.tipo, marca.id);
+  const previa = await leer<Marca>(ruta).catch(() => null);
+  if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
+  await escribir(ruta, marca);
+  return { ok: true, estado: "entra", asistente, marca };
 }
 
 // ----------------------------------------------------------- conteo ----
@@ -300,9 +398,10 @@ export async function validar(
  * personas la diferencia entre listar y leer es de segundos a minutos.
  */
 export async function conteo(): Promise<Conteo> {
-  const [rutasEntrada, rutasAlmuerzo, padron] = await Promise.all([
+  const [rutasEntrada, rutasAlmuerzo, rutasTaller, padron] = await Promise.all([
     listarRutas("validacion/entrada/", 5000).catch(() => [] as string[]),
     listarRutas("validacion/almuerzo/", 5000).catch(() => [] as string[]),
+    listarRutas("validacion/taller/", 5000).catch(() => [] as string[]),
     traerPadron().catch(() => null),
   ]);
 
@@ -321,6 +420,13 @@ export async function conteo(): Promise<Conteo> {
   const marcas = await Promise.all(rutasAlmuerzo.map((r) => leer<Marca>(r).catch(() => null)));
   for (const m of marcas) if (m?.turno && m.turno in porTurno) porTurno[m.turno] += 1;
 
+  // Igual para los talleres: el nombre del archivo lleva el participante y la
+  // sesión juntos, así que el desglose por taller sí hay que leerlo.
+  const porSesion: Record<string, number> = {};
+  for (const x of SESIONES) if (x.salon === "taller" && !x.tipo) porSesion[x.id] = 0;
+  const deTaller = await Promise.all(rutasTaller.map((r) => leer<Marca>(r).catch(() => null)));
+  for (const m of deTaller) if (m?.taller && m.taller in porSesion) porSesion[m.taller] += 1;
+
   return {
     general,
     vip,
@@ -333,6 +439,7 @@ export async function conteo(): Promise<Conteo> {
       total: gente.filter((p) => !p.prueba).length,
     },
     almuerzo: { total: rutasAlmuerzo.length, porTurno },
+    taller: { total: rutasTaller.length, porSesion },
     actualizadoEn: new Date().toISOString(),
   };
 }

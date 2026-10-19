@@ -1,35 +1,38 @@
 import type { Metadata } from "next";
-import Entrar from "@/components/admin/Entrar";
 import Puerta from "@/components/validacion/Puerta";
-import { ALMUERZOS } from "@/config/agenda";
-import { haySesion } from "@/lib/sesion";
+import { ALMUERZOS, SESIONES } from "@/config/agenda";
 
 /**
- * La puerta del evento.
+ * Los tres controles del día del evento.
  *
- * Vive fuera de `/admin` a propósito: quien la usa está de pie en la entrada
- * con un teléfono, no sentado frente al panel. Una dirección corta se dicta
- * por radio y se escribe con una mano.
+ * Vive fuera de `/admin` y sin clave a propósito. El 20 hay gente del equipo
+ * en la puerta, en el restaurante y en el Salón Taller, cada uno con su
+ * teléfono, y repartir una contraseña por radio a las siete de la mañana es
+ * como se pierde media hora. Lo que protege no es la clave sino el QR: sin
+ * uno válido no se marca nada.
  *
- * Comparte la clave del panel, que es la misma gente. Sin sesión se muestra
- * la puerta de entrada y nada más.
+ * Fuera de los buscadores igual: no es una página para que llegue nadie de
+ * fuera, solo no está detrás de un muro.
  */
 
 export const metadata: Metadata = {
-  title: "Puerta · Habi Next",
+  title: "Control · Habi Next",
   robots: { index: false, follow: false, nocache: true },
 };
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function Validacion() {
-  if (!(await haySesion())) return <Entrar />;
-
+export default function Validacion() {
   const turnos = ALMUERZOS.map((t) => ({ id: t.id, rotulo: t.rotulo, desde: t.desde, hasta: t.hasta }));
+  const talleres = SESIONES.filter((s) => s.salon === "taller" && !s.tipo).map((s) => ({
+    id: s.id,
+    titulo: s.titulo,
+    desde: s.desde ?? "",
+  }));
   return (
     <main className="s-night min-h-dvh bg-night">
-      <Puerta turnos={turnos} />
+      <Puerta turnos={turnos} talleres={talleres} />
     </main>
   );
 }

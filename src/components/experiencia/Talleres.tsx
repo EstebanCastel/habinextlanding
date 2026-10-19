@@ -3,40 +3,31 @@
 import { useEffect, useState } from "react";
 import Asterisk from "@/components/Asterisk";
 import type { Vista } from "@/lib/experiencia";
-import { pedirJson } from "./util";
+import PaseQr from "./PaseQr";
 
 /**
- * Las reservas del Salón Taller.
+ * Los talleres que la persona ya reservó, con el pase de cada uno.
  *
- * La sala es de mesas con corriente y sesiones donde se sale con algo montado,
- * así que tiene tope real. Reservar no es un trámite: es lo que separa entrar
- * con puesto de quedarse de pie en la puerta.
+ * Reservar se hace abajo, en la tarjeta de cada sesión: ahí es donde se mira
+ * la agenda y donde se decide. Acá arriba va lo que hace falta el día del
+ * evento —a qué hora me toca y cuál es mi QR— sin tener que buscarlo entre
+ * veinte tarjetas.
  *
- * Cada tarjeta es un interruptor —toca para reservar, toca otra vez para
- * soltar— porque es como la gente espera que funcione, y liberar devuelve el
- * cupo a quien venga detrás. Dos talleres a la misma hora los frena el
- * servidor: la sala es una sola.
+ * Un QR por taller y no uno para todos: en la puerta del salón se valida una
+ * sesión concreta, y un pase genérico obligaría a preguntar a cuál viene
+ * justo cuando hay fila.
+ *
+ * Sin reservas no se pinta nada. Una sección vacía que dice «no tienes nada»
+ * ocupa el sitio de lo que sí importa.
  */
 
-type Taller = {
-  id: string;
-  titulo: string;
-  desde: string;
-  ponente: string;
-  detallePonente: string;
-  resumen: string;
-  necesitas: string;
-  libres: number;
-  cupo: number;
-};
-
-type Respuesta = { ok: boolean; talleres: Taller[]; mios: string[]; motivo?: string };
+type Taller = { id: string; titulo: string; desde: string; ponente: string; detallePonente: string; necesitas: string };
+type Respuesta = { talleres: Taller[]; mios: string[]; pases?: Record<string, string> };
 
 export default function Talleres({ yo }: { yo: Vista | null }) {
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [mios, setMios] = useState<string[]>(yo?.talleres ?? []);
-  const [ocupado, setOcupado] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [pases, setPases] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let vivo = true;
@@ -46,6 +37,7 @@ export default function Talleres({ yo }: { yo: Vista | null }) {
         if (!vivo || !d?.talleres) return;
         setTalleres(d.talleres);
         setMios(d.mios ?? []);
+        setPases(d.pases ?? {});
       })
       .catch(() => null);
     return () => {
@@ -53,25 +45,11 @@ export default function Talleres({ yo }: { yo: Vista | null }) {
     };
   }, []);
 
-  if (talleres.length === 0) return null;
+  const reservados = talleres
+    .filter((t) => mios.includes(t.id))
+    .sort((a, b) => a.desde.localeCompare(b.desde));
 
-  async function alternar(t: Taller) {
-    if (ocupado) return;
-    setOcupado(t.id);
-    setAviso(null);
-    try {
-      const d = await pedirJson<Respuesta>("/api/experiencia/taller", { taller: t.id });
-      if (d?.talleres) setTalleres(d.talleres);
-      if (d?.mios) setMios(d.mios);
-      if (d?.motivo) setAviso(d.motivo);
-    } catch {
-      setAviso("No se pudo guardar tu reserva. Intenta otra vez.");
-    } finally {
-      setOcupado(null);
-    }
-  }
-
-  const reservados = talleres.filter((t) => mios.includes(t.id));
+  if (!reservados.length) return null;
 
   return (
     <section className="mx-auto mb-16 w-full max-w-5xl rounded-3xl border border-white/12 bg-white/[0.04] p-7 sm:p-9">
@@ -79,73 +57,32 @@ export default function Talleres({ yo }: { yo: Vista | null }) {
         <Asterisk className="size-3.5" /> Salón Taller
       </p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-        Reserva tu puesto
+        {reservados.length === 1 ? "Tu taller" : "Tus talleres"}
       </h2>
       <p className="mt-2 max-w-2xl text-base font-light leading-relaxed text-white/60">
-        El Salón Taller tiene mesas con corriente y se sale con algo montado en tu propio
-        computador, así que el cupo es real. Reserva los que vas a tomar y llega directo.
+        Enseña el QR de cada uno en la puerta del salón. No es el mismo de la entrada. Para soltar un
+        puesto o reservar otro, toca la sesión en la agenda de abajo.
       </p>
 
-      <div className="mt-7 grid gap-3 sm:grid-cols-2">
-        {talleres.map((t) => {
-          const mio = mios.includes(t.id);
-          const lleno = t.libres === 0 && !mio;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => alternar(t)}
-              disabled={lleno || ocupado === t.id}
-              aria-pressed={mio}
-              className={`flex h-full flex-col rounded-2xl border p-5 text-left transition-colors ${
-                mio
-                  ? "border-violet bg-violet/20"
-                  : lleno
-                    ? "cursor-not-allowed border-white/8 bg-white/[0.02] opacity-45"
-                    : "border-white/12 bg-white/[0.02] hover:border-white/35 hover:bg-white/[0.06]"
-              }`}
-            >
-              <span className="flex items-baseline gap-2">
-                <span className="text-lg font-bold tabular-nums tracking-tight text-white">{t.desde}</span>
-                {mio ? (
-                  <span className="rounded-full bg-violet px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                    Reservado
-                  </span>
-                ) : null}
-              </span>
-              <span className="mt-1.5 text-base font-semibold leading-snug text-white">{t.titulo}</span>
+      <div className="mt-7 grid gap-4 sm:grid-cols-2">
+        {reservados.map((t) => (
+          <div key={t.id} className="grid gap-4 rounded-2xl border border-violet/40 bg-violet/[0.1] p-5 sm:grid-cols-[auto_1fr] sm:items-center">
+            {pases[t.id] ? <PaseQr url={pases[t.id]} rotulo={t.desde} /> : null}
+            <div>
+              <p className="text-base font-semibold leading-snug text-white">{t.titulo}</p>
               {t.ponente ? (
-                <span className="mt-1 text-sm font-light text-white/55">
+                <p className="mt-1 text-sm font-light text-white/55">
                   {t.ponente}
                   {t.detallePonente ? ` · ${t.detallePonente}` : ""}
-                </span>
+                </p>
               ) : null}
               {t.necesitas ? (
-                <span className="mt-2 text-xs font-light leading-relaxed text-white/45">{t.necesitas}</span>
+                <p className="mt-2 text-xs font-light leading-relaxed text-white/45">{t.necesitas}</p>
               ) : null}
-              <span
-                className={`mt-4 text-xs font-medium ${
-                  mio ? "text-violet-soft" : lleno ? "text-white/35" : "text-white/40"
-                }`}
-              >
-                {mio
-                  ? "Toca para soltar tu puesto"
-                  : lleno
-                    ? "Sin cupo"
-                    : `${t.libres} ${t.libres === 1 ? "puesto libre" : "puestos libres"}`}
-              </span>
-            </button>
-          );
-        })}
+            </div>
+          </div>
+        ))}
       </div>
-
-      {aviso ? <p className="mt-4 text-sm text-amber-200/90">{aviso}</p> : null}
-      {reservados.length && !aviso ? (
-        <p className="mt-4 text-sm text-white/55">
-          Tienes {reservados.length} {reservados.length === 1 ? "taller reservado" : "talleres reservados"}:{" "}
-          {reservados.map((t) => `${t.desde} ${t.titulo}`).join(" · ")}.
-        </p>
-      ) : null}
     </section>
   );
 }

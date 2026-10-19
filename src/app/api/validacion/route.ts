@@ -5,9 +5,14 @@ import { armarPadron, conteo, deshacer, ultimas, validar, type Modo, type Tipo }
 /**
  * La puerta, por dentro.
  *
- * Todo pasa por acá: leer un QR, pedir las cuentas y refrescar el padrón. Va
- * detrás de la misma clave del panel —quien valida entradas es el equipo de
- * boletería, no cualquiera con el enlace.
+ * **Leer y contar van sin clave.** El día del evento hay gente del equipo en
+ * la puerta, en el restaurante y en el Salón Taller, cada uno con su teléfono,
+ * y repartir una contraseña por radio a las siete de la mañana es como se
+ * pierde media hora. Lo que protege no es la clave sino el QR: sin uno válido
+ * no se marca nada, y los de Luma y los nuestros van firmados.
+ *
+ * Lo que sí pide clave es lo que destruye o cuesta: refrescar el padrón contra
+ * Luma, deshacer una marca y dejar la puerta en cero.
  *
  * Nunca se cachea. Un conteo de hace treinta segundos en una puerta con fila
  * es peor que no tener conteo: hace creer que algo falla cuando lo único viejo
@@ -22,12 +27,10 @@ export const maxDuration = 60;
 const sinCache = { "Cache-Control": "no-store" };
 const responder = (dato: unknown, status = 200) => NextResponse.json(dato, { status, headers: sinCache });
 
-const esModo = (v: unknown): v is Modo => v === "entrada" || v === "almuerzo";
+const esModo = (v: unknown): v is Modo => v === "entrada" || v === "almuerzo" || v === "taller";
 const esTipo = (v: unknown): v is Tipo => v === "general" || v === "vip" || v === "equipo";
 
 export async function GET(request: Request) {
-  if (!(await haySesion())) return responder({ error: "Entra al panel primero." }, 401);
-
   const q = new URL(request.url).searchParams;
   const modo = esModo(q.get("modo")) ? (q.get("modo") as Modo) : "entrada";
 
@@ -40,8 +43,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await haySesion())) return responder({ error: "Entra al panel primero." }, 401);
-
   const cuerpo = (await request.json().catch(() => null)) as {
     accion?: unknown;
     texto?: unknown;
@@ -56,10 +57,21 @@ export async function POST(request: Request) {
   const por = String(cuerpo?.por ?? "").trim().slice(0, 40) || "puerta";
   const secreto = process.env.EXPERIENCIA_SECRET ?? "";
 
+  // Lo que cuesta o destruye sigue detrás de la clave del panel.
+  if (accion !== "validar" && !(await haySesion())) {
+    return responder({ error: "Eso se hace desde el panel." }, 401);
+  }
+
   if (accion === "refrescar-padron") {
     const p = await armarPadron().catch((e: Error) => ({ error: e.message }) as never);
     if ("error" in (p as object)) return responder({ error: "No se pudo leer la lista de Luma." }, 503);
     return responder({ ok: true, padron: (p as { gente: unknown[] }).gente.length });
+  }
+
+  if (accion === "vaciar") {
+    const { vaciar } = await import("@/lib/validacion");
+    const n = await vaciar(modo);
+    return responder({ ok: true, borradas: n });
   }
 
   if (accion === "deshacer") {
