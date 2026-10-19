@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Dot from "@/components/Dot";
 import { BLOQUEADAS, EXPERIENCIAS, PUNTOS_TOTALES, bloqueada, type ExperienciaId } from "@/config/experiencia";
 import type { Podio as Filas, Vista } from "@/lib/experiencia";
+import Accesos from "./Accesos";
 import { EVENTO_ENTRAR } from "./BotonEntrar";
 import Entrar from "./Entrar";
 import Podio from "./Podio";
@@ -75,6 +76,11 @@ export default function Portada({
           </span>
         </p>
       ) : null}
+
+      {/* Lo que la gente busca el día del evento, antes que nada: su QR, la
+          agenda, su almuerzo, su taller. Lo demás —puntos, podio, las tres
+          experiencias— es de los días previos y queda debajo. */}
+      <Accesos yo={yo} />
 
       {/* Avance y podio */}
       <section className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">

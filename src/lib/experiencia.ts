@@ -111,6 +111,12 @@ export type Participante = {
    * almuerzo va de 12:30 a 2:00 y la sala no da para todos a la vez.
    */
   almuerzo?: { turno: string; escogidoEn: string };
+  /**
+   * Los talleres que reservó. El Salón Taller tiene cupo y se llena: sin
+   * reserva la gente llegaba a una sala sin puesto, que es peor que saber de
+   * antemano que no alcanzó.
+   */
+  talleres?: { id: string; reservadoEn: string }[];
   /** Qué pases de billetera bajó (Apple, Google): cuándo la primera vez y cuántas veces. */
   pases?: Partial<Record<"apple" | "google", { primeraVez: string; veces: number }>>;
   bitacora: { en: string; que: string; detalle?: string }[];
@@ -701,6 +707,8 @@ export async function registrarVistaPrevia(id: string, red: string): Promise<voi
 /** Lo que la página necesita de la persona. Nunca incluye el token. */
 export type Vista = {
   id: string;
+  /** Los talleres que reservó. */
+  talleres?: string[];
   /** El turno de almuerzo que escogió, solo para VIP. */
   almuerzo?: string;
   nombre: string;
@@ -751,6 +759,7 @@ export function vistaDe(p: Participante): Vista {
     vistasPrevias: p.vistasPrevias,
     agenda: Object.keys(p.agenda ?? {}),
     ...(p.almuerzo ? { almuerzo: p.almuerzo.turno } : {}),
+    ...(p.talleres?.length ? { talleres: p.talleres.map((t) => t.id) } : {}),
     puntos: puntos(p),
     nivel: nivel(p),
   };
@@ -793,6 +802,89 @@ export async function marcarInteres(id: string, sesionId: string, gusta: boolean
     }).catch(() => null);
   }
   return { participante, conteos: await interesPorSesion() };
+}
+
+// ---------- reservas del Salón Taller ----------
+
+const RUTA_TALLERES = "experiencia/taller-cupos.json";
+
+/** Cuántos reservaron cada taller. Es lo que decide si sigue abierto. */
+export async function cuposDeTalleres(): Promise<Record<string, number>> {
+  const d = await leer<Cupos>(RUTA_TALLERES);
+  return d?.conteos ?? {};
+}
+
+/**
+ * Reserva —o suelta— un taller.
+ *
+ * Es un interruptor y no un «guardar»: la misma acción reserva si no estaba y
+ * libera si ya estaba, que es como lo entiende quien toca una tarjeta. Liberar
+ * devuelve el cupo, así que el contador sube y baja.
+ *
+ * Dos talleres a la misma hora no se pueden: la sala es una sola y reservar
+ * los dos deja un puesto muerto que alguien más necesitaba.
+ */
+export async function reservarTaller(
+  id: string,
+  tallerId: string
+): Promise<{ participante: Participante | null; cupos: Record<string, number>; motivo?: string }> {
+  const { SESIONES, CUPO_TALLER } = await import("@/config/agenda");
+  const taller = SESIONES.find((s) => s.id === tallerId && s.salon === "taller" && s.tipo !== "pausa" && s.tipo !== "bloqueo");
+  if (!taller) return { participante: null, cupos: await cuposDeTalleres(), motivo: "Ese taller no existe." };
+
+  const p = await porId(id);
+  if (!p) return { participante: null, cupos: await cuposDeTalleres(), motivo: "No encontramos tu sesión." };
+
+  const tiene = (p.talleres ?? []).some((t) => t.id === tallerId);
+
+  // Soltar: no hay nada que comprobar, solo devolver el cupo.
+  if (tiene) {
+    const cupos = await modificar<Cupos>(RUTA_TALLERES, (d) => {
+      const conteos = { ...(d?.conteos ?? {}) };
+      conteos[tallerId] = Math.max(0, (conteos[tallerId] ?? 0) - 1);
+      return { actualizadoEn: new Date().toISOString(), conteos };
+    }).catch(() => null);
+    const sinEl = await cambiar(id, (q) =>
+      anotar({ ...q, talleres: (q.talleres ?? []).filter((t) => t.id !== tallerId) }, "soltó un taller", taller.titulo)
+    ).catch(() => null);
+    return { participante: sinEl ?? p, cupos: cupos?.conteos ?? (await cuposDeTalleres()) };
+  }
+
+  const choca = (p.talleres ?? []).find((t) => {
+    const otro = SESIONES.find((s) => s.id === t.id);
+    return otro?.desde && taller.desde && otro.desde === taller.desde;
+  });
+  if (choca) {
+    const otro = SESIONES.find((s) => s.id === choca.id);
+    return {
+      participante: p,
+      cupos: await cuposDeTalleres(),
+      motivo: `A esa hora ya reservaste «${otro?.titulo ?? "otro taller"}». Suéltalo primero.`,
+    };
+  }
+
+  let lleno = false;
+  const cupos = await modificar<Cupos>(RUTA_TALLERES, (d) => {
+    const conteos = { ...(d?.conteos ?? {}) };
+    if ((conteos[tallerId] ?? 0) >= CUPO_TALLER) {
+      lleno = true;
+      return d ?? { actualizadoEn: new Date().toISOString(), conteos };
+    }
+    conteos[tallerId] = (conteos[tallerId] ?? 0) + 1;
+    return { actualizadoEn: new Date().toISOString(), conteos };
+  }).catch(() => null);
+  if (lleno) {
+    return { participante: p, cupos: cupos?.conteos ?? (await cuposDeTalleres()), motivo: "Ese taller se llenó." };
+  }
+
+  const actualizado = await cambiar(id, (q) =>
+    anotar(
+      { ...q, talleres: [...(q.talleres ?? []), { id: tallerId, reservadoEn: new Date().toISOString() }] },
+      "reservó un taller",
+      taller.titulo
+    )
+  ).catch(() => null);
+  return { participante: actualizado ?? p, cupos: cupos?.conteos ?? (await cuposDeTalleres()) };
 }
 
 // ---------- almuerzo del VIP ----------

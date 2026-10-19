@@ -94,6 +94,16 @@ export type Sesion = {
   gancho?: string;
 };
 
+/**
+ * Cuántos caben en cada sesión del Salón Taller.
+ *
+ * La sala es de mesas con corriente y el acompañamiento es de verdad: pasado
+ * ese número la sesión deja de ser un taller y pasa a ser una charla con el
+ * computador abierto, que es justo lo que no es. Es un solo número porque la
+ * sala es la misma todo el día.
+ */
+export const CUPO_TALLER = 60;
+
 export const SESIONES: Sesion[] = [
   // ---------- Salón Principal · Inspira ----------
   {
