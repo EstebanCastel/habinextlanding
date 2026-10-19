@@ -24,12 +24,19 @@ export type PlanoProps = {
   visible: (ruta: RutaId) => boolean;
   proximas: Partial<Record<RutaId, Parada | undefined>>;
   juegoAbierto: boolean;
+  /**
+   * Si se pintan las marcas encima. Con las dos rutas a la vez no: nueve
+   * números sobre el plano tapan justo lo que se fue a mirar —dónde queda
+   * cada salón— y el plano completo es, antes que un tablero de juego, el
+   * mapa del sitio. Al escoger una ruta aparecen las suyas.
+   */
+  conNumeros?: boolean;
   alElegir: (id: string) => void;
 };
 
 const colorDe = (ruta: RutaId) => RUTAS.find((r) => r.id === ruta)?.color ?? "#802ef6";
 
-export default function Plano({ hechas, seleccion, visible, proximas, juegoAbierto, alElegir }: PlanoProps) {
+export default function Plano({ hechas, seleccion, visible, proximas, juegoAbierto, conNumeros = true, alElegir }: PlanoProps) {
   return (
     <div className="relative select-none">
       <Image
@@ -41,56 +48,58 @@ export default function Plano({ hechas, seleccion, visible, proximas, juegoAbier
         className="block h-auto w-full"
       />
 
-      {PARADAS.map((p) => {
-        const hecha = Boolean(hechas[p.id]);
-        const sigue = proximas[p.ruta]?.id === p.id;
-        const elegida = seleccion === p.id;
-        const atenuada = !visible(p.ruta);
-        const color = colorDe(p.ruta);
+      {conNumeros
+        ? PARADAS.map((p) => {
+            const hecha = Boolean(hechas[p.id]);
+            const sigue = proximas[p.ruta]?.id === p.id;
+            const elegida = seleccion === p.id;
+            const atenuada = !visible(p.ruta);
+            const color = colorDe(p.ruta);
 
-        return (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => alElegir(p.id)}
-            aria-label={`${p.orden}. ${p.nombre}${hecha ? " · ya la hiciste" : ""}`}
-            aria-pressed={elegida}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${
-              atenuada ? "opacity-30" : "opacity-100"
-            }`}
-            style={{ left: `${p.x}%`, top: `${p.y}%` }}
-          >
-            {/* El latido de la que sigue. Va detrás y no en el botón para que
-                no agrande el área que se toca. */}
-            {sigue && !hecha && juegoAbierto ? (
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 -z-10 animate-ping rounded-full motion-reduce:animate-none"
-                style={{ background: color, opacity: 0.55 }}
-              />
-            ) : null}
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => alElegir(p.id)}
+                aria-label={`${numeroGlobal(p)}. ${p.nombre}${hecha ? " · ya la hiciste" : ""}`}
+                aria-pressed={elegida}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${
+                  atenuada ? "opacity-30" : "opacity-100"
+                }`}
+                style={{ left: `${p.x}%`, top: `${p.y}%` }}
+              >
+                {/* El latido de la que sigue. Va detrás y no en el botón para
+                    que no agrande el área que se toca. */}
+                {sigue && !hecha && juegoAbierto ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 -z-10 animate-ping rounded-full motion-reduce:animate-none"
+                    style={{ background: color, opacity: 0.55 }}
+                  />
+                ) : null}
 
-            <span
-              className={`grid size-8 place-items-center rounded-full border-2 text-[13px] font-extrabold tabular-nums shadow-[0_6px_16px_-4px_rgba(0,0,0,0.8)] transition-transform sm:size-9 sm:text-sm ${
-                elegida ? "scale-110" : ""
-              }`}
-              style={{
-                background: hecha ? color : "rgba(13,6,24,0.92)",
-                borderColor: hecha ? color : elegida ? "#ffffff" : color,
-                color: hecha ? "#ffffff" : "#ffffff",
-              }}
-            >
-              {hecha ? (
-                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                numeroGlobal(p)
-              )}
-            </span>
-          </button>
-        );
-      })}
+                <span
+                  className={`grid size-8 place-items-center rounded-full border-2 text-[13px] font-extrabold tabular-nums shadow-[0_6px_16px_-4px_rgba(0,0,0,0.8)] transition-transform sm:size-9 sm:text-sm ${
+                    elegida ? "scale-110" : ""
+                  }`}
+                  style={{
+                    background: hecha ? color : "rgba(13,6,24,0.92)",
+                    borderColor: hecha ? color : elegida ? "#ffffff" : color,
+                    color: "#ffffff",
+                  }}
+                >
+                  {hecha ? (
+                    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    numeroGlobal(p)
+                  )}
+                </span>
+              </button>
+            );
+          })
+        : null}
     </div>
   );
 }

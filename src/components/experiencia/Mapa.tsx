@@ -169,13 +169,18 @@ export default function Mapa({ yo, fase, alCambiar }: Props) {
             hechas={hechas}
             seleccion={seleccion}
             visible={visible}
+            conNumeros={filtro !== "ambas"}
             proximas={proximaDe}
             juegoAbierto={juegoAbierto}
             alElegir={(id) => setSeleccion(id)}
           />
           </div>
         </div>
-        <p className="-mt-2 text-xs font-light text-white/40">Toca un número para ver qué hay que hacer en esa parada.</p>
+        <p className="-mt-2 text-xs font-light text-white/40">
+          {filtro === "ambas"
+            ? "El plano del recinto, igual al de los tótems. Escoge una ruta arriba para ver sus paradas."
+            : "Toca un número para ver qué hay que hacer en esa parada."}
+        </p>
 
       {/* La parada elegida y las dos rutas */}
       <aside className="grid gap-4 lg:grid-cols-3 lg:items-start">
