@@ -53,7 +53,9 @@ export default function Accesos({
       rotulo: "Mi entrada",
       nota: yo ? "Tu QR para la puerta y tu carnet" : "Entra para ver tu QR",
       imagen: "/img/evento/senalizacion.jpg",
-      urgente: true,
+      // Solo urge si todavía no ha entrado: a quien ya tiene su QR a la vista
+      // decirle «te falta» es mentirle.
+      urgente: !yo,
     },
     {
       href: "/experiencia/agenda",
