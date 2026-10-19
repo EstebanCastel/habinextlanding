@@ -8,7 +8,7 @@ import Plano from "./Plano";
 import { clasesBoton, pedir, reducirImagen } from "./util";
 
 /**
- * El mapa del tesoro: el plano ilustrado del recinto, al estilo de los mapas
+ * El mapa: el plano oficial del recinto, el mismo de la señalización,
  * de festival. Dos escenarios con tarima, pantalla y sillas; el hall con los
  * stands de los aliados, su logo, su mostrador y sus portátiles; la
  * acreditación, la entrada, la zona VIP con sus sofás, el café y los baños.
@@ -247,7 +247,7 @@ export default function Mapa({ yo, fase, alCambiar }: Props) {
         ) : (
             <div className="rounded-[26px] border border-white/12 bg-ink p-6">
               <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Cómo se juega</p>
-              <h3 className="mt-2 text-2xl font-semibold leading-tight tracking-tight">Dos rutas, ocho paradas.</h3>
+              <h3 className="mt-2 text-2xl font-semibold leading-tight tracking-tight">Nueve paradas, dos mitades.</h3>
               <p className="mt-3 text-base font-light leading-relaxed text-white/70">
                 Sigue una ruta en orden o mézclalas. En cada parada, una foto del stand con el logo visible; cada parada suma {PARADAS[0].puntos} y cada ruta completa, {RUTAS[0].bono} más.
               </p>

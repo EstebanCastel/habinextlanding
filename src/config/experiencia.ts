@@ -147,7 +147,7 @@ export const MISIONES: Mision[] = [
   },
 ];
 
-// ---------- el mapa del tesoro ----------
+// ---------- el mapa del recinto ----------
 
 export type RutaId = "morada" | "dorada";
 
@@ -179,16 +179,16 @@ export type Parada = {
 export const RUTAS: { id: RutaId; nombre: string; color: string; resumen: string; bono: number }[] = [
   {
     id: "morada",
-    nombre: "Primera mitad",
+    nombre: "Paradas 1 a 5",
     color: "#802ef6",
-    resumen: "Del café del registro a los stands: la primera mitad del recorrido.",
+    resumen: "Del café del registro a los dos salones: las paradas 1 a 5 del plano.",
     bono: 25,
   },
   {
     id: "dorada",
-    nombre: "Segunda mitad",
+    nombre: "Paradas 6 a 9",
     color: "#f2b134",
-    resumen: "Los salones, el estudio y la zona VIP: la segunda mitad.",
+    resumen: "Los stands, el bar, el estudio y la zona VIP: las paradas 6 a 9.",
     bono: 25,
   },
 ];
@@ -211,10 +211,10 @@ export const PARADAS: Parada[] = [
   { id: "cafe-registro", nombre: "Café · Registro", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 1, x: 82.3, y: 57.2, reto: "Recoge tu café en el registro y tómale una foto al punto.", puntos: 10 },
   { id: "spot-fotos", nombre: "Spot para fotos", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 2, x: 80.2, y: 43.1, reto: "Tómate una foto en el spot y súbela desde aquí.", puntos: 10 },
   { id: "stand-habi", nombre: "Stand Habi", marca: "Habi", tipo: "stand", ruta: "morada", orden: 3, x: 55.7, y: 43.1, reto: "Pásate por el stand de Habi y tómale una foto.", puntos: 10 },
-  { id: "stands-comerciales", nombre: "Stands comerciales", marca: "Aliados", tipo: "stand", ruta: "morada", orden: 4, x: 57.8, y: 35.0, reto: "Visita los stands de los aliados y tómale una foto a uno.", puntos: 10 },
-  { id: "bar-bogota", nombre: "Bar Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", ruta: "morada", orden: 5, x: 35.2, y: 43.1, reto: RETO_STAND, puntos: 10 },
-  { id: "inspira", nombre: "Salón Inspira", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 1, x: 43.0, y: 57.5, reto: "Entra al Salón Inspira y tómale una foto a la tarima.", puntos: 10 },
-  { id: "caja-social", nombre: "Salón Banco Caja Social", marca: "Banco Caja Social", tipo: "escenario", logo: "/img/marcas/caja-social.svg", ruta: "dorada", orden: 2, x: 64.4, y: 57.5, reto: "Entra al salón y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
+  { id: "inspira", nombre: "Salón Inspira", marca: "Habi Next", tipo: "escenario", ruta: "morada", orden: 4, x: 43.0, y: 57.5, reto: "Entra al Salón Inspira y tómale una foto a la tarima.", puntos: 10 },
+  { id: "caja-social", nombre: "Salón Banco Caja Social", marca: "Banco Caja Social", tipo: "escenario", logo: "/img/marcas/caja-social.svg", ruta: "morada", orden: 5, x: 64.4, y: 57.5, reto: "Entra al salón y tómale una foto a la tarima o a la pantalla.", puntos: 10 },
+  { id: "stands-comerciales", nombre: "Stands comerciales", marca: "Aliados", tipo: "stand", ruta: "dorada", orden: 1, x: 57.8, y: 35.0, reto: "Visita los stands de los aliados y tómale una foto a uno.", puntos: 10 },
+  { id: "bar-bogota", nombre: "Bar Banco de Bogotá", marca: "Banco de Bogotá", tipo: "stand", logo: "/img/marcas/banco-bogota.svg", ruta: "dorada", orden: 2, x: 35.2, y: 43.1, reto: RETO_STAND, puntos: 10 },
   { id: "estudio-foto", nombre: "Estudio fotográfico", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 3, x: 17.6, y: 42.7, reto: "Hazte tu retrato en el estudio y súbelo desde aquí.", puntos: 10 },
   { id: "salon-vip", nombre: "Salón VIP", marca: "Habi Next", tipo: "escenario", ruta: "dorada", orden: 4, x: 21.4, y: 31.8, reto: "Pásate por el Salón VIP y tómale una foto.", puntos: 10 },
 ];

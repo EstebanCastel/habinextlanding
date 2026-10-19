@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Marco from "@/components/experiencia/Marco";
 import Sala from "@/components/experiencia/Sala";
 import { EVENT } from "@/config/event";
-import { PUNTOS_MAPA, RECINTO } from "@/config/experiencia";
+import { PUNTOS_MAPA } from "@/config/experiencia";
 import { fase as faseActual, vistaDe } from "@/lib/experiencia";
 import { participanteActual } from "@/lib/experiencia-http";
 import { exigirAbierta, exigirSesion } from "@/lib/experiencia-sesion";
 import { haySesion } from "@/lib/sesion";
 
-export const metadata: Metadata = { title: `El mapa del tesoro · ${EVENT.fullName}`, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: `Mapa · ${EVENT.fullName}`, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://www.habinext.com";
@@ -27,10 +27,10 @@ export default async function PaginaMapa({ searchParams }: { searchParams: Promi
       eyebrow={`Experiencia 2 · ${PUNTOS_MAPA} puntos · 20 de octubre`}
       titulo={
         <>
-          El mapa <span className="font-bold">del tesoro.</span>
+          El <span className="font-bold">mapa.</span>
         </>
       }
-      bajada={`Dos rutas por ${RECINTO.nombre}: los stands de los aliados y los dos escenarios. En cada parada, una foto; en cada ruta completa, un bono.`}
+      bajada={`Las nueve paradas del recinto, con los mismos números del plano que vas a ver en los tótems. En cada una, una foto; cada mitad completa suma un bono.`}
     >
       <Sala modo="mapa" inicial={yo} fase={fase} sitio={SITIO} />
     </Marco>
