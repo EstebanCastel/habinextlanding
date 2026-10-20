@@ -50,17 +50,31 @@ type Bitacora = {
 function texto(s: Sesion): string {
   const salon = salonDe(s.salon);
   const quien = s.ponente || s.ponentes?.[0] || "";
-  const base = `Habi Next: en ${ANTES} min arranca "${sinTildes(s.titulo)}" en el Salon ${sinTildes(salon.rotulo)}.`;
-  const conQuien = quien ? `${base} Con ${sinTildes(quien)}.` : base;
+  const base = `Habi Next: en ${ANTES} min arranca "${gsm(s.titulo)}" en el Salon ${gsm(salon.rotulo)}.`;
+  const conQuien = quien ? `${base} Con ${gsm(quien)}.` : base;
   // 160 caracteres es una parte de SMS; pasado eso se cobra y se parte.
   return conQuien.length <= 160 ? conQuien : `${base.slice(0, 157)}...`;
 }
 
-const sinTildes = (t: string) =>
+/**
+ * Deja el texto dentro del alfabeto GSM de 7 bits.
+ *
+ * Un solo caracter fuera de el -y el punto medio que usamos en toda la
+ * agenda es uno- convierte el SMS a UCS-2: el limite baja de 160 a 70
+ * caracteres, el mensaje se parte en tres, se cobra triple y las partes
+ * pueden llegar desordenadas. En un aviso de «arranca en cinco minutos» eso
+ * es peor que no mandarlo.
+ */
+const gsm = (t: string) =>
   t
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\u00ab\u00bb"\u201c\u201d]/g, "");
+    .replace(/[\u00b7\u2022]/g, "-")
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u00ab\u00bb\u201c\u201d"]/g, "")
+    .replace(/\u2026/g, "...")
+    .replace(/[^\n\r A-Za-z0-9@£$¥èéùìòÇØøÅåÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\\\[~\]|]/g, "");
 
 const digitos = (t: string | undefined | null) => String(t ?? "").replace(/\D/g, "");
 
