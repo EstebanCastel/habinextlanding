@@ -68,6 +68,8 @@ export const EQUIPO: Companero[] = [
   { email: "mariamsantiago.ext@tuhabi.mx", nombre: "Mariam", apellido: "Santiago", ciudad: "Bogotá", cargo: "Equipo Habi" },
   { email: "estebancastelblanco@habi.co", nombre: "Esteban", apellido: "Castelblanco", cedula: "1021632809", ciudad: "Bogotá", cargo: "Equipo Habi" },
   { email: "sebastian@habi.co", nombre: "Sebastián", apellido: "Noguera Escallón", cedula: "1020718014", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "carlosmantilla@habi.co", nombre: "Carlos", apellido: "Mantilla", cedula: "1136884539", ciudad: "Bogotá", cargo: "Equipo Habi" },
+  { email: "andreapatino@habi.co", nombre: "Andrea", apellido: "Patiño", cedula: "1113668427", ciudad: "Bogotá", cargo: "Equipo Habi" },
   // Cuenta de prueba, para revisar el carnet de equipo y su QR sin tocar el de
   // una persona de verdad. Su correo lleva `+` para que todo lo que salga
   // caiga en la bandeja de Esteban, y por eso los conteos la descartan.
