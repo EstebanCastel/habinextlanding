@@ -444,7 +444,7 @@ export const PONENTES: Record<string, Ficha> = {
   "Carolina Pinilla": { cargo: "Contenido en TikTok" },
   // El logotipo de Dapta es blanco: sobre blanco no se veía nada.
   "Aron D'mello": { logo: "/img/ponentes/dapta.png", cargo: "Dapta", fondo: "#0d0618" },
-  "Juan Pablo Zuluaga": { logo: "/img/ponentes/mis-propias-finanzas.png", cargo: "Mis Propias Finanzas", fondo: "#0d0618" },
+  "Juan Pablo Zuluaga": { foto: "/img/ponentes/juan-pablo-zuluaga.jpg", cargo: "Mis Propias Finanzas", foco: "50%" },
   "Bibiana Rocha": { logo: "/img/ponentes/datacredito.png", cargo: "DataCrédito", fondo: "#ffffff" },
   "Fernando Pico": { cargo: "Habi Credit" },
   "Banco de Bogotá": { cargo: "Patrocinador" },
