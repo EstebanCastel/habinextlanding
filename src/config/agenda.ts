@@ -548,6 +548,7 @@ export const PONENTES: Record<string, Ficha> = {
   "Mateo Jaramillo": { foto: "/img/ponentes/mateo-jaramillo.jpg", cargo: "CEO de Grapez Studio" },
   "Juanfe Quiñones": { foto: "/img/ponentes/juanfe-quinones.jpg", cargo: "IA generativa · Habi" },
   "Juan Sokoloff": { foto: "/img/ponentes/juan-sokoloff.jpg", cargo: "VP de Data y Pricing · Habi" },
+  "Juan Londoño": { foto: "/img/ponentes/juan-londono.jpg", cargo: "Ventas a inversionistas" },
   // Marcas: su logo es lo que la gente reconoce, no la cara de quien lo representa.
   "Palomma · Cipriano Echavarría": { logo: "/img/ponentes/palomma.png", cargo: "Palomma", fondo: "#0d0618" },
   Palomma: { logo: "/img/ponentes/palomma.png", fondo: "#0d0618" },

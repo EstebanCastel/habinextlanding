@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Asterisk from "@/components/Asterisk";
+import { horaBogota } from "@/config/agenda";
 import type { Vista } from "@/lib/experiencia";
 import PaseQr from "./PaseQr";
 
@@ -28,6 +29,9 @@ export default function Talleres({ yo }: { yo: Vista | null }) {
   const [talleres, setTalleres] = useState<Taller[]>([]);
   const [mios, setMios] = useState<string[]>(yo?.talleres ?? []);
   const [pases, setPases] = useState<Record<string, string>>({});
+  // La hora de Bogotá, no la del teléfono: en el recinto los relojes se
+  // desfasan y un QR que desaparece antes de tiempo es peor que uno de más.
+  const [hora, setHora] = useState("");
 
   useEffect(() => {
     let vivo = true;
@@ -45,9 +49,26 @@ export default function Talleres({ yo }: { yo: Vista | null }) {
     };
   }, []);
 
+  useEffect(() => {
+    const tic = () => setHora(horaBogota(new Date()));
+    const id = setTimeout(tic, 0);
+    const reloj = setInterval(tic, 60_000);
+    return () => {
+      clearTimeout(id);
+      clearInterval(reloj);
+    };
+  }, []);
+
   const reservados = talleres
     .filter((t) => mios.includes(t.id))
     .sort((a, b) => a.desde.localeCompare(b.desde));
+
+  // Un taller que ya pasó no necesita QR: ese código no abre ninguna puerta y
+  // lo único que hace es empujar hacia abajo el de la sesión que sí viene.
+  // Se queda en la lista, apagado, para que la persona vea su día completo.
+  const yaPaso = (desde: string) => Boolean(hora) && desde < hora;
+  const vivos = reservados.filter((t) => !yaPaso(t.desde));
+  const pasados = reservados.filter((t) => yaPaso(t.desde));
 
   if (!reservados.length) return null;
 
@@ -64,25 +85,45 @@ export default function Talleres({ yo }: { yo: Vista | null }) {
         puesto o reservar otro, toca la sesión en la agenda de abajo.
       </p>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-2">
-        {reservados.map((t) => (
-          <div key={t.id} className="grid gap-4 rounded-2xl border border-violet/40 bg-violet/[0.1] p-5 sm:grid-cols-[auto_1fr] sm:items-center">
-            {pases[t.id] ? <PaseQr url={pases[t.id]} rotulo={t.desde} /> : null}
-            <div>
-              <p className="text-base font-semibold leading-snug text-white">{t.titulo}</p>
-              {t.ponente ? (
-                <p className="mt-1 text-sm font-light text-white/55">
-                  {t.ponente}
-                  {t.detallePonente ? ` · ${t.detallePonente}` : ""}
-                </p>
-              ) : null}
-              {t.necesitas ? (
-                <p className="mt-2 text-xs font-light leading-relaxed text-white/45">{t.necesitas}</p>
-              ) : null}
+      {vivos.length ? (
+        <div className="mt-7 grid gap-4 sm:grid-cols-2">
+          {vivos.map((t) => (
+            <div key={t.id} className="grid gap-4 rounded-2xl border border-violet/40 bg-violet/[0.1] p-5 sm:grid-cols-[auto_1fr] sm:items-center">
+              {pases[t.id] ? <PaseQr url={pases[t.id]} rotulo={t.desde} /> : null}
+              <div>
+                <p className="text-base font-semibold leading-snug text-white">{t.titulo}</p>
+                {t.ponente ? (
+                  <p className="mt-1 text-sm font-light text-white/55">
+                    {t.ponente}
+                    {t.detallePonente ? ` · ${t.detallePonente}` : ""}
+                  </p>
+                ) : null}
+                {t.necesitas ? (
+                  <p className="mt-2 text-xs font-light leading-relaxed text-white/45">{t.necesitas}</p>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-7 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-base font-light text-white/55">
+          Ya pasaron todos los talleres que reservaste. Si queda alguno con cupo, puedes reservarlo
+          desde la agenda de abajo.
+        </p>
+      )}
+
+      {/* Los que ya pasaron: sin QR, en una línea, para que el día se lea
+          completo sin que estorben. */}
+      {pasados.length ? (
+        <ul className="mt-5 flex flex-col gap-1.5 border-t border-white/10 pt-4">
+          {pasados.map((t) => (
+            <li key={t.id} className="flex items-baseline gap-2.5 text-sm">
+              <span className="shrink-0 tabular-nums text-white/25">{t.desde}</span>
+              <span className="truncate font-light text-white/35 line-through decoration-white/20">{t.titulo}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

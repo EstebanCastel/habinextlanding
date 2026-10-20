@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { enCurso, horaBogota, type EnCurso } from "@/config/agenda";
+import { enCurso, fichaDe, horaBogota, type EnCurso } from "@/config/agenda";
 
 /**
  * Lo que está pasando ahora mismo, en la barra de arriba.
@@ -265,6 +265,28 @@ export default function EnVivo() {
  * La misma información, en grande, para la portada de la experiencia: las dos
  * salas una al lado de la otra con lo que corre y lo que sigue.
  */
+/** El retrato de quien dicta, o su logo. Nada si no hay ficha. */
+function Cara({ nombre }: { nombre?: string }) {
+  const ficha = nombre ? fichaDe(nombre) : undefined;
+  if (!ficha?.foto && !ficha?.logo) return null;
+  return (
+    <span
+      className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15"
+      style={ficha.logo ? { background: ficha.fondo ?? "#ffffff" } : undefined}
+      aria-hidden="true"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={(ficha.foto ?? ficha.logo)!}
+        alt=""
+        loading="lazy"
+        className={ficha.foto ? "h-full w-full object-cover" : "max-h-[70%] max-w-[70%] object-contain"}
+        style={ficha.foto ? { objectPosition: `${ficha.foco ?? "60%"} 22%` } : undefined}
+      />
+    </span>
+  );
+}
+
 export function Salas() {
   const [salas, setSalas] = useState<EnCurso[] | null>(null);
   const [hora, setHora] = useState("");
@@ -314,12 +336,21 @@ export function Salas() {
               </span>
             </span>
 
-            <span className="mt-2.5 text-[1.05rem] font-semibold leading-[1.2] tracking-tight text-white">
-              {p.titulo}
+            {/* La cara al lado del título, como en la agenda: en un recinto con
+                dos salas, reconocer a quien está hablando es más rápido que
+                leer el nombre. Quien no tiene retrato sale con su logo, y
+                quien no tiene ninguno de los dos no deja hueco. */}
+            <span className="mt-2.5 flex items-start gap-3">
+              <Cara nombre={p.ponente} />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-[1.05rem] font-semibold leading-[1.2] tracking-tight text-white">
+                  {p.titulo}
+                </span>
+                {p.ponente ? (
+                  <span className="mt-1 text-sm font-light text-white/55">{p.ponente}</span>
+                ) : null}
+              </span>
             </span>
-            {p.ponente ? (
-              <span className="mt-1 text-sm font-light text-white/55">{p.ponente}</span>
-            ) : null}
 
             {/* Lo que viene después, separado por una línea para que no se
                 confunda con lo de arriba. Nunca repite el mismo título. */}
