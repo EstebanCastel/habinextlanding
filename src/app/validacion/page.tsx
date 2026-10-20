@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Puerta from "@/components/validacion/Puerta";
+import Respaldo from "@/components/validacion/Respaldo";
 import { ALMUERZOS, SESIONES } from "@/config/agenda";
 
 /**
@@ -32,6 +33,7 @@ export default function Validacion() {
   }));
   return (
     <main className="s-night min-h-dvh bg-night">
+      <Respaldo />
       <Puerta turnos={turnos} talleres={talleres} />
     </main>
   );

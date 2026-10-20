@@ -24,18 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * seguridad: el script que la dispara ya viene firmado con nonce.
  */
 
-type Modo = "entrada" | "almuerzo" | "taller";
-type Tipo = "general" | "vip" | "equipo";
-
-type Veredicto = {
-  ok: boolean;
-  estado: "entra" | "repetido" | "desconocido" | "sin-turno" | "no-es-vip" | "fuera-de-turno" | "pase-equivocado" | "sin-reserva";
-  asistente?: { id: string; tipo: Tipo; nombre: string; correo: string; cargo?: string };
-  marca?: { en: string };
-  previa?: { en: string; por: string };
-  turno?: { rotulo: string; desde: string; hasta: string };
-  detalle?: string;
-};
+import { bajarPaquete, paqueteGuardado, validar, vaciarCola, cola, type Modo, type Tipo, type Veredicto } from "./offline";
 
 const ROTULO: Record<Tipo, string> = { general: "General", vip: "VIP", equipo: "Equipo Habi" };
 
@@ -92,8 +81,13 @@ export default function Lector({
   const [fallo, setFallo] = useState<string | null>(null);
   const [veredicto, setVeredicto] = useState<Veredicto | null>(null);
   const [listo, setListo] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
+  const [bajadoEn, setBajadoEn] = useState<string | null>(null);
 
-  /** Manda el código al servidor, que es quien decide. */
+  /**
+   * Decide. El servidor manda; si no contesta en tres segundos, decide el
+   * teléfono con el padrón que bajó y la marca queda en cola.
+   */
   const mandar = useCallback(
     async (texto: string) => {
       if (ocupado.current) return;
@@ -104,26 +98,53 @@ export default function Lector({
       ultimo.current = { texto, en: ahora };
       ocupado.current = true;
       try {
-        const res = await fetch("/api/validacion", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accion: "validar", texto, modo, por }),
-        });
-        const v = (await res.json()) as Veredicto;
+        const v = await validar(texto, modo, por);
         setVeredicto(v);
         alValidar(v);
+        setPendientes(cola().length);
         const cara = CARA[v.estado];
         if (cara && typeof navigator !== "undefined" && "vibrate" in navigator) {
           navigator.vibrate(cara.vibra);
         }
-      } catch {
-        setVeredicto({ ok: false, estado: "desconocido", detalle: "Sin señal. Vuelve a escanear." });
       } finally {
         ocupado.current = false;
       }
     },
     [modo, por, alValidar]
   );
+
+  // El padrón en el bolsillo: se baja al abrir el lector y se refresca cada
+  // cinco minutos mientras haya señal. Lo pendiente se intenta mandar en cada
+  // vuelta y además en cuanto el navegador avisa que volvió la red.
+  useEffect(() => {
+    let vivo = true;
+    const sincronizar = async () => {
+      if (!vivo) return;
+      const p = await bajarPaquete();
+      if (!vivo) return;
+      if (p) setBajadoEn(p.bajadoEn);
+      const salieron = await vaciarCola();
+      if (!vivo) return;
+      if (salieron) setPendientes(cola().length);
+    };
+    // Fuera del cuerpo del efecto: leer el almacén del navegador y pintar en
+    // el mismo tick encadena renders y React lo marca.
+    const arranque = setTimeout(() => {
+      if (!vivo) return;
+      const guardado = paqueteGuardado();
+      if (guardado) setBajadoEn(guardado.bajadoEn);
+      setPendientes(cola().length);
+      void sincronizar();
+    }, 0);
+    const id = setInterval(sincronizar, 5 * 60_000);
+    window.addEventListener("online", sincronizar);
+    return () => {
+      vivo = false;
+      clearTimeout(arranque);
+      clearInterval(id);
+      window.removeEventListener("online", sincronizar);
+    };
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -204,6 +225,24 @@ export default function Lector({
       <div className="relative flex-1 overflow-hidden">
         <video ref={video} playsInline muted className="h-full w-full object-cover" />
         <canvas ref={lienzo} className="hidden" />
+
+        {/* El estado del padrón que lleva el teléfono. Solo aparece cuando hay
+            algo que decir: sin padrón bajado el lector no sirve si se cae la
+            señal, y con marcas en cola alguien tiene que saber que faltan por
+            mandar antes de cerrar la jornada. */}
+        {!bajadoEn || pendientes ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-4">
+            <p
+              className={`mx-auto w-fit rounded-full px-4 py-1.5 text-center text-xs font-semibold backdrop-blur ${
+                pendientes ? "bg-amber-400/90 text-amber-950" : "bg-rose-500/90 text-white"
+              }`}
+            >
+              {pendientes
+                ? `${pendientes} ${pendientes === 1 ? "marca sin mandar" : "marcas sin mandar"} · salen solas al volver la señal`
+                : "Sin padrón bajado · conéctate una vez antes de abrir la puerta"}
+            </p>
+          </div>
+        ) : null}
 
         {/* La mira: dice dónde poner el código sin tapar la imagen. */}
         {!veredicto && !fallo ? (

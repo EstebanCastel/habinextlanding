@@ -547,6 +547,11 @@ export const PONENTES: Record<string, Ficha> = {
   "Edwin Alejo": { foto: "/img/ponentes/edwin-alejo.jpg", cargo: "VP de Franquicias · Habi" },
   "Mateo Jaramillo": { foto: "/img/ponentes/mateo-jaramillo.jpg", cargo: "CEO de Grapez Studio" },
   "Juanfe Quiñones": { foto: "/img/ponentes/juanfe-quinones.jpg", cargo: "IA generativa · Habi" },
+  "Juan Sokoloff": { foto: "/img/ponentes/juan-sokoloff.jpg", cargo: "VP de Data y Pricing · Habi" },
+  // Marcas: su logo es lo que la gente reconoce, no la cara de quien lo representa.
+  "Palomma · Cipriano Echavarría": { logo: "/img/ponentes/palomma.png", cargo: "Palomma", fondo: "#0d0618" },
+  Palomma: { logo: "/img/ponentes/palomma.png", fondo: "#0d0618" },
+  Alternativa: { logo: "/img/ponentes/datacredito.png", cargo: "DataCrédito Experian", fondo: "#ffffff" },
   Auco: { logo: "/img/marcas/auco.png" },
   Wekall: { logo: "/img/marcas/wekall.svg" },
   // Logos claros, pensados para fondo oscuro: van sobre la tinta y no sobre blanco.
