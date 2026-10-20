@@ -43,8 +43,13 @@ export async function guardar(entrada: Omit<Guardada, "en" | "id"> & { id?: stri
   return doc;
 }
 
+/**
+ * Todas las respuestas. Si el listado falla, **lanza**: quien llama tiene que
+ * poder distinguir «no hay respuestas» de «no pude leerlas», porque las dos
+ * cosas se ven igual en una pantalla y solo una es una buena noticia.
+ */
 export async function todas(): Promise<Guardada[]> {
-  const rutas = await listarRutas("encuesta/", 5000).catch(() => [] as string[]);
+  const rutas = await listarRutas("encuesta/", 5000);
   const docs = await Promise.all(rutas.map((r) => leer<Guardada>(r).catch(() => null)));
   return docs.filter((d): d is Guardada => Boolean(d?.respuesta));
 }

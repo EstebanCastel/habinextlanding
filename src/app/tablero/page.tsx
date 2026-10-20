@@ -144,6 +144,14 @@ function Cuerpo({ t }: { t: Tablero }) {
         </span>
       </header>
 
+      {t.fallos.length ? (
+        <p className="mt-6 rounded-2xl border border-[#ff5c7a]/40 bg-[#ff5c7a]/10 px-5 py-4 text-[14px] font-bold leading-relaxed text-[#ff5c7a]">
+          No pude leer los datos, así que los ceros de abajo no son reales:
+          <br />
+          <span className="font-mono text-[12px] font-normal">{t.fallos.join(" · ")}</span>
+        </p>
+      ) : null}
+
       {/* El NPS es el titular: es el número que todo el mundo va a repetir. */}
       <section className="mt-12">
         <Eyebrow>Cómo salió el día · 20 de octubre</Eyebrow>

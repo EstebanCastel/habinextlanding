@@ -45,6 +45,15 @@ export type Tablero = {
   via: Record<string, number>;
   uso: Uso | null;
   armadoEn: string;
+  /**
+   * Qué se rompió al leer, si algo se rompió.
+   *
+   * Antes esto se tragaba en un `catch` y devolvía ceros, que es la peor
+   * respuesta posible: un tablero en ceros por un fallo de lectura se ve
+   * exactamente igual que un tablero en ceros porque nadie ha contestado, y
+   * alguien decide creyendo que el evento salió mal.
+   */
+  fallos: string[];
 };
 
 const contar = (docs: Guardada[], campo: "vuelve" | "pagaria" | "duracion" | "via") =>
@@ -55,9 +64,16 @@ const contar = (docs: Guardada[], campo: "vuelve" | "pagaria" | "duracion" | "vi
   }, {});
 
 export async function armarTablero(): Promise<Tablero> {
+  const fallos: string[] = [];
   const [docs, uso] = await Promise.all([
-    todas().catch(() => [] as Guardada[]),
-    leer<Uso>("tablero/uso.json").catch(() => null),
+    todas().catch((e: unknown) => {
+      fallos.push(`encuesta: ${e instanceof Error ? e.message : String(e)}`);
+      return [] as Guardada[];
+    }),
+    leer<Uso>("tablero/uso.json").catch((e: unknown) => {
+      fallos.push(`uso: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
+    }),
   ]);
 
   const notas = docs.map((d) => d.respuesta.nps).filter((n) => typeof n === "number");
@@ -89,6 +105,7 @@ export async function armarTablero(): Promise<Tablero> {
     via: contar(docs, "via"),
     uso,
     armadoEn: new Date().toISOString(),
+    fallos,
   };
 }
 
