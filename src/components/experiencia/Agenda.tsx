@@ -697,10 +697,43 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
 
   // <dialog> nativo con showModal(): Escape cierra, el foco queda adentro y
   // lo de atrás se vuelve inerte, igual que la ventana de entrada.
+  //
+  // Pero `showModal` no existe en todos los Android: en los navegadores que
+  // no lo traen la llamada lanzaba, el efecto moría y la ficha de la sesión
+  // no se abría nunca. Si falla, el <dialog> se abre con el atributo y se
+  // pinta como una capa normal, que es lo que hace `respaldo`.
+  const [respaldo, setRespaldo] = useState(false);
+
   useEffect(() => {
     const d = dialogo.current;
-    if (d && !d.open) d.showModal();
+    if (!d) return;
+    try {
+      if (typeof d.showModal === "function") {
+        if (!d.open) d.showModal();
+        return;
+      }
+      throw new Error("sin showModal");
+    } catch {
+      d.setAttribute("open", "");
+      setRespaldo(true);
+    }
   }, []);
+
+  // Escape y el scroll de atrás los maneja el <dialog> cuando es modal de
+  // verdad; sin él hay que hacerlo a mano.
+  useEffect(() => {
+    if (!respaldo) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCerrar();
+    };
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", alTeclear);
+    return () => {
+      document.body.style.overflow = antes;
+      window.removeEventListener("keydown", alTeclear);
+    };
+  }, [respaldo, onCerrar]);
 
   useGSAP(() => {
     const mm = gsap.matchMedia();
@@ -721,7 +754,9 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
         if (e.target === dialogo.current) onCerrar();
       }}
       aria-labelledby={`sesion-${sesion.id}`}
-      className="m-0 mt-auto w-full max-w-none bg-transparent p-0 text-white backdrop:bg-night/80 backdrop:backdrop-blur-sm sm:m-auto sm:max-w-2xl"
+      className={`m-0 mt-auto w-full max-w-none bg-transparent p-0 text-white backdrop:bg-night/80 backdrop:backdrop-blur-sm sm:m-auto sm:max-w-2xl ${
+        respaldo ? "fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-night/85 backdrop-blur-sm sm:items-center" : ""
+      }`}
     >
       <div ref={caja} className="relative mx-auto max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[28px] border border-white/12 bg-night sm:rounded-[28px]">
         <button type="button" onClick={onCerrar} aria-label="Cerrar" className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-night/70 text-white/70 backdrop-blur transition-colors hover:text-white">
