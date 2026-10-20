@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     nps: Math.round(r.nps),
     porque: r.porque.trim().slice(0, 1200),
     partes: r.partes,
-    charla: String(r.charla).slice(0, 80),
+    charlas: r.charlas.slice(0, 40).map((c) => String(c).slice(0, 80)),
     aplicar: r.aplicar.trim().slice(0, 1200),
     cambiar: r.cambiar.trim().slice(0, 1200),
     vuelve: r.vuelve,

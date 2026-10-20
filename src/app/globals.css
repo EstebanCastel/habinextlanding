@@ -132,3 +132,73 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .agenda-giro { animation: none; }
 }
+
+/* ---------- La encuesta de cierre ----------
+   Toma el lenguaje del quiz de DataCrédito: el orbe violeta de fondo, el
+   grano de película encima, el número de la pregunta enorme y desvanecido, y
+   las tarjetas entrando escalonadas. Es una encuesta al final de un día de
+   doce horas: si parece una planilla, nadie la termina. */
+
+/* Las dos capas decorativas viven dentro de un recorte del tamaño exacto de
+   la pantalla. Sueltas eran más anchas que el viewport y empujaban la página
+   a lo ancho: el texto y los botones se salían por la derecha. */
+.enc-fondo {
+  position: fixed; inset: 0; z-index: 0;
+  overflow: hidden; pointer-events: none;
+}
+.enc-orbe {
+  position: absolute;
+  width: 120vmax; height: 120vmax; left: 50%; top: 72%;
+  translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(128,46,246,.42) 0%, rgba(61,16,128,.26) 30%, rgba(5,2,8,0) 62%);
+}
+.enc-grano {
+  position: absolute; inset: -50%; opacity: .07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* El número del bloque: grande, pesado y desvaneciéndose hacia abajo. */
+.enc-numero {
+  font-size: clamp(82px, 26vw, 136px);
+  font-weight: 900; line-height: .8; letter-spacing: -.07em;
+  background: linear-gradient(180deg, rgba(186,157,250,.5), rgba(186,157,250,0));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* La barra: cada tramo se llena de izquierda a derecha. */
+.enc-tramo { position: relative; height: 6px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+.enc-tramo::after {
+  content: ""; position: absolute; inset: 0; background: var(--violet);
+  transform: scaleX(var(--p, 0)); transform-origin: left;
+  transition: transform .5s cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes enc-sube { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+.enc-sube { animation: enc-sube .5s cubic-bezier(.2,.8,.2,1) both; }
+.enc-escalon > * { animation: enc-sube .46s cubic-bezier(.2,.8,.2,1) both; }
+.enc-escalon > *:nth-child(2) { animation-delay: .05s; }
+.enc-escalon > *:nth-child(3) { animation-delay: .1s; }
+.enc-escalon > *:nth-child(4) { animation-delay: .15s; }
+.enc-escalon > *:nth-child(5) { animation-delay: .2s; }
+.enc-escalon > *:nth-child(6) { animation-delay: .25s; }
+
+/* La carita del NPS entra girando cuando cambia de humor. */
+@keyframes enc-humor { from { opacity: 0; transform: scale(.6) rotate(-14deg); } to { opacity: 1; transform: none; } }
+.enc-humor { animation: enc-humor .42s cubic-bezier(.34,1.56,.64,1); }
+
+/* El botón grande con el resplandor violeta del quiz. */
+.enc-cta {
+  box-shadow: 0 16px 40px -14px var(--violet);
+  transition: transform .12s, background .15s, box-shadow .2s;
+}
+.enc-cta:active:not(:disabled) { transform: scale(.98); }
+.enc-cta:disabled { box-shadow: none; }
+
+.enc-toque { transition: transform .12s, border-color .2s, background .2s; }
+.enc-toque:active { transform: scale(.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .enc-sube, .enc-escalon > *, .enc-humor { animation: none; }
+  .enc-tramo::after { transition: none; }
+  .enc-cta, .enc-toque { transition: none; }
+}

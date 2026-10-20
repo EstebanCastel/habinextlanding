@@ -47,7 +47,14 @@ export type Respuesta = {
   nps: number;
   porque: string;
   partes: Partial<Record<ParteId, number>>;
-  charla: string;
+  /**
+   * Las charlas que le sirvieron. Varias, no una: con dos salones en paralelo
+   * y once bloques, casi nadie sale del día con una sola en la cabeza, y
+   * obligar a escoger una borra justo la señal que sirve para armar la agenda.
+   */
+  charlas: string[];
+  /** Lo que guardaron las primeras respuestas, cuando era una sola. */
+  charla?: string;
   aplicar: string;
   cambiar: string;
   vuelve: Vuelve;
@@ -93,7 +100,7 @@ export function completa(r: Partial<Respuesta> | null | undefined): r is Respues
   if (typeof r.nps !== "number" || r.nps < 0 || r.nps > 10) return false;
   if (!r.porque || r.porque.trim().length < MINIMO_TEXTO) return false;
   if (!r.partes || PARTES.some((p) => !r.partes?.[p.id])) return false;
-  if (!r.charla) return false;
+  if (!Array.isArray(r.charlas) || r.charlas.length === 0) return false;
   if (!r.aplicar || r.aplicar.trim().length < MINIMO_TEXTO) return false;
   if (!r.cambiar || r.cambiar.trim().length < MINIMO_TEXTO) return false;
   if (!r.vuelve || !r.pagaria || !r.duracion) return false;

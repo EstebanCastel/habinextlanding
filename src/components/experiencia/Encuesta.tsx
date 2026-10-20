@@ -79,19 +79,26 @@ export default function Encuesta({ hay }: { hay: boolean }) {
   if (!abrir) return null;
 
   return (
+    // `svh` y no `dvh`: el `dvh` se encoge cuando sube el teclado y la ventana
+    // entera brincaba apenas se tocaba un campo de texto. Y arriba, no
+    // centrada, porque centrar algo que cambia de alto lo mueve en cada paso.
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-night/95 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-night"
       role="dialog"
       aria-modal="true"
       aria-label="Encuesta de cierre"
     >
-      <div className="mx-auto flex min-h-dvh w-full max-w-xl flex-col justify-center px-5 py-10">
-        <div className="rounded-3xl border border-white/12 bg-white/[0.03] p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] sm:p-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-violet-soft">Antes de irte</p>
-          <p className="mt-2 text-sm font-light leading-relaxed text-white/55">
+      <div className="enc-fondo" aria-hidden="true">
+        <div className="enc-orbe" />
+        <div className="enc-grano" />
+      </div>
+      <div className="relative z-[3] mx-auto w-full max-w-xl px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.75rem,env(safe-area-inset-top))]">
+        <div className="min-h-[100svh]">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.2em] text-violet-soft">Antes de irte</p>
+          <p className="mt-2 text-[15px] font-light leading-relaxed text-white/55">
             Noventa segundos. Es lo único que nos dice qué repetir y qué cambiar el año entrante.
           </p>
-          <div className="mt-6">
+          <div className="mt-7">
             <Formulario
               campana={hay ? "app" : "app-anonimo"}
               onListo={() => {
