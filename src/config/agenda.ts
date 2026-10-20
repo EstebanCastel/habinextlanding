@@ -326,11 +326,13 @@ export const SESIONES: Sesion[] = [
       "Preguntas abiertas de la sala.",
     ],
   },
-  { id: "taller-transicion-3", salon: "taller", desde: "11:35", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se despeja la sala." },
+  { id: "taller-transicion-3", salon: "taller", desde: "11:35", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se alarga: el siguiente taller arranca a las 12:00." },
   {
     id: "asistente-claude",
     salon: "taller",
-    desde: "11:40",
+    // Arrancó tarde: el retraso se lo come la transición de las 11:35, que se
+    // alarga. Las sesiones de después no se mueven.
+    desde: "12:00",
     titulo: "Crea tu asistente personal con Claude",
     ponente: "Federico Sánchez",
     resumen: "Sales del evento con tu asistente funcionando.",
