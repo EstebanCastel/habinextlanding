@@ -26,6 +26,8 @@ const ocupado = (): boolean => {
   const f = document.activeElement;
   if (f && ["INPUT", "TEXTAREA", "SELECT"].includes(f.tagName)) return true;
   if (document.querySelector("dialog[open]")) return true;
+  // La encuesta de cierre pone esta marca: recargarle encima le borra lo escrito.
+  if (document.documentElement.hasAttribute("data-bloquea-recarga")) return true;
   return false;
 };
 

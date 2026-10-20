@@ -8,6 +8,7 @@ import type { Vista } from "@/lib/experiencia";
 import AlDia from "./AlDia";
 import Barra from "./Barra";
 import BotonEntrar from "./BotonEntrar";
+import Encuesta from "./Encuesta";
 
 /**
  * El marco de las páginas de la experiencia: la barra fija con lo que viene
@@ -38,6 +39,8 @@ export default function Marco({
       <Barra yo={yo} />
       {/* Vigila que la agenda que se ve siga siendo la buena. */}
       <AlDia version={VERSION_AGENDA} />
+      {/* Al cierre del día se pone encima y no se quita hasta contestarla. */}
+      <Encuesta hay={Boolean(yo)} />
       <header className="relative z-20 mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-5 pt-5 sm:px-8 md:px-14 lg:px-20">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center py-1.5" aria-label={EVENT.fullName}>

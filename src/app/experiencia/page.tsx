@@ -41,7 +41,7 @@ export default async function Pagina({
   const [p, r] = await Promise.all([participanteActual().catch(() => null), ranking().catch(() => ({ podio: [], total: 0, filas: {} }))]);
   const yo = p ? vistaDe(p) : null;
   const puesto = p ? puestoDe(p.id, r.filas) : null;
-  const entrar = q.entrar && /^\/experiencia(\/[a-z]+)?$/.test(q.entrar) ? q.entrar : undefined;
+  const entrar = q.entrar && /^\/(?:experiencia(?:\/[a-z]+)?|encuesta)$/.test(q.entrar) ? q.entrar : undefined;
   const cerrada = q.cerrada && q.cerrada in BLOQUEADAS ? (q.cerrada as ExperienciaId) : undefined;
 
   return (

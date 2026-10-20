@@ -25,7 +25,7 @@ const ESTADOS: Record<string, number> = { cedula: 401, "sin-entrada": 404, pendi
 
 function destinoSeguro(v: unknown): string {
   const d = String(v ?? "");
-  return /^\/experiencia(\/[a-z]+)?$/.test(d) ? d : "/experiencia";
+  return /^\/(?:experiencia(?:\/[a-z]+)?|encuesta)$/.test(d) ? d : "/experiencia";
 }
 
 export async function POST(request: Request) {
