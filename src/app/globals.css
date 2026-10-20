@@ -202,3 +202,26 @@ body {
   .enc-tramo::after { transition: none; }
   .enc-cta, .enc-toque { transition: none; }
 }
+
+/* ---------- El tablero de cierre ----------
+   Mismo lenguaje de la encuesta y del quiz: fondo de noche con el orbe, números
+   enormes y barras que se llenan solas al abrir. */
+
+.tb-barra { position: relative; height: 10px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.tb-barra > i {
+  position: absolute; inset: 0; border-radius: 99px; background: var(--c, var(--violet));
+  transform: scaleX(var(--p, 0)); transform-origin: left;
+  animation: tb-llena .9s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes tb-llena { from { transform: scaleX(0); } }
+
+/* La tira del NPS: promotores, pasivos y detractores en una sola línea. */
+.tb-tira { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.08); }
+.tb-tira > span { animation: tb-ancho .9s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes tb-ancho { from { flex-basis: 0 !important; } }
+
+.tb-tarjeta { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.035); border-radius: 24px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-barra > i, .tb-tira > span { animation: none; }
+}
