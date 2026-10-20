@@ -7,7 +7,7 @@ import Asterisk from "@/components/Asterisk";
 import { gsap, useGSAP } from "@/lib/gsap";
 import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionDe, sesionesDe, type Ficha, type Salon, type SalonId, type Sesion } from "@/config/agenda";
 import type { Vista } from "@/lib/experiencia";
-import { clasesBoton, pedirJson } from "./util";
+import { pedirJson } from "./util";
 import PaseQr from "./PaseQr";
 
 /**
@@ -402,6 +402,14 @@ function Columna({
               {salon.rotulo}
             </h2>
             <p className="truncate text-sm font-light text-white/55">{salon.claim}</p>
+            {/* Quién conduce la sala y, si la patrocina alguien, su nombre.
+                Está en la agenda impresa y faltaba acá. */}
+            {salon.presenta || salon.patrocina ? (
+              <p className="mt-1 truncate text-[11px] font-medium uppercase tracking-[0.12em] text-white/40">
+                {salon.patrocina ? `${salon.patrocina} · ` : ""}
+                {salon.presenta ? `Presenta ${salon.presenta}` : ""}
+              </p>
+            ) : null}
           </div>
           <span className="ml-auto hidden shrink-0 rounded-full border border-white/15 bg-night/60 px-3 py-1 text-[11px] font-semibold tabular-nums text-white/70 backdrop-blur sm:inline-flex">
             {total} sesiones
@@ -731,13 +739,9 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
           <h3 id={`sesion-${sesion.id}`} data-linea className="mt-1.5 text-2xl font-bold leading-tight tracking-tighter sm:text-3xl">{sesion.titulo}</h3>
           {sesion.resumen ? <p data-linea className="mt-2 text-base font-light text-white/65">{sesion.resumen}</p> : null}
 
+          {/* Sin botón de descarga: no hay material que bajar y una ficha
+              generada que nadie pidió no es contenido, es ruido. */}
           <div data-linea className="mt-5 flex flex-wrap items-center gap-3">
-            <a href={`/api/experiencia/agenda/${sesion.id}`} download className={`${clasesBoton.solido} !px-6 !py-3 !text-sm`}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Descargar los contenidos
-            </a>
             <MeInteresa sesion={sesion} intereses={intereses} grande />
             <Reservar sesion={sesion} intereses={intereses} grande />
           </div>
