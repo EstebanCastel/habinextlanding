@@ -39,6 +39,8 @@ export type Asistente = {
   cargo?: string;
   /** Cuenta de prueba: se escanea igual, pero no cuenta en el padrón. */
   prueba?: boolean;
+  /** Registrado pero sin aprobar en Luma. Entra igual; queda anotado. */
+  pendiente?: boolean;
 };
 
 /**
@@ -128,7 +130,11 @@ export async function armarPadron(): Promise<Padron> {
   for (const [tipo, evento] of eventos) {
     if (!evento) continue;
     for (const g of await listarInvitadosConQr(evento)) {
-      if (g.estado !== "approved") continue;
+      // Aprobados y **pendientes de aprobar**. Un pendiente es alguien que ya
+      // se registró y a quien Luma ya le dio un QR: que esté esperando una
+      // aprobación nuestra es un asunto administrativo, y descubrirlo cuando
+      // ya está parado en la puerta no lo arregla. Entra, y queda marcado.
+      if (g.estado !== "approved" && g.estado !== "pending_approval") continue;
       const id = pkDeQr(g.qr) || g.id;
       if (!id) continue;
       gente.push({
@@ -136,6 +142,7 @@ export async function armarPadron(): Promise<Padron> {
         tipo,
         nombre: nombreCorregido(g.email) ?? g.nombre ?? g.email,
         correo: g.email,
+        ...(g.estado === "pending_approval" ? { pendiente: true } : {}),
         ...(esPrueba(g.email) ? { prueba: true } : {}),
       });
     }
@@ -286,13 +293,38 @@ export async function validar(
     return validarPase(pase, opciones);
   }
 
-  const asistente = await identificar(texto, opciones.secreto).catch(() => null);
+  // La puerta no rechaza gente.
+  //
+  // El padrón se arma cada tanto y Luma cambia todo el día: alguien que
+  // redimió hace dos minutos, el que estaba pendiente de aprobar, el que se
+  // creó en otra pantalla. Todos esos tienen un QR legítimo y, si el lector
+  // les dice «no está en la lista», la persona se queda parada mientras
+  // alguien busca su correo en un panel. Eso es lo que no puede pasar con
+  // ochocientas personas entrando a la misma hora.
+  //
+  // Así que si no está en el padrón se busca en Luma en vivo, y si tampoco
+  // aparece **entra igual**, marcado en ámbar. Dejar pasar a uno de más es
+  // barato; dejar a uno de menos afuera, no.
+  let asistente = await identificar(texto, opciones.secreto).catch(() => null);
+  let invitado = false;
+
   if (!asistente) {
-    return {
-      ok: false,
-      estado: "desconocido",
-      detalle: "Ese código no está en la lista. Revisa en el panel con su correo o su cédula.",
-    };
+    const pk = pkDeQr(texto);
+    if (pk) {
+      asistente = await buscarEnVivo(pk).catch(() => null);
+      if (asistente) invitado = true;
+    }
+    if (!asistente) {
+      // Ni en el padrón ni en Luma. Pasa igual y queda el registro.
+      asistente = {
+        id: pk || `suelto:${texto.slice(0, 60)}`,
+        tipo: "general",
+        nombre: "Sin identificar",
+        correo: "",
+        pendiente: true,
+      };
+      invitado = true;
+    }
   }
 
   const marca: Marca = {
@@ -310,7 +342,60 @@ export async function validar(
   if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
 
   await escribir(ruta, marca);
-  return { ok: true, estado: "entra", asistente, marca };
+  return {
+    ok: true,
+    estado: "entra",
+    asistente,
+    marca,
+    ...(asistente.pendiente || invitado
+      ? {
+          detalle: asistente.correo
+            ? "Estaba pendiente de aprobar. Déjalo pasar; queda anotado."
+            : "No lo encontramos en la lista. Déjalo pasar y que pase por la mesa de registro.",
+        }
+      : {}),
+  };
+}
+
+/**
+ * Busca a alguien en Luma en el momento, cuando el padrón no lo tiene.
+ *
+ * Son dos peticiones como mucho —una por evento— y solo ocurren con quien no
+ * estaba en la copia local. Si lo encuentra, lo deja en el padrón para que la
+ * siguiente vez salga de memoria.
+ */
+async function buscarEnVivo(pk: string): Promise<Asistente | null> {
+  const { listarInvitadosConQr } = await import("./luma");
+  const { nombreCorregido } = await import("@/config/nombres");
+  const eventos: [Tipo, string | undefined][] = [
+    ["general", eventoDeTier("general")],
+    ["vip", eventoDeTier("vip")],
+  ];
+
+  for (const [tipo, evento] of eventos) {
+    if (!evento) continue;
+    const lista = await listarInvitadosConQr(evento).catch(() => []);
+    const g = lista.find((x) => pkDeQr(x.qr) === pk || x.id === pk);
+    if (!g) continue;
+
+    const asistente: Asistente = {
+      id: pk,
+      tipo,
+      nombre: nombreCorregido(g.email) ?? g.nombre ?? g.email,
+      correo: g.email,
+      ...(g.estado !== "approved" ? { pendiente: true } : {}),
+      ...(esPrueba(g.email) ? { prueba: true } : {}),
+    };
+
+    // Que la próxima salga del padrón y no de otra vuelta a Luma.
+    const padron = await traerPadron().catch(() => null);
+    if (padron && !padron.gente.some((x) => x.id === pk)) {
+      padron.gente.push(asistente);
+      await escribir(RUTA_PADRON, padron).catch(() => null);
+    }
+    return asistente;
+  }
+  return null;
 }
 
 /**

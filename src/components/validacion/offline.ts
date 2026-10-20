@@ -218,15 +218,28 @@ export function validarLocal(texto: string, modo: Modo): Veredicto {
     return { ok: true, estado: "entra", asistente, marca: { en: new Date().toISOString() }, local: true };
   }
 
+  // La puerta no rechaza gente, tampoco sin señal. Lo que el teléfono no
+  // reconoce pasa igual y queda en la cola: cuando vuelva la red el servidor
+  // lo resuelve contra Luma. Dejar a alguien afuera por una copia vieja del
+  // padrón es el error caro.
   const pk = pkDeQr(texto);
-  if (!pk) return { ok: false, estado: "desconocido", detalle: "Ese código no está en la lista.", local: true };
-  const fila = p.gente.find((g) => g[0] === pk);
-  if (!fila) return { ok: false, estado: "desconocido", detalle: "Ese código no está en la lista.", local: true };
+  const fila = pk ? p.gente.find((g) => g[0] === pk) : undefined;
 
-  const asistente = { id: fila[0], tipo: fila[1], nombre: fila[2], correo: fila[3] };
-  if (hechas.has(`entrada:${pk}`)) return { ok: true, estado: "repetido", asistente, local: true };
-  hechas.add(`entrada:${pk}`);
-  return { ok: true, estado: "entra", asistente, marca: { en: new Date().toISOString() }, local: true };
+  const asistente = fila
+    ? { id: fila[0], tipo: fila[1], nombre: fila[2], correo: fila[3] }
+    : { id: pk || `suelto:${texto.slice(0, 60)}`, tipo: "general" as Tipo, nombre: "Sin identificar", correo: "" };
+
+  const llave = `entrada:${asistente.id}`;
+  if (hechas.has(llave)) return { ok: true, estado: "repetido", asistente, local: true };
+  hechas.add(llave);
+  return {
+    ok: true,
+    estado: "entra",
+    asistente,
+    marca: { en: new Date().toISOString() },
+    local: true,
+    ...(fila ? {} : { detalle: "No está en la copia del padrón. Déjalo pasar; se confirma al volver la señal." }),
+  };
 }
 
 // ------------------------------------------------------------- la cola ----
