@@ -14,6 +14,8 @@ import Industria from "@/components/sections/Industria";
 import Negocios from "@/components/sections/Negocios";
 import ParaQuien from "@/components/sections/ParaQuien";
 import Ticker from "@/components/sections/Ticker";
+import HoyEsHoy from "@/components/HoyEsHoy";
+import { esDiaDelEvento } from "@/config/agenda";
 import { EVENT, TICKETS } from "@/config/event";
 
 const jsonLd = {
@@ -117,13 +119,17 @@ export default async function Page() {
   // después otra.
   const variante = (await headers()).get("x-variante") ?? "a";
 
+  // El 20 la landing cambia de oficio: de vender entradas a entregar el QR.
+  const hoy = esDiaDelEvento();
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Nav />
+      {hoy ? <HoyEsHoy /> : null}
+      <Nav hoy={hoy} />
       <main>
         {variante === "c" ? <Directa /> : variante === "b" ? <Corta /> : <Completa />}
       </main>

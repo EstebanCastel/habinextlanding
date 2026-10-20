@@ -15,12 +15,21 @@ const sections = [
 ];
 
 /**
+ * El día del evento la landing deja de ser una página de venta.
+ *
+ * Quien la abre el 20 de octubre no viene a comprar: viene a encontrar su QR,
+ * y «Quiero mi entrada» lo manda a una pasarela de pago. Así que ese día el
+ * botón principal —el único que se ve en el teléfono— lleva a la experiencia.
+ * El enlace de compra sigue existiendo en el menú.
+ */
+
+/**
  * Barra flotante contenida: no llega a los bordes de la pantalla, no se esconde
  * al bajar y no cambia con el scroll. Se queda siempre algo transparente, así
  * que el contenido se intuye por detrás; el blur es lo que sostiene la lectura
  * cuando pasa sobre las secciones en papel, no la opacidad.
  */
-export default function Nav() {
+export default function Nav({ hoy = false }: { hoy?: boolean }) {
   const root = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
 
@@ -91,10 +100,10 @@ export default function Nav() {
           {/* Compra + menú de móvil */}
           <div className="flex shrink-0 items-center gap-2 md:gap-3">
             <a
-              href={LINKS.general}
+              href={hoy ? "/experiencia" : LINKS.general}
               className="rounded-full bg-violet px-4 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-violet-press sm:px-6 sm:text-sm md:px-7 md:text-base"
             >
-              Quiero mi entrada
+              {hoy ? "Mi entrada y mi QR" : "Quiero mi entrada"}
             </a>
 
             <button
@@ -153,12 +162,11 @@ export default function Nav() {
           </p>
 
           <a
-            href={LINKS.sponsors}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={hoy ? LINKS.general : LINKS.sponsors}
+            {...(hoy ? {} : { target: "_blank", rel: "noopener noreferrer" })}
             className="mt-4 inline-flex w-full items-center justify-center rounded-full border-2 border-white/25 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
           >
-            Quiero ser patrocinador
+            {hoy ? "Quiero mi entrada" : "Quiero ser patrocinador"}
           </a>
         </div>
       </div>
