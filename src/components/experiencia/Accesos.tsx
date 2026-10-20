@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ARTICULOS } from "@/config/tienda";
 import type { Vista } from "@/lib/experiencia";
 
 /**
@@ -48,6 +49,8 @@ export default function Accesos({
   const conAlmuerzo = Boolean(yo?.almuerzo);
   const talleres = yo?.talleres?.length ?? 0;
   const carnet = experiencias.carnet;
+  const puntos = yo?.puntos ?? 0;
+  const alcanza = yo ? ARTICULOS.filter((a) => !a.agotado && a.puntos > 0 && a.puntos <= puntos).length : 0;
 
   const tarjetas: Tarjeta[] = [
     // «Mi entrada» y «Tu carnet» eran la misma pantalla con dos nombres: van
@@ -81,6 +84,16 @@ export default function Accesos({
       : []),
     ...(experiencias.mapa ? [experiencias.mapa] : []),
     ...(experiencias.redes ? [experiencias.redes] : []),
+    // La tienda va después de lo que da puntos: primero se ve cómo se ganan
+    // y enseguida para qué sirven. Antes los puntos no compraban nada visible.
+    {
+      href: "/experiencia/tienda",
+      rotulo: "La tienda",
+      nota: alcanza ? `Ya alcanzas ${alcanza === 1 ? "1 artículo" : `${alcanza} artículos`}` : "Canjea tus puntos",
+      imagen: "/img/tienda/hoodie.jpg",
+      urgente: alcanza > 0,
+    },
+    { href: "/experiencia/podio", rotulo: "El podio", nota: "Quién va ganando hoy", imagen: "/img/escenario-inspira.webp" },
     { href: "/experiencia/preguntas", rotulo: "Preguntas", nota: "Cómo llegar y qué llevar", imagen: "/img/evento/totem-cubos.jpg" },
   ];
 

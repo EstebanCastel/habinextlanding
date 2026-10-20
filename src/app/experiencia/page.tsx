@@ -67,7 +67,7 @@ export default async function Pagina({
       }
     >
       <Asterisk color="var(--violet)" className="pointer-events-none absolute -right-28 -top-[30rem] h-[26rem] w-[26rem] opacity-[0.08] md:-right-20 md:h-[36rem] md:w-[36rem]" />
-      <Portada yo={yo} podio={r.podio} puesto={puesto} entrar={entrar} error={q.error} cerrada={cerrada} />
+      <Portada yo={yo} puesto={puesto} entrar={entrar} error={q.error} cerrada={cerrada} />
     </Marco>
   );
 }

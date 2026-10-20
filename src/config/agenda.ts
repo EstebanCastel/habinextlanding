@@ -550,8 +550,10 @@ export const PONENTES: Record<string, Ficha> = {
   "Juan Sokoloff": { foto: "/img/ponentes/juan-sokoloff.jpg", cargo: "VP de Data y Pricing · Habi" },
   "Juan Londoño": { foto: "/img/ponentes/juan-londono.jpg", cargo: "Ventas a inversionistas" },
   // Marcas: su logo es lo que la gente reconoce, no la cara de quien lo representa.
-  "Palomma · Cipriano Echavarría": { logo: "/img/ponentes/palomma.png", cargo: "Palomma", fondo: "#0d0618" },
-  Palomma: { logo: "/img/ponentes/palomma.png", fondo: "#0d0618" },
+  // El logo de Palomma es negro y morado oscuro sobre transparente: sobre la
+  // tinta del sitio no se veía nada. Va sobre blanco, como el de Funnel Chat.
+  "Palomma · Cipriano Echavarría": { logo: "/img/ponentes/palomma.png", cargo: "Palomma", fondo: "#ffffff" },
+  Palomma: { logo: "/img/ponentes/palomma.png", fondo: "#ffffff" },
   Alternativa: { logo: "/img/ponentes/datacredito.png", cargo: "DataCrédito Experian", fondo: "#ffffff" },
   Auco: { logo: "/img/marcas/auco.png" },
   Wekall: { logo: "/img/marcas/wekall.svg" },

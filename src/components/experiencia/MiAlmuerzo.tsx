@@ -106,8 +106,8 @@ export default function MiAlmuerzo({ yo }: { yo: Vista | null }) {
 
         <p className="mt-6 text-center text-sm font-light leading-relaxed text-white/45">
           El turno queda fijo. Si de verdad necesitas cambiarlo, escríbenos por WhatsApp al{" "}
-          <a href="https://wa.me/573009110459" className="font-medium text-violet-soft underline-offset-4 hover:underline">
-            +57 300 911 0459
+          <a href="https://wa.me/573043342330" className="font-medium text-violet-soft underline-offset-4 hover:underline">
+            +57 304 334 2330
           </a>{" "}
           y lo movemos.
         </p>

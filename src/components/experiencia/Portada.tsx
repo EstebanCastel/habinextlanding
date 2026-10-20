@@ -2,16 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { BLOQUEADAS, EXPERIENCIAS, PUNTOS_TOTALES, bloqueada, type ExperienciaId } from "@/config/experiencia";
-import type { Podio as Filas, Vista } from "@/lib/experiencia";
+import type { Vista } from "@/lib/experiencia";
 import Accesos from "./Accesos";
 import { EVENTO_ENTRAR } from "./BotonEntrar";
 import Entrar from "./Entrar";
 import { Salas } from "./EnVivo";
-import Podio from "./Podio";
 import { puntosEn } from "./puntaje";
 
 /**
- * La portada: el puntaje y el podio arriba, las tres experiencias como
+ * La portada: el puntaje arriba, las experiencias como
  * tarjetas. Quien no ha entrado ve todo igual; al tocar una tarjeta se le
  * abre la entrada y, al entrar, cae en esa experiencia.
  *
@@ -20,14 +19,12 @@ import { puntosEn } from "./puntaje";
  */
 export default function Portada({
   yo,
-  podio,
   puesto,
   entrar,
   error,
   cerrada,
 }: {
   yo: Vista | null;
-  podio: Filas;
   puesto: { puesto: number; total: number } | null;
   /** Destino con el que llegó pidiendo entrar (`?entrar=/experiencia/mapa`). */
   entrar?: string;
@@ -168,28 +165,7 @@ export default function Portada({
 
       <Accesos yo={yo} experiencias={experiencias} alPedirEntrada={pedirEntrada} />
 
-      {/* El podio, debajo de los accesos: se mira, no se opera. */}
-      <section className="mt-8 rounded-2xl border border-white/12 bg-white/[0.03] p-5 sm:p-6">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-violet-soft">Los tres primeros</p>
-          {podio.length ? <p className="text-xs font-light text-white/40">se cierra el 20 de octubre</p> : null}
-        </div>
-        {podio.length === 0 ? (
-          <p className="mt-3 text-base font-light text-white/50">
-            El ranking arranca con la primera misión completada. Puede ser la tuya.
-          </p>
-        ) : (
-          <div className="mt-4">
-            <Podio podio={podio} />
-          </div>
-        )}
-        {yo && puesto && puesto.puesto > 3 ? (
-          <p className="mt-4 text-sm font-light text-white/50">
-            Tú vas de <span className="font-semibold text-white">{puesto.puesto}</span>. Te faltan{" "}
-            {Math.max(0, (podio[2]?.puntos ?? 0) - yo.puntos + 1)} puntos para alcanzar al tercero.
-          </p>
-        ) : null}
-      </section>
+
 
       {/* Las tres experiencias */}
       <Entrar

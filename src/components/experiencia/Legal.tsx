@@ -7,7 +7,7 @@
  */
 
 const POLITICA_HABI = "https://habi.co/politica-de-tratamiento-de-datos";
-const WHATSAPP = "https://wa.me/573009110459";
+const WHATSAPP = "https://wa.me/573043342330";
 const VERSION = "6 de octubre de 2026";
 
 const SECCIONES: { titulo: string; parrafos: string[] }[] = [
@@ -75,7 +75,7 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
   {
     titulo: "10. Tus derechos",
     parrafos: [
-      "De acuerdo con la Ley 1581 de 2012 y el Decreto 1377 de 2013, tienes derecho a conocer, actualizar, rectificar y suprimir tus datos, a pedir prueba de la autorización, a revocarla y a presentar quejas ante la Superintendencia de Industria y Comercio. Para ejercerlos escríbenos por WhatsApp al +57 300 911 0459 indicando el correo con el que entraste, o usa los canales de la política de tratamiento de datos de Habi.",
+      "De acuerdo con la Ley 1581 de 2012 y el Decreto 1377 de 2013, tienes derecho a conocer, actualizar, rectificar y suprimir tus datos, a pedir prueba de la autorización, a revocarla y a presentar quejas ante la Superintendencia de Industria y Comercio. Para ejercerlos escríbenos por WhatsApp al +57 304 334 2330 indicando el correo con el que entraste, o usa los canales de la política de tratamiento de datos de Habi.",
       "Suprimir tus datos implica salir de la experiencia y del ranking; no afecta tu entrada al evento.",
     ],
   },

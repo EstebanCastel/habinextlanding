@@ -173,7 +173,7 @@ export async function paseApple(e: Entrada, sitio: string): Promise<PaseApple | 
           value: `${sitio}/experiencia/carnet`,
         },
         { key: "agenda", label: "La agenda", value: `${sitio}/experiencia/agenda` },
-        { key: "ayuda", label: "¿Dudas?", value: "Escríbenos por WhatsApp al +57 300 911 0459" },
+        { key: "ayuda", label: "¿Dudas?", value: "Escríbenos por WhatsApp al +57 304 334 2330" },
       ],
     },
   };
@@ -409,7 +409,7 @@ function objetoGoogle(id: string, clase: string, e: Entrada, sitio: string) {
       uris: [
         { uri: `${sitio}/experiencia/carnet`, description: "Tu credencial y tu carnet", id: "carnet" },
         { uri: `${sitio}/experiencia/agenda`, description: "La agenda del día", id: "agenda" },
-        { uri: "https://wa.me/573009110459", description: "Escríbenos por WhatsApp", id: "whatsapp" },
+        { uri: "https://wa.me/573043342330", description: "Escríbenos por WhatsApp", id: "whatsapp" },
       ],
     },
     // Sin la cédula: en la puerta se lee el QR, y la cédula es la clave con

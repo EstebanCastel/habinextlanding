@@ -16,7 +16,7 @@ export type Pregunta = { p: string; r: string; porConfirmar?: boolean };
 export type Seccion = { id: string; titulo: string; preguntas: Pregunta[] };
 
 /** El canal de ayuda. Es el mismo número por el que ya se les escribe. */
-export const SAC = { whatsapp: "+57 300 911 0459", url: "https://wa.me/573009110459" };
+export const SAC = { whatsapp: "+57 304 334 2330", url: "https://wa.me/573043342330" };
 
 export const FAQ: Seccion[] = [
   {
