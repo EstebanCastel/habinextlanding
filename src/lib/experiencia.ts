@@ -1,4 +1,4 @@
-import { esDelEquipo, fichaDeEquipo } from "@/config/equipo";
+import { enListaDeEquipo, esCorreoDeHabi, fichaDeEquipo } from "@/config/equipo";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { borrar, crearSiNoExiste, escribir, leer, listarRutas, modificar } from "./almacen";
@@ -264,7 +264,10 @@ export async function porId(id: string): Promise<Participante | null> {
  */
 function conEquipoAlDia(p: Participante | null): Participante | null {
   if (!p?.email) return p;
-  const toca = esDelEquipo(p.email);
+  // En la lista: es del equipo, punto. Por dominio: solo si no trae entrada
+  // propia, porque en Habi Credit hay gente que compró su VIP y esa entrada
+  // es suya —convertirla en credencial de staff le quita el puesto que pagó.
+  const toca = enListaDeEquipo(p.email) || (esCorreoDeHabi(p.email) && !p.registro);
   if (toca === Boolean(p.equipo)) return p;
   return toca ? { ...p, equipo: true } : { ...p, equipo: undefined };
 }
@@ -390,11 +393,19 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
     mio = registros.find((r) => r.etapa === "aprobado");
     if (!mio && !companero) return { ok: false, motivo: registros.length ? "pendiente" : "sin-entrada" };
   }
-  // La cédula es la clave: la del registro manda y, si no hay registro, la de
-  // la lista del equipo. Al compañero que no tenga cédula en la lista le queda
-  // la primera que escriba.
-  if (mio?.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
-  if (!mio && companero?.cedula && companero.cedula !== cedula) return { ok: false, motivo: "cedula" };
+  // El de la lista entra como equipo aunque arrastre un registro viejo de
+  // Luma: su credencial es la de staff. El que llega solo por el dominio
+  // conserva su entrada si la tiene aprobada.
+  if (enListaDeEquipo(email) && mio && mio.etapa !== "aprobado") mio = undefined;
+  const comoEquipo = enListaDeEquipo(email) || (Boolean(companero) && !mio);
+  // La cédula es la clave de quien tiene entrada: la del registro manda.
+  //
+  // Para el equipo de Habi **no**: su correo corporativo ya es la prueba de
+  // quién es, y la lista de cédulas nunca estuvo completa. Pedirle a alguien
+  // de la casa un número que nosotros mismos no tenemos lo deja afuera de su
+  // credencial el día que trabaja el evento. La que escriba queda como su
+  // clave para volver a entrar.
+  if (!companero && mio?.luma.cedula && mio.luma.cedula !== cedula) return { ok: false, motivo: "cedula" };
 
   const hash = hashCedula(email, cedula);
   const ahora = new Date().toISOString();
@@ -409,7 +420,7 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
         {
           ...q,
           email,
-          ...(companero ? { equipo: true as const } : {}),
+          ...(comoEquipo ? { equipo: true as const } : {}),
           credencial: { email, cedulaHash: hash, creadaEn: q.credencial?.creadaEn ?? ahora, ultimaEntrada: ahora },
           ...(registro && mio ? { registro: q.registro?.token === mio.token ? { ...q.registro, etapa: mio.etapa } : registro } : {}),
         },
@@ -428,12 +439,14 @@ export async function entrar(datos: { email: string; cedula: string; token?: str
       {
         ...q,
         email,
-        nombre: partes[0] ?? companero?.nombre ?? q.nombre,
+        nombre: companero?.nombre ?? partes[0] ?? q.nombre,
         // «Sandra Patoa Rodríguez» es un nombre y dos apellidos, no dos nombres
         // y un apellido: con tres palabras el apellido empieza en la segunda.
         // Con cuatro, la persona suele tener dos nombres y dos apellidos.
-        apellido: partes.length > 1 ? partes.slice(partes.length >= 4 ? 2 : 1).join(" ") || partes[1] : (companero?.apellido ?? q.apellido),
-        ...(companero ? { equipo: true as const } : {}),
+        apellido:
+          companero?.apellido ??
+          (partes.length > 1 ? partes.slice(partes.length >= 4 ? 2 : 1).join(" ") || partes[1] : q.apellido),
+        ...(comoEquipo ? { equipo: true as const } : {}),
         credencial: { email, cedulaHash: hash, creadaEn: ahora, ultimaEntrada: ahora },
         ...(registro ? { registro } : {}),
       },

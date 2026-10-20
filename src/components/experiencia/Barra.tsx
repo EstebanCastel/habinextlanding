@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PUNTOS_TOTALES } from "@/config/experiencia";
-import { proximo, salonDe } from "@/config/agenda";
+import { esDiaDelEvento, proximo, salonDe } from "@/config/agenda";
+import EnVivo from "./EnVivo";
 import type { Vista } from "@/lib/experiencia";
 import BotonEntrar from "./BotonEntrar";
 
@@ -24,6 +25,7 @@ export default function Barra({ yo }: { yo: Vista | null }) {
     evento = "Gracias por venir a Habi Next";
   }
 
+  const hoy = esDiaDelEvento();
   const puntos = yo?.puntos ?? 0;
   const pct = Math.min(100, Math.round((puntos / PUNTOS_TOTALES) * 100));
 
@@ -35,8 +37,17 @@ export default function Barra({ yo }: { yo: Vista | null }) {
             <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
             <path d="M3.5 10h17M8 3v4M16 3v4" strokeLinecap="round" />
           </svg>
-          <span className="truncate text-[13px] font-semibold tracking-tight sm:text-sm">{evento}</span>
-          {detalle ? <span className="hidden truncate text-xs font-light text-white/45 sm:inline">· {detalle}</span> : null}
+          {/* El día del evento la barra deja de contar días y pasa a decir
+              qué está corriendo en cada salón, que es la única pregunta que
+              alguien se hace parado en el recinto. */}
+          {hoy ? (
+            <EnVivo />
+          ) : (
+            <>
+              <span className="truncate text-[13px] font-semibold tracking-tight sm:text-sm">{evento}</span>
+              {detalle ? <span className="hidden truncate text-xs font-light text-white/45 sm:inline">· {detalle}</span> : null}
+            </>
+          )}
         </Link>
 
         {yo ? (

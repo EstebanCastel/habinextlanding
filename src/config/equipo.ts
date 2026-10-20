@@ -78,14 +78,81 @@ export const EQUIPO: Companero[] = [
 
 const POR_CORREO = new Map(EQUIPO.map((c) => [c.email.toLowerCase(), c]));
 
-/** La ficha del compañero, si ese correo es de los nuestros. */
+/**
+ * Los dominios de la casa: habi.co, habicredit.co y sus subdominios
+ * (`franquicias.habi.co`, por ejemplo).
+ *
+ * Quien tenga uno de estos correos es del equipo, esté o no en la lista de
+ * arriba. La lista se armó a mano y siempre va atrás de la realidad: el día
+ * del evento aparece gente de Habi que nadie alcanzó a agregar, y dejarla
+ * afuera de su propia credencial por un archivo desactualizado es el peor
+ * de los dos errores posibles.
+ */
+const DOMINIO_HABI = /@(?:[a-z0-9-]+\.)*habi(?:credit|capital|global|next)?\.(?:co|com|com\.co|mx)$/i;
+
+export const esCorreoDeHabi = (email: string): boolean => DOMINIO_HABI.test(email.trim().toLowerCase());
+
+const SIN_TILDES = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const TITULO = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+
+/** Nombres y apellidos que ya conocemos, para partir un correo pegado. */
+const CONOCIDOS = (() => {
+  const nombres = new Map<string, string>();
+  const apellidos = new Map<string, string>();
+  for (const c of EQUIPO) {
+    if (c.nombre) for (const t of c.nombre.split(/\s+/)) nombres.set(SIN_TILDES(t).toLowerCase(), t);
+    if (c.apellido) for (const t of c.apellido.split(/\s+/)) apellidos.set(SIN_TILDES(t).toLowerCase(), t);
+  }
+  return { nombres, apellidos };
+})();
+
+/**
+ * El nombre que se saca del correo, para quien no está en la lista.
+ *
+ * `felipe.restrepo@habi.co` se parte solo. `estebancastelblanco@habi.co` no
+ * tiene por dónde partirse, así que se prueba contra los nombres que ya
+ * conocemos del equipo: si el correo empieza por uno de ellos, lo que queda
+ * es el apellido. Si tampoco, va todo como nombre y la persona lo corrige en
+ * su carnet, que es un campo de texto y siempre lo fue.
+ */
+export function nombreDesdeCorreo(email: string): { nombre: string; apellido: string } {
+  const local = email.trim().toLowerCase().split("@")[0].replace(/\+.*$/, "");
+  const partes = local.split(/[._-]+/).filter(Boolean);
+  if (partes.length > 1) {
+    return { nombre: TITULO(partes[0]), apellido: partes.slice(1).map(TITULO).join(" ") };
+  }
+
+  const pegado = partes[0] ?? "";
+  for (const [clave, bonito] of CONOCIDOS.nombres) {
+    if (clave.length >= 3 && pegado.startsWith(clave) && pegado.length > clave.length) {
+      const resto = pegado.slice(clave.length);
+      return { nombre: bonito, apellido: CONOCIDOS.apellidos.get(resto) ?? TITULO(resto) };
+    }
+  }
+  return { nombre: TITULO(pegado), apellido: "" };
+}
+
+/**
+ * La ficha del compañero. Si no está en la lista pero su correo es de Habi,
+ * se arma una al vuelo: sin cédula —no la sabemos— y con el nombre sacado
+ * del correo.
+ */
 export function fichaDeEquipo(email: string): Companero | undefined {
-  return POR_CORREO.get(email.trim().toLowerCase());
+  const correo = email.trim().toLowerCase();
+  const listado = POR_CORREO.get(correo);
+  if (listado) return listado;
+  if (!esCorreoDeHabi(correo)) return undefined;
+  const { nombre, apellido } = nombreDesdeCorreo(correo);
+  return { email: correo, nombre, apellido, ciudad: "Bogotá", cargo: "Equipo Habi" };
 }
 
 export function esDelEquipo(email: string): boolean {
-  return POR_CORREO.has(email.trim().toLowerCase());
+  const correo = email.trim().toLowerCase();
+  return POR_CORREO.has(correo) || esCorreoDeHabi(correo);
 }
+
+/** Está escrito en la lista de arriba, no deducido del dominio. */
+export const enListaDeEquipo = (email: string): boolean => POR_CORREO.has(email.trim().toLowerCase());
 
 /** Lo que acompaña al carnet del compañero, para que sepa qué es ese QR. */
 export const AVISO_EQUIPO =

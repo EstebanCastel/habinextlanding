@@ -6,6 +6,7 @@ import type { Podio as Filas, Vista } from "@/lib/experiencia";
 import Accesos from "./Accesos";
 import { EVENTO_ENTRAR } from "./BotonEntrar";
 import Entrar from "./Entrar";
+import { Salas } from "./EnVivo";
 import Podio from "./Podio";
 import { puntosEn } from "./puntaje";
 
@@ -157,6 +158,13 @@ export default function Portada({
           })}
         </div>
       </section>
+
+      {/* Lo que corre ahora en cada salón, encima de todo: el día del evento
+          es lo primero que alguien busca al abrir la app. Fuera del día no
+          pinta nada. */}
+      <div className="mb-6">
+        <Salas />
+      </div>
 
       <Accesos yo={yo} experiencias={experiencias} alPedirEntrada={pedirEntrada} />
 

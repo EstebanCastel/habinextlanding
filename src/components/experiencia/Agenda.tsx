@@ -8,6 +8,7 @@ import { gsap, useGSAP } from "@/lib/gsap";
 import { SALONES, esSesion, fichaDe, numeroDe, salonDe, sesionDe, sesionesDe, type Ficha, type Salon, type SalonId, type Sesion } from "@/config/agenda";
 import type { Vista } from "@/lib/experiencia";
 import { clasesBoton, pedirJson } from "./util";
+import PaseQr from "./PaseQr";
 
 /**
  * El programa del día, como un cartel y no como una tabla.
@@ -44,8 +45,12 @@ type Intereses = {
   libres: Record<string, number>;
   /** Los talleres que esta persona ya reservó. */
   reservados: Set<string>;
-  /** Reserva o suelta un taller. En el Salón Taller reemplaza a `alternar`. */
+  /** Reserva o suelta un taller. Va aparte del «me interesa», no en vez de él. */
   reservar: (s: Sesion) => void | Promise<void>;
+  /** El QR de cada taller reservado, por id de taller. */
+  pases: Record<string, string>;
+  /** Si hay sesión abierta: sin entrar no se puede reservar. */
+  dentro: boolean;
   gustan: Set<string>;
   conteos: Record<string, number>;
   alternar: (s: Sesion) => void;
@@ -157,20 +162,23 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
     }
   };
 
-  // Las reservas del Salón Taller viven en el mismo gesto que el «me
-  // interesa»: en esa sala marcar una sesión ES reservar el puesto, porque
-  // tiene cupo. Separarlo en otra pantalla obligaba a marcarla dos veces.
+  // En el Salón Taller hay dos gestos distintos y por eso hay dos botones:
+  // «me interesa» es la lista de lo que quiero ver —y es lo que dispara el
+  // aviso cinco minutos antes— y «reservar» es el puesto, que tiene tope.
+  // Juntarlos obligaba a reservar para poder recibir el aviso.
   const [libres, setLibres] = useState<Record<string, number>>({});
   const [reservados, setReservados] = useState<Set<string>>(new Set(yo?.talleres ?? []));
+  const [pases, setPases] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let vivo = true;
     fetch("/api/experiencia/taller")
       .then((r) => r.json())
-      .then((d: { talleres?: { id: string; libres: number }[]; mios?: string[] }) => {
+      .then((d: { talleres?: { id: string; libres: number }[]; mios?: string[]; pases?: Record<string, string> }) => {
         if (!vivo || !d?.talleres) return;
         setLibres(Object.fromEntries(d.talleres.map((t) => [t.id, t.libres])));
         setReservados(new Set(d.mios ?? []));
+        if (d.pases) setPases(d.pases);
       })
       .catch(() => null);
     return () => {
@@ -183,12 +191,15 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
     if (ocupada) return;
     setOcupada(s.id);
     try {
-      const r = await pedirJson<{ talleres: { id: string; libres: number }[]; mios: string[]; motivo?: string }>(
-        "/api/experiencia/taller",
-        { taller: s.id }
-      );
+      const r = await pedirJson<{
+        talleres: { id: string; libres: number }[];
+        mios: string[];
+        pases?: Record<string, string>;
+        motivo?: string;
+      }>("/api/experiencia/taller", { taller: s.id });
       if (r.talleres) setLibres(Object.fromEntries(r.talleres.map((t) => [t.id, t.libres])));
       if (r.mios) setReservados(new Set(r.mios));
+      if (r.pases) setPases(r.pases);
       if (r.motivo) setChoque(r.motivo);
       else setChoque(null);
     } catch {
@@ -198,7 +209,7 @@ export default function Agenda({ yo, conteos: conteosIniciales }: { yo: Vista | 
     }
   };
 
-  const intereses: Intereses = { gustan, conteos, alternar, ocupada, libres, reservados, reservar };
+  const intereses: Intereses = { gustan, conteos, alternar, ocupada, libres, reservados, reservar, pases, dentro: Boolean(yo) };
 
   return (
     <div>
@@ -282,41 +293,71 @@ function Corazon({ lleno, className = "" }: { lleno: boolean; className?: string
  * dos veces, y la segunda se olvidaba.
  */
 function MeInteresa({ sesion, intereses, grande = false }: { sesion: Sesion; intereses: Intereses; grande?: boolean }) {
-  const esTaller = sesion.salon === "taller";
-  const marcada = esTaller ? intereses.reservados.has(sesion.id) : intereses.gustan.has(sesion.id);
-  const libres = intereses.libres[sesion.id];
-  const sinCupo = esTaller && !marcada && libres === 0;
-  const n = esTaller ? undefined : intereses.conteos[sesion.id] ?? 0;
-
-  const etiqueta = esTaller
-    ? marcada
-      ? "Reservado"
-      : sinCupo
-        ? "Sin cupo"
-        : "Reservar"
-    : marcada
-      ? "Te interesa"
-      : "Me interesa";
+  const marcada = intereses.gustan.has(sesion.id);
+  const n = intereses.conteos[sesion.id] ?? 0;
+  const etiqueta = marcada ? "Te interesa" : "Me interesa";
 
   return (
     <button
       type="button"
-      onClick={() => (esTaller ? intereses.reservar(sesion) : intereses.alternar(sesion))}
+      onClick={() => intereses.alternar(sesion)}
       aria-pressed={marcada}
       aria-label={etiqueta}
-      disabled={intereses.ocupada === sesion.id || sinCupo}
+      disabled={intereses.ocupada === sesion.id}
       className={`inline-flex items-center gap-1.5 rounded-full border transition-colors disabled:opacity-60 ${
-        grande ? "px-5 py-3 text-base font-medium" : `h-8 text-xs ${esTaller ? "px-3" : "px-2.5"}`
+        grande ? "px-5 py-3 text-base font-medium" : "h-8 px-2.5 text-xs"
       } ${marcada ? "border-violet bg-violet text-white" : "border-white/20 text-white/75 hover:border-violet/60 hover:text-white"}`}
     >
       <Corazon lleno={marcada} className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} />
-      {/* En el Salón Taller la palabra va siempre, incluso en la tarjeta
-          pequeña: un corazón con un número al lado se lee como «a 58 personas
-          les interesa», y acá ese número son puestos que quedan. */}
-      {grande || esTaller ? <span className="font-medium">{etiqueta}</span> : null}
+      {grande ? <span className="font-medium">{etiqueta}</span> : null}
       {n ? <span className="font-semibold tabular-nums">{n}</span> : null}
-      {esTaller && !marcada && typeof libres === "number" ? (
-        <span className="font-semibold tabular-nums opacity-75">· {libres}</span>
+    </button>
+  );
+}
+
+/**
+ * Reservar el puesto. Solo en el Salón Taller, porque es la única sala con
+ * tope, y en un botón aparte del corazón.
+ *
+ * Va lleno y no delineado a propósito: entre dos botones del mismo peso la
+ * gente toca el de la izquierda, y en esta sala el que importa es este —el
+ * corazón solo apunta la sesión en tu lista, el puesto lo da la reserva—.
+ * Mientras queda cupo dice cuántos puestos quedan, porque eso es lo que
+ * mueve a reservar ahora y no a las once.
+ */
+function Reservar({ sesion, intereses, grande = false }: { sesion: Sesion; intereses: Intereses; grande?: boolean }) {
+  if (sesion.salon !== "taller" || sesion.tipo) return null;
+
+  const mia = intereses.reservados.has(sesion.id);
+  const libres = intereses.libres[sesion.id];
+  const sinCupo = !mia && libres === 0;
+  const etiqueta = mia ? "Reservado" : sinCupo ? "Sala llena" : "Reservar";
+
+  return (
+    <button
+      type="button"
+      onClick={() => intereses.reservar(sesion)}
+      aria-pressed={mia}
+      disabled={intereses.ocupada === sesion.id || sinCupo || !intereses.dentro}
+      title={!intereses.dentro ? "Entra con tu correo y tu cédula para reservar" : undefined}
+      className={`inline-flex items-center gap-1.5 rounded-full font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+        grande ? "px-5 py-3 text-base" : "h-8 px-3 text-xs"
+      } ${
+        mia
+          ? "bg-violet text-white"
+          : sinCupo
+            ? "border border-white/15 text-white/45"
+            : "bg-violet text-white hover:bg-violet/85"
+      }`}
+    >
+      {mia ? (
+        <svg viewBox="0 0 24 24" className={grande ? "h-4 w-4" : "h-3.5 w-3.5"} fill="none" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ) : null}
+      <span>{etiqueta}</span>
+      {!mia && !sinCupo && typeof libres === "number" ? (
+        <span className="tabular-nums opacity-80">· {libres}</span>
       ) : null}
     </button>
   );
@@ -563,9 +604,10 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
           {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
         </span>
       </button>
-      {/* El corazón va fuera del botón de la tarjeta: un botón no puede contener otro. */}
-      <span className="absolute bottom-5 left-5 sm:bottom-6 sm:left-6">
+      {/* Los botones van fuera del botón de la tarjeta: un botón no puede contener otro. */}
+      <span className="absolute bottom-5 left-5 flex items-center gap-2 sm:bottom-6 sm:left-6">
         <MeInteresa sesion={s} intereses={intereses} />
+        <Reservar sesion={s} intereses={intereses} />
       </span>
     </li>
   );
@@ -695,7 +737,22 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
               Descargar los contenidos
             </a>
             <MeInteresa sesion={sesion} intereses={intereses} grande />
+            <Reservar sesion={sesion} intereses={intereses} grande />
           </div>
+
+          {/* El pase del taller, acá mismo. Quien reservó abre la sesión para
+              mirar de qué se trata y en la puerta de la sala le piden el QR:
+              mandarlo a otra pantalla a buscarlo es un paso de más justo
+              cuando hay fila. */}
+          {sesion.salon === "taller" && !sesion.tipo && intereses.reservados.has(sesion.id) && intereses.pases[sesion.id] ? (
+            <div data-linea className="mt-6 flex flex-col items-center rounded-3xl border border-violet/35 bg-violet/[0.09] px-5 py-6">
+              <PaseQr
+                url={intereses.pases[sesion.id]}
+                rotulo="Tu pase de este taller"
+                nota="Enséñalo en la puerta del Salón Taller. Es solo de esta sesión."
+              />
+            </div>
+          ) : null}
 
           {sesion.contenido?.length ? (
             <ul className="mt-6 flex flex-col gap-2.5">

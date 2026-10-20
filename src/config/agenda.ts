@@ -97,35 +97,28 @@ export type Sesion = {
 /**
  * Cuántos caben en cada sesión del Salón Taller.
  *
- * La sala es de mesas con corriente y el acompañamiento es de verdad: pasado
- * ese número la sesión deja de ser un taller y pasa a ser una charla con el
- * computador abierto, que es justo lo que no es. Es un solo número porque la
- * sala es la misma todo el día.
+ * Es el aforo real de la sala, el que dio producción: doscientas personas. Es
+ * un solo número porque la sala es la misma todo el día, y es un tope duro —
+ * pasado ese punto la reserva se cierra y la tarjeta lo dice, en vez de dejar
+ * que doscientas cincuenta personas se presenten a una sala de doscientas.
  */
-export const CUPO_TALLER = 60;
+export const CUPO_TALLER = 200;
 
 export const SESIONES: Sesion[] = [
   // ---------- Salón Principal · Inspira ----------
   {
-    id: "marca-personal",
+    id: "inicio",
     salon: "inspira",
-    desde: "16:00",
-    titulo: "Construcción de marca personal con IA",
-    ponente: "Camilo Olarte",
-    resumen: "Que te busquen a ti y no a la inmobiliaria.",
-    contenido: [
-      "Cómo se ve hoy un perfil de asesor que genera contactos solo, y en qué se diferencia del que no.",
-      "Un sistema para producir un mes de contenido en una tarde, con IA que escribe en tu voz y no en la de un robot.",
-      "Qué publicar en cada red sin repetirte, y cómo convertir un cierre en tres piezas distintas.",
-      "Los errores que hacen que el algoritmo te esconda, con ejemplos de cuentas reales del gremio.",
-    ],
-    necesitas: "Tu celular con tus redes abiertas.",
+    desde: "09:00",
+    titulo: "Inicio",
+    tipo: "pausa",
+    resumen: "Arranca el día en el salón principal.",
   },
   {
     id: "agente-futuro",
     salon: "inspira",
-    desde: "09:00",
-    titulo: "El agente inmobiliario del futuro",
+    desde: "09:15",
+    titulo: "Aceleración comercial",
     ponente: "Pipe Restrepo",
     resumen: "Cómo se ve el oficio dentro de cinco años.",
     contenido: [
@@ -135,9 +128,22 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
+    id: "segundo-cerebro",
+    salon: "inspira",
+    desde: "10:15",
+    titulo: "Crea tu segundo cerebro con IA",
+    ponente: "Dani Bravo",
+    resumen: "Todo lo que sabes, buscable en un segundo.",
+    contenido: [
+      "Cómo guardar lo que aprendes de forma que lo vuelvas a encontrar.",
+      "Un sistema para que tus notas, contratos y fichas respondan preguntas.",
+      "Qué herramienta usar según cómo trabajes hoy.",
+    ],
+  },
+  {
     id: "receso-manana",
     salon: "inspira",
-    desde: "11:00",
+    desde: "11:05",
     titulo: "Receso corto",
     tipo: "pausa",
     resumen: "Café, baño y una vuelta por los stands.",
@@ -147,7 +153,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-habi",
     salon: "inspira",
-    desde: "11:15",
+    desde: "11:30",
     titulo: "El futuro de Habi",
     ponente: "Sebastián Noguera",
     detallePonente: "Cofundador y presidente de Habi",
@@ -161,7 +167,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-mi-red",
     salon: "inspira",
-    desde: "11:30",
+    desde: "11:45",
     titulo: "El futuro de Habi · Mi Red",
     ponente: "Agustín Iglesias",
     resumen: "La red de aliados y cómo se gana dentro de ella.",
@@ -174,7 +180,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-habi-capital",
     salon: "inspira",
-    desde: "11:45",
+    desde: "12:00",
     titulo: "El futuro de Habi · Habi Capital",
     ponente: "Martín Oviedo",
     resumen: "El brazo de inversión, explicado sin jerga.",
@@ -187,7 +193,7 @@ export const SESIONES: Sesion[] = [
   {
     id: "futuro-habi-credit",
     salon: "inspira",
-    desde: "12:00",
+    desde: "12:15",
     titulo: "El futuro de Habi · Habi Credit",
     ponente: "Gabriel Morris",
     resumen: "Crédito hipotecario como parte de tu cierre.",
@@ -198,10 +204,9 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
-    // La hoja dice «Edwin Alejo o Matías»; va Edwin mientras el equipo lo cierra.
     id: "futuro-franquicias",
     salon: "inspira",
-    desde: "12:15",
+    desde: "12:30",
     titulo: "El futuro de Habi · Franquicias",
     ponente: "Edwin Alejo",
     resumen: "El modelo de franquicia, de frente.",
@@ -214,23 +219,23 @@ export const SESIONES: Sesion[] = [
   {
     id: "almuerzo",
     salon: "inspira",
-    desde: "12:30",
+    desde: "12:45",
     titulo: "Almuerzo",
     tipo: "pausa",
-    resumen: "Zona de comida y networking. Los VIP tienen su propia sala.",
+    resumen: "Tres turnos: 12:45, 1:15 y 1:45. Los VIP tienen su propia sala.",
   },
   {
     id: "premiacion-bogota",
     salon: "inspira",
-    desde: "14:00",
+    desde: "14:15",
     titulo: "Premiación del Banco de Bogotá",
     tipo: "pausa",
-    resumen: "Justo al volver del almuerzo, antes de la charla de las 2:15.",
+    resumen: "Justo al volver del almuerzo.",
   },
   {
     id: "venderle-inversionistas",
     salon: "inspira",
-    desde: "14:15",
+    desde: "14:30",
     titulo: "Construcción patrimonial a través de bienes raíces",
     ponente: "Mis Propias Finanzas",
     resumen: "El cliente que compra por números, y cómo pensar como él.",
@@ -242,17 +247,9 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
-    id: "receso-tarde",
-    salon: "inspira",
-    desde: "15:45",
-    titulo: "Receso corto",
-    tipo: "pausa",
-    resumen: "Café y una vuelta por los stands.",
-  },
-  {
     id: "maraton-herramientas",
     salon: "inspira",
-    desde: "15:15",
+    desde: "15:30",
     titulo: "Maratón de herramientas para asesores inmobiliarios y financieros",
     ponentes: ["Auco · Santiago Montoya", "Dapta · Aron", "Wekall · Felipe Sánchez", "Palomma · Cipriano Echavarría", "Funnel Chat · Alejandro Sánchez"],
     resumen: "Cinco herramientas, una detrás de otra, con demostración en vivo.",
@@ -264,9 +261,40 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
-    id: "confianza-negocios",
+    id: "receso-tarde",
+    salon: "inspira",
+    desde: "16:00",
+    titulo: "Receso corto",
+    tipo: "pausa",
+    resumen: "Café y una vuelta por los stands.",
+  },
+  {
+    id: "marca-personal",
+    salon: "inspira",
+    desde: "16:15",
+    titulo: "Construcción de marca personal con IA",
+    ponente: "Camilo Olarte",
+    resumen: "Que te busquen a ti y no a la inmobiliaria.",
+    contenido: [
+      "Cómo se ve hoy un perfil de asesor que genera contactos solo, y en qué se diferencia del que no.",
+      "Un sistema para producir un mes de contenido en una tarde, con IA que escribe en tu voz y no en la de un robot.",
+      "Qué publicar en cada red sin repetirte, y cómo convertir un cierre en tres piezas distintas.",
+      "Los errores que hacen que el algoritmo te esconda, con ejemplos de cuentas reales del gremio.",
+    ],
+    necesitas: "Tu celular con tus redes abiertas.",
+  },
+  {
+    id: "transicion-conferencias",
     salon: "inspira",
     desde: "17:00",
+    titulo: "Transición entre conferencias",
+    tipo: "pausa",
+    resumen: "Quince minutos para acomodarse.",
+  },
+  {
+    id: "confianza-negocios",
+    salon: "inspira",
+    desde: "17:15",
     titulo: "¿Cómo construir confianza y hacer negocios?",
     ponente: "Mabel Quintero",
     resumen: "Lo que decide una venta y no está en el inmueble.",
@@ -277,24 +305,27 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
-    id: "segundo-cerebro",
+    id: "cierre",
     salon: "inspira",
-    desde: "10:00",
-    titulo: "Crea tu segundo cerebro con IA",
-    ponente: "Dani Bravo",
-    resumen: "Todo lo que sabes, buscable en un segundo.",
-    contenido: [
-      "Cómo guardar lo que aprendes de forma que lo vuelvas a encontrar.",
-      "Un sistema para que tus notas, contratos y fichas respondan preguntas.",
-      "Qué herramienta usar según cómo trabajes hoy.",
-    ],
+    desde: "18:00",
+    titulo: "Cierre",
+    tipo: "pausa",
+    resumen: "Se cierra la jornada en el salón principal.",
   },
 
   // ---------- Salón Taller ----------
   {
+    id: "taller-inicio",
+    salon: "taller",
+    desde: "09:15",
+    titulo: "Inicio",
+    tipo: "pausa",
+    resumen: "Arranca la sala de talleres.",
+  },
+  {
     id: "tiktok",
     salon: "taller",
-    desde: "09:00",
+    desde: "09:30",
     titulo: "Crea contenidos virales en TikTok",
     ponente: "Carolina",
     resumen: "El formato que más alcance orgánico da hoy.",
@@ -307,9 +338,58 @@ export const SESIONES: Sesion[] = [
     necesitas: "Tu celular con TikTok instalado.",
   },
   {
-    id: "asistente-claude",
+    id: "taller-transicion-1",
+    salon: "taller",
+    desde: "10:15",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el siguiente.",
+  },
+  {
+    id: "ventas-ia",
+    salon: "taller",
+    desde: "10:30",
+    titulo: "Ventas con inteligencia artificial",
+    ponente: "Dapta · Aron",
+    resumen: "Una demostración corta, con tu operación en mente.",
+    contenido: [
+      "Cómo se ve un embudo de ventas con IA atendiendo la primera respuesta.",
+      "Qué se automatiza sin que el cliente sienta que habla con una máquina.",
+    ],
+  },
+  {
+    id: "taller-transicion-2",
+    salon: "taller",
+    desde: "11:05",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el siguiente.",
+  },
+  {
+    id: "conversatorio-brokers",
     salon: "taller",
     desde: "11:15",
+    titulo: "Conversatorio: los mejores brokers",
+    ponentes: ["Darwin Sierra · Inmobiliario", "Anderson Malaver · Hipotecario", "Germán Rueda · Entrevista"],
+    resumen: "Los que más venden, contando cómo lo hacen.",
+    contenido: [
+      "Cómo organizan su semana los asesores que cierran todos los meses.",
+      "Qué dejaron de hacer para crecer, que suele ser lo más útil de la conversación.",
+      "Preguntas abiertas de la sala.",
+    ],
+  },
+  {
+    id: "taller-transicion-3",
+    salon: "taller",
+    desde: "11:40",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el siguiente.",
+  },
+  {
+    id: "asistente-claude",
+    salon: "taller",
+    desde: "11:45",
     titulo: "Crea tu asistente personal con Claude",
     ponente: "Federico Sánchez",
     resumen: "Sales del evento con tu asistente funcionando.",
@@ -321,44 +401,18 @@ export const SESIONES: Sesion[] = [
     necesitas: "Computador con batería y tu correo a mano.",
   },
   {
-    id: "ventas-ia",
+    id: "taller-transicion-4",
     salon: "taller",
-    desde: "10:00",
-    titulo: "Ventas con inteligencia artificial",
-    ponente: "Dapta",
-    resumen: "Una demostración corta, con tu operación en mente.",
-    contenido: [
-      "Cómo se ve un embudo de ventas con IA atendiendo la primera respuesta.",
-      "Qué se automatiza sin que el cliente sienta que habla con una máquina.",
-    ],
-  },
-  {
-    id: "bloqueo-taller",
-    salon: "taller",
-    desde: "09:45",
-    titulo: "Reservado por si la entrada se demora",
-    tipo: "bloqueo",
-    resumen: "Mientras tanto, en Inspira: El futuro de Habi.",
-  },
-  {
-    id: "conversatorio-brokers",
-    salon: "taller",
-    desde: "11:00",
-    titulo: "Conversatorio: los mejores brokers",
-    ponentes: ["Germán Rueda", "Anderson"],
-    detallePonente: "Entrevista · Habi",
-    resumen: "Los que más venden, contando cómo lo hacen.",
-    contenido: [
-      "Cómo organizan su semana los asesores que cierran todos los meses.",
-      "Qué dejaron de hacer para crecer, que suele ser lo más útil de la conversación.",
-      "Preguntas abiertas de la sala.",
-    ],
+    desde: "12:30",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el siguiente.",
   },
   {
     id: "valor-inmuebles",
     salon: "taller",
-    desde: "12:30",
-    titulo: "Cómo determinar el valor real de un inmueble",
+    desde: "12:45",
+    titulo: "Cómo determinar el valor real de los inmuebles",
     ponente: "Juan Sokoloff",
     resumen: "Todo lo que hay que saber sobre el precio, sin adivinar.",
     contenido: [
@@ -368,9 +422,17 @@ export const SESIONES: Sesion[] = [
     ],
   },
   {
-    id: "campanas-meta",
+    id: "taller-receso",
     salon: "taller",
     desde: "13:30",
+    titulo: "Receso",
+    tipo: "pausa",
+    resumen: "Media hora para almorzar.",
+  },
+  {
+    id: "campanas-meta",
+    salon: "taller",
+    desde: "14:00",
     titulo: "¿Cómo crear campañas en Meta que sí venden?",
     ponente: "Olivia Robles Gorriti",
     resumen: "Dejar de quemar plata en Facebook e Instagram.",
@@ -381,6 +443,35 @@ export const SESIONES: Sesion[] = [
       "Dejas una campaña montada y lista para publicar.",
     ],
     necesitas: "Acceso a tu Business Manager.",
+  },
+  {
+    id: "taller-transicion-5",
+    salon: "taller",
+    desde: "14:45",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el siguiente.",
+  },
+  {
+    id: "ventas-inversionistas",
+    salon: "taller",
+    desde: "15:15",
+    titulo: "Ventas a inversionistas",
+    ponente: "Juan Londoño",
+    resumen: "Taller práctico: el guion y los números, en tu computador.",
+    contenido: [
+      "Armar la ficha de inversión de un inmueble real: renta, valorización y riesgo, con una plantilla que te llevas.",
+      "El guion de la primera llamada con un inversionista, y qué objeciones salen siempre.",
+      "Cómo se construye una cartera de clientes que repiten compra.",
+    ],
+  },
+  {
+    id: "taller-transicion-6",
+    salon: "taller",
+    desde: "15:45",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el siguiente.",
   },
   {
     id: "crm",
@@ -399,25 +490,17 @@ export const SESIONES: Sesion[] = [
     necesitas: "Computador y tu lista de clientes actual.",
   },
   {
-    id: "ventas-inversionistas",
+    id: "taller-transicion-7",
     salon: "taller",
-    desde: "15:15",
-    titulo: "Ventas a inversionistas",
-    ponente: "Juan Londoño",
-    resumen: "Taller práctico: el guion y los números, en tu computador.",
-    contenido: [
-      "Armar la ficha de inversión de un inmueble real: renta, valorización y riesgo, con una plantilla que te llevas.",
-      "El guion de la primera llamada con un inversionista, y qué objeciones salen siempre.",
-      "Cómo se construye una cartera de clientes que repiten compra.",
-    ],
+    desde: "16:45",
+    titulo: "Transición entre talleres",
+    tipo: "pausa",
+    resumen: "Se despeja la sala para el último.",
   },
   {
-    // En la hoja del equipo esta sesión aparece con «Alternativa» en la
-    // columna del ponente: se lee como sesión de respaldo, no como quien la
-    // dicta. Por eso va sin nombre y por confirmar.
     id: "score-crediticio",
     salon: "taller",
-    desde: "17:00",
+    desde: "16:55",
     titulo: "¿Cómo mejorar el score crediticio de tus clientes?",
     ponente: "Alternativa",
     detallePonente: "DataCrédito",
@@ -427,6 +510,14 @@ export const SESIONES: Sesion[] = [
       "Los arreglos que suben el puntaje en semanas y los que toman meses.",
       "Cómo acompañar a un cliente negado sin perder la venta.",
     ],
+  },
+  {
+    id: "taller-cierre",
+    salon: "taller",
+    desde: "17:45",
+    titulo: "Cierre",
+    tipo: "pausa",
+    resumen: "Se cierra la sala de talleres.",
   },
 ];
 
@@ -529,6 +620,61 @@ export function proximo(ahora = new Date()): Proximo {
   return { tipo: "hoy", sesion: sesionesDe("inspira").find(esSesion) ?? null, arranca: true };
 }
 
+/** Hoy es el día. */
+export const esDiaDelEvento = (ahora = new Date()): boolean => enBogota(ahora).fecha === DIA_EVENTO;
+
+/** La hora de Bogotá en «HH:MM», para pintar en vivo sin depender del reloj del visitante. */
+export const horaBogota = (ahora = new Date()): string => enBogota(ahora).hora;
+
+export type EnCurso = {
+  salon: Salon;
+  /** Lo que está corriendo ahora mismo en esa sala, pausas incluidas. */
+  ahora: Sesion | null;
+  /** Lo que sigue, para el «a las 11:45». */
+  sigue: Sesion | null;
+};
+
+/**
+ * Qué está pasando ahora mismo en cada salón.
+ *
+ * Una sesión está en curso desde su hora hasta la hora de la siguiente de su
+ * misma sala: la agenda no trae duración y la sala nunca está vacía, así que
+ * lo que empezó sigue hasta que algo la reemplace. Las pausas cuentan como
+ * lo que está pasando —«receso» es una respuesta útil para quien mira el
+ * teléfono buscando a dónde entrar.
+ */
+export function enCurso(ahora = new Date()): EnCurso[] {
+  const hora = enBogota(ahora).hora;
+  return SALONES.map((salon) => {
+    const lista = sesionesDe(salon.id)
+      .filter((s) => s.desde)
+      .sort((a, b) => a.desde!.localeCompare(b.desde!));
+    const empezadas = lista.filter((s) => s.desde! <= hora);
+    const ultima = empezadas[empezadas.length - 1] ?? null;
+    const cerrada = ultima?.id === "cierre" || ultima?.id === "taller-cierre";
+    return {
+      salon,
+      ahora: cerrada ? null : ultima,
+      sigue: lista.find((s) => s.desde! > hora) ?? null,
+    };
+  });
+}
+
+/**
+ * Las sesiones que arrancan dentro de `minutos`, para el aviso de «tu charla
+ * empieza ya». Se usa desde el motor de avisos, no desde la pantalla.
+ */
+export function arrancanEn(minutos: number, ahora = new Date()): Sesion[] {
+  const hora = enBogota(ahora).hora;
+  const [h, m] = hora.split(":").map(Number);
+  const objetivo = h * 60 + m + minutos;
+  return SESIONES.filter((s) => {
+    if (!s.desde || s.tipo) return false;
+    const [sh, sm] = s.desde.split(":").map(Number);
+    return sh * 60 + sm === objetivo;
+  });
+}
+
 /**
  * Los tres turnos de almuerzo del VIP.
  *
@@ -554,25 +700,25 @@ export const ALMUERZOS: TurnoAlmuerzo[] = [
   {
     id: "turno-1",
     rotulo: "Primer turno",
-    desde: "12:30",
-    hasta: "1:00 p. m.",
+    desde: "12:45",
+    hasta: "1:15 p. m.",
     teAlcanza: "Sales antes de que arranque la charla de construcción patrimonial.",
     cupo: 90,
   },
   {
     id: "turno-2",
     rotulo: "Segundo turno",
-    desde: "1:00",
-    hasta: "1:30 p. m.",
+    desde: "1:15",
+    hasta: "1:45 p. m.",
     teAlcanza: "Alcanzas el final del bloque del futuro de Habi y entras completo a la tarde.",
     cupo: 90,
   },
   {
     id: "turno-3",
     rotulo: "Tercer turno",
-    desde: "1:30",
-    hasta: "2:00 p. m.",
-    teAlcanza: "Ves todo el bloque del futuro de Habi y almuerzas justo antes de la tarde.",
+    desde: "1:45",
+    hasta: "2:15 p. m.",
+    teAlcanza: "Ves todo el bloque del futuro de Habi y vuelves justo para la premiación.",
     cupo: 90,
   },
 ];
