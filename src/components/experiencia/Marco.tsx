@@ -3,7 +3,9 @@ import Link from "next/link";
 import Dot from "@/components/Dot";
 import Footer from "@/components/sections/Footer";
 import { EVENT } from "@/config/event";
+import { VERSION_AGENDA } from "@/app/api/experiencia/version/route";
 import type { Vista } from "@/lib/experiencia";
+import AlDia from "./AlDia";
 import Barra from "./Barra";
 import BotonEntrar from "./BotonEntrar";
 
@@ -34,6 +36,8 @@ export default function Marco({
   return (
     <main className="s-night relative min-h-dvh overflow-clip">
       <Barra yo={yo} />
+      {/* Vigila que la agenda que se ve siga siendo la buena. */}
+      <AlDia version={VERSION_AGENDA} />
       <header className="relative z-20 mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-5 pt-5 sm:px-8 md:px-14 lg:px-20">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center py-1.5" aria-label={EVENT.fullName}>
