@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Entrar from "@/components/admin/Entrar";
 import Refresco from "@/components/tablero/Refresco";
 import { EVENT } from "@/config/event";
-import { haySesion } from "@/lib/sesion";
 import { armarTablero, hora, type Tablero } from "@/lib/tablero";
 
 /**
  * El tablero de cierre: cómo salió el día, en una pantalla.
  *
- * Está detrás de la misma puerta del panel de operación porque son respuestas
- * de personas con nombre propio. Y no se cachea nunca: el único error que de
+ * Abierto, sin clave: acá solo hay agregados. Ni un nombre, ni un correo, ni
+ * una sola respuesta de texto —que es donde la gente escribe cosas que dijo
+ * para nosotros y no para una pantalla pública—. Lo que se ve es cuánta gente
+ * calificó qué, y eso se comparte sin exponer a nadie.
+ *
+ * Fuera de los buscadores igual, y sin caché nunca: el único error que de
  * verdad importa acá es que alguien decida con el número de hace una hora.
  */
 
@@ -338,7 +340,6 @@ function Cuerpo({ t }: { t: Tablero }) {
 }
 
 export default async function TableroPagina() {
-  if (!(await haySesion())) return <Entrar />;
   const t = await armarTablero();
 
   return (
