@@ -356,8 +356,10 @@ function Reservar({ sesion, intereses, grande = false }: { sesion: Sesion; inter
         </svg>
       ) : null}
       <span>{etiqueta}</span>
+      {/* «Reservar · 134» se lee como si la sala fuera de 134. Con la palabra
+          al lado queda claro que son los puestos que quedan. */}
       {!mia && !sinCupo && typeof libres === "number" ? (
-        <span className="tabular-nums opacity-80">· {libres}</span>
+        <span className="tabular-nums opacity-80">· {libres} libres</span>
       ) : null}
     </button>
   );

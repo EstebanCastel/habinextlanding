@@ -97,12 +97,12 @@ export type Sesion = {
 /**
  * Cuántos caben en cada sesión del Salón Taller.
  *
- * Es el aforo real de la sala, el que dio producción: doscientas personas. Es
+ * Es el aforo real de la sala, el que dio producción: 225 personas. Es
  * un solo número porque la sala es la misma todo el día, y es un tope duro —
  * pasado ese punto la reserva se cierra y la tarjeta lo dice, en vez de dejar
  * que doscientas cincuenta personas se presenten a una sala de doscientas.
  */
-export const CUPO_TALLER = 200;
+export const CUPO_TALLER = 225;
 
 export const SESIONES: Sesion[] = [
   // ---------- Salón Principal · Inspira ----------
