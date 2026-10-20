@@ -113,6 +113,7 @@ type Padron = { armadoEn: string; gente: Asistente[] };
  */
 export async function armarPadron(): Promise<Padron> {
   const { listarInvitadosConQr } = await import("./luma");
+  const { nombreCorregido } = await import("@/config/nombres");
   const eventos: [Tipo, string | undefined][] = [
     ["general", eventoDeTier("general")],
     ["vip", eventoDeTier("vip")],
@@ -128,7 +129,7 @@ export async function armarPadron(): Promise<Padron> {
       gente.push({
         id,
         tipo,
-        nombre: g.nombre || g.email,
+        nombre: nombreCorregido(g.email) ?? g.nombre ?? g.email,
         correo: g.email,
         ...(esPrueba(g.email) ? { prueba: true } : {}),
       });
