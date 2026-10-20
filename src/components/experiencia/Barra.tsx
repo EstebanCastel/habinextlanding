@@ -33,7 +33,7 @@ export default function Barra({ yo }: { yo: Vista | null }) {
     <div className="sticky top-0 z-30 border-b border-white/10 bg-night/90 backdrop-blur">
       <div className="mx-auto flex h-12 max-w-[1400px] items-center justify-between gap-3 px-5 sm:px-8 md:px-14 lg:px-20">
         <Link href="/experiencia/agenda" className="group flex min-w-0 items-center gap-2.5 text-white/80 transition-colors hover:text-white">
-          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-violet-soft" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg viewBox="0 0 24 24" className="hidden h-4 w-4 shrink-0 text-violet-soft sm:block" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
             <path d="M3.5 10h17M8 3v4M16 3v4" strokeLinecap="round" />
           </svg>
@@ -52,11 +52,15 @@ export default function Barra({ yo }: { yo: Vista | null }) {
 
         {yo ? (
           <Link href="/experiencia" className="flex shrink-0 items-center gap-2.5 text-white/80 transition-colors hover:text-white" aria-label={`${puntos} de ${PUNTOS_TOTALES} puntos`}>
+            {/* En el teléfono los puntos van solos, sin el denominador: el
+                «/ 265 pts» ocupa lo que necesita el título de la charla. */}
             <span className="text-[13px] font-semibold tabular-nums tracking-tight sm:text-sm">
               {puntos}
-              <span className="font-light text-white/45"> / {PUNTOS_TOTALES} pts</span>
+              <span className="font-light text-white/45">
+                <span className="hidden sm:inline"> / {PUNTOS_TOTALES}</span> pts
+              </span>
             </span>
-            <span className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10 sm:w-28" aria-hidden="true">
+            <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-white/10 sm:block sm:w-28" aria-hidden="true">
               <span className="block h-full rounded-full bg-violet" style={{ width: `${pct}%` }} />
             </span>
           </Link>

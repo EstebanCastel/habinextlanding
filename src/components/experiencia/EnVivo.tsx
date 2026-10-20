@@ -127,7 +127,15 @@ function Tira({ p }: { p: Pieza }) {
       className={`flex min-w-0 animate-[entra_.45s_ease-out] items-center gap-2 rounded-full px-2.5 py-1 motion-reduce:animate-none ${t.caja}`}
     >
       <Punto clase={t.punto} late={p.estado !== "ahora"} />
-      <span className={`shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] ${t.rotulo}`}>
+      {/* «AHORA» no se escribe en el teléfono: el punto morado ya lo dice y
+          esas cinco letras son lo que le faltaba al título para caber. Lo que
+          sí se escribe siempre es «EN 5 MIN» y «EMPIEZA YA», que es
+          información que el punto no puede dar. */}
+      <span
+        className={`shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] ${t.rotulo} ${
+          p.estado === "ahora" ? "hidden sm:inline" : ""
+        }`}
+      >
         {ETIQUETA(p)}
       </span>
       <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-white/40">{p.rotulo}</span>
@@ -183,20 +191,12 @@ export default function EnVivo() {
       <style>{`@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`}</style>
 
       {/* Teléfono: se turnan. */}
+      {/* Sin indicador de turno: dos puntitos no le dicen nada a nadie y se
+          comían el ancho que necesita el título de la charla, que es lo
+          único que de verdad hay que leer. El cambio de salón se nota solo,
+          porque el rótulo cambia de INSPIRA a TALLER. */}
       <span className="flex min-w-0 items-center sm:hidden">
         <Tira p={visible} />
-        {piezas.length > 1 ? (
-          <span className="ml-1.5 flex shrink-0 gap-1" aria-hidden="true">
-            {piezas.map((p, i) => (
-              <span
-                key={p.salonId}
-                className={`block h-1 w-1 rounded-full transition-colors ${
-                  i === turno % piezas.length ? "bg-white/70" : "bg-white/20"
-                }`}
-              />
-            ))}
-          </span>
-        ) : null}
       </span>
 
       {/* Pantalla ancha: caben los dos. */}
