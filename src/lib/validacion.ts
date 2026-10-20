@@ -94,9 +94,14 @@ const RUTA_PADRON = "validacion/padron.json";
 /**
  * El tipo va en el nombre del archivo, no dentro: así el conteo es listar
  * rutas y mirar el prefijo, sin abrir setecientos documentos uno por uno.
+ *
+ * Las cuentas de prueba llevan su propia marca en el nombre por lo mismo. En
+ * la mañana del evento alguien va a probar el lector antes de abrir —hay que
+ * probarlo— y cada prueba dejaba el contador en uno, dos, tres. El tablero de
+ * la puerta tiene que decir cuánta gente entró, no cuántas veces lo probamos.
  */
-const rutaMarca = (modo: Modo, tipo: Tipo, id: string) =>
-  `validacion/${modo}/${tipo}__${id.replace(/[^A-Za-z0-9._@-]/g, "_")}.json`;
+const rutaMarca = (modo: Modo, tipo: Tipo, id: string, prueba = false) =>
+  `validacion/${modo}/${tipo}__${prueba ? "prueba__" : ""}${id.replace(/[^A-Za-z0-9._@-]/g, "_")}.json`;
 
 // ----------------------------------------------------------- padrón ----
 
@@ -300,7 +305,7 @@ export async function validar(
     modo: "entrada",
   };
 
-  const ruta = rutaMarca("entrada", asistente.tipo, asistente.id);
+  const ruta = rutaMarca("entrada", asistente.tipo, asistente.id, esPrueba(asistente.correo));
   const previa = await leer<Marca>(ruta).catch(() => null);
   if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
 
@@ -348,7 +353,7 @@ async function validarPase(
       en: new Date().toISOString(), por: opciones.por, modo: "almuerzo",
       ...(turno ? { turno: turno.id } : {}),
     };
-    const ruta = rutaMarca("almuerzo", asistente.tipo, p.id);
+    const ruta = rutaMarca("almuerzo", asistente.tipo, p.id, esPrueba(asistente.correo));
     const previa = await leer<Marca>(ruta).catch(() => null);
     if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
     await escribir(ruta, marca);
@@ -382,7 +387,7 @@ async function validarPase(
     modo: "taller",
     taller: taller.id,
   };
-  const ruta = rutaMarca("taller", asistente.tipo, marca.id);
+  const ruta = rutaMarca("taller", asistente.tipo, marca.id, esPrueba(asistente.correo));
   const previa = await leer<Marca>(ruta).catch(() => null);
   if (previa) return { ok: true, estado: "repetido", asistente, marca, previa };
   await escribir(ruta, marca);
@@ -407,7 +412,10 @@ export async function conteo(): Promise<Conteo> {
   ]);
 
   const cuenta = (rutas: string[], tipo: Tipo) =>
-    rutas.filter((r) => r.split("/").pop()?.startsWith(`${tipo}__`)).length;
+    rutas.filter((r) => {
+      const nombre = r.split("/").pop() ?? "";
+      return nombre.startsWith(`${tipo}__`) && !nombre.startsWith(`${tipo}__prueba__`);
+    }).length;
 
   const general = cuenta(rutasEntrada, "general");
   const vip = cuenta(rutasEntrada, "vip");
@@ -419,14 +427,14 @@ export async function conteo(): Promise<Conteo> {
   const porTurno: Record<string, number> = {};
   for (const t of ALMUERZOS) porTurno[t.id] = 0;
   const marcas = await Promise.all(rutasAlmuerzo.map((r) => leer<Marca>(r).catch(() => null)));
-  for (const m of marcas) if (m?.turno && m.turno in porTurno) porTurno[m.turno] += 1;
+  for (const m of marcas) if (m?.turno && m.turno in porTurno && !esPrueba(m.correo)) porTurno[m.turno] += 1;
 
   // Igual para los talleres: el nombre del archivo lleva el participante y la
   // sesión juntos, así que el desglose por taller sí hay que leerlo.
   const porSesion: Record<string, number> = {};
   for (const x of SESIONES) if (x.salon === "taller" && !x.tipo) porSesion[x.id] = 0;
   const deTaller = await Promise.all(rutasTaller.map((r) => leer<Marca>(r).catch(() => null)));
-  for (const m of deTaller) if (m?.taller && m.taller in porSesion) porSesion[m.taller] += 1;
+  for (const m of deTaller) if (m?.taller && m.taller in porSesion && !esPrueba(m.correo)) porSesion[m.taller] += 1;
 
   return {
     general,
@@ -471,6 +479,11 @@ export async function vaciar(modo: Modo): Promise<number> {
 /** Deshace una marca, para cuando alguien escanea por error. */
 export async function deshacer(modo: Modo, tipo: Tipo, id: string): Promise<boolean> {
   const { borrar } = await import("./almacen");
-  await borrar(rutaMarca(modo, tipo, id));
+  // Las dos variantes: quien deshace desde el panel sabe el tipo y el id, no
+  // si el correo era de prueba.
+  await Promise.all([
+    borrar(rutaMarca(modo, tipo, id)).catch(() => null),
+    borrar(rutaMarca(modo, tipo, id, true)).catch(() => null),
+  ]);
   return true;
 }
