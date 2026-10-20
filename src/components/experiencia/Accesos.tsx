@@ -93,7 +93,7 @@ export default function Accesos({
       imagen: "/img/tienda/hoodie.jpg",
       urgente: alcanza > 0,
     },
-    { href: "/experiencia/podio", rotulo: "El podio", nota: "Quién va ganando hoy", imagen: "/img/escenario-inspira.webp" },
+    { href: "/experiencia/podio", rotulo: "El podio", nota: "Quién va ganando hoy", imagen: "/img/evento/podio.jpg" },
     { href: "/experiencia/preguntas", rotulo: "Preguntas", nota: "Cómo llegar y qué llevar", imagen: "/img/evento/totem-cubos.jpg" },
   ];
 
