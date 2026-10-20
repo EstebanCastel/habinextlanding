@@ -55,7 +55,7 @@ export default function Nav({ hoy = false }: { hoy?: boolean }) {
   return (
     <header
       ref={root}
-      className="fixed inset-x-0 top-3 z-50 md:top-4"
+      className={`fixed inset-x-0 z-50 ${hoy ? "top-12 md:top-14" : "top-3 md:top-4"}`}
       onKeyDown={(event) => {
         if (event.key === "Escape") setOpen(false);
       }}

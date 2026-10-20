@@ -12,8 +12,11 @@ import Link from "next/link";
  * Solo aparece el 20. Cualquier otro día la landing es lo que era.
  */
 export default function HoyEsHoy() {
+  // Fija y por encima de todo: la barra de la landing flota sobre el
+  // contenido, así que una franja en el flujo normal le queda debajo y no se
+  // ve. La barra se corre hacia abajo para dejarle el sitio.
   return (
-    <div className="relative z-40 bg-violet">
+    <div className="fixed inset-x-0 top-0 z-[60] bg-violet">
       <Link
         href="/experiencia"
         className="mx-auto flex max-w-7xl items-center justify-center gap-2.5 px-4 py-2.5 text-center transition-colors hover:bg-violet-press sm:gap-3"
