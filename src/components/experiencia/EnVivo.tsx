@@ -25,16 +25,20 @@ import { enCurso, horaBogota, type EnCurso } from "@/config/agenda";
  * recinto con mala señal se desfasa.
  */
 
-type Estado = "pronto" | "arranca" | "ahora";
+type Estado = "pronto" | "arranca" | "ahora" | "pausa";
 
 type Pieza = {
   salonId: string;
   rotulo: string;
   numero: string;
+  /** Lo que se anuncia en grande. Nunca una pausa si hay algo mejor que decir. */
   titulo: string;
+  /** Solo de la sesión que se está anunciando: una pausa no tiene ponente. */
   ponente?: string;
   estado: Estado;
   minutos: number;
+  /** El renglón de abajo. Nunca repite el título de arriba. */
+  pie?: { cuando: string; que: string };
 };
 
 /** Cuánto antes se anuncia, y cuánto dura el «empieza ya». */
@@ -53,41 +57,84 @@ function hora12(hhmm: string): string {
   return `${doce}:${String(m).padStart(2, "0")}`;
 }
 
-/** Las dos salas, traducidas a lo que hay que decir de cada una. */
+/**
+ * Las dos salas, traducidas a lo que hay que decir de cada una.
+ *
+ * Tres reglas, las tres aprendidas mirando la pantalla de verdad:
+ *
+ * Una pausa no es noticia. «Transición entre talleres» en grande no le sirve
+ * a nadie; lo que esa persona necesita saber es qué viene y a qué hora. Si la
+ * sala está en pausa, el titular es la sesión que sigue y la pausa baja al
+ * renglón de abajo.
+ *
+ * El ponente es de la sesión que se anuncia, nunca de la anterior. Antes una
+ * transición heredaba el nombre de quien acababa de hablar y la tarjeta decía
+ * «Transición entre talleres · Carolina».
+ *
+ * Y el renglón de abajo jamás repite el de arriba: la tarjeta llegó a decir
+ * «EN 2 MIN · Crea tu segundo cerebro» y debajo «A las 10:15 · Crea tu
+ * segundo cerebro».
+ */
 function piezasDe(salas: EnCurso[], hora: string): Pieza[] {
   const ahoraMin = aMinutos(hora);
   const salida: Pieza[] = [];
 
   for (const s of salas) {
     const base = { salonId: s.salon.id, rotulo: s.salon.rotulo, numero: s.salon.numero };
+    const enPausa = Boolean(s.ahora?.tipo);
+    const faltan = s.sigue?.desde ? aMinutos(s.sigue.desde) - ahoraMin : Infinity;
 
-    // Lo que va a empezar manda sobre lo que está corriendo: en los cinco
-    // minutos de transición, lo útil es a dónde ir, no dónde se estuvo.
-    if (s.sigue?.desde) {
-      const faltan = aMinutos(s.sigue.desde) - ahoraMin;
-      if (faltan >= 0 && faltan <= AVISO) {
-        salida.push({ ...base, titulo: s.sigue.titulo, ponente: s.sigue.ponente, estado: "pronto", minutos: faltan });
-        continue;
-      }
+    // Lo que va a empezar manda: en los minutos de transición lo útil es a
+    // dónde ir, no dónde se estuvo. Y si la sala está en pausa, manda siempre.
+    if (s.sigue && (faltan <= AVISO || enPausa)) {
+      salida.push({
+        ...base,
+        titulo: s.sigue.titulo,
+        ponente: s.sigue.ponente ?? s.sigue.ponentes?.[0],
+        estado: faltan <= AVISO ? "pronto" : "pausa",
+        minutos: Number.isFinite(faltan) ? faltan : 0,
+        ...(s.ahora && s.ahora.titulo !== s.sigue.titulo
+          ? { pie: { cuando: "Ahora", que: s.ahora.titulo } }
+          : {}),
+      });
+      continue;
     }
+
     if (!s.ahora?.desde) continue;
     const llevan = ahoraMin - aMinutos(s.ahora.desde);
     salida.push({
       ...base,
       titulo: s.ahora.titulo,
-      ponente: s.ahora.ponente,
+      ponente: s.ahora.ponente ?? s.ahora.ponentes?.[0],
       estado: llevan <= RECIEN ? "arranca" : "ahora",
       minutos: llevan,
+      ...(s.sigue?.desde && s.sigue.titulo !== s.ahora.titulo
+        ? { pie: { cuando: hora12(s.sigue.desde), que: s.sigue.titulo } }
+        : {}),
     });
   }
   return salida;
 }
 
 const ETIQUETA = (p: Pieza): string =>
-  p.estado === "pronto" ? (p.minutos <= 1 ? "YA MISMO" : `EN ${p.minutos} MIN`) : p.estado === "arranca" ? "EMPIEZA YA" : "AHORA";
+  p.estado === "pronto"
+    ? p.minutos <= 1
+      ? "YA MISMO"
+      : `EN ${p.minutos} MIN`
+    : p.estado === "arranca"
+      ? "EMPIEZA YA"
+      : p.estado === "pausa"
+        ? "SIGUE"
+        : "AHORA";
 
 /** Lo que llama la atención sube de tono solo cuando hace falta. */
 const TONO: Record<Estado, { caja: string; rotulo: string; punto: string; titulo: string }> = {
+  pausa: {
+    caja: "bg-transparent",
+    rotulo: "text-white/45",
+    punto: "bg-white/35",
+    titulo: "text-white",
+  },
   pronto: {
     caja: "bg-amber-400/15 ring-1 ring-inset ring-amber-300/40",
     rotulo: "text-amber-200",
@@ -232,42 +279,56 @@ export function Salas() {
     return () => clearInterval(id);
   }, []);
 
-  if (!salas || !salas.some((s) => s.ahora)) return null;
-  const piezas = hora ? piezasDe(salas, hora) : [];
+  const piezas = salas && hora ? piezasDe(salas, hora) : [];
+  if (!piezas.length) return null;
 
   return (
     <section aria-label="Lo que está pasando ahora" className="grid gap-3 sm:grid-cols-2">
-      {salas.map((s) => {
-        const p = piezas.find((x) => x.salonId === s.salon.id);
-        const estado: Estado = p?.estado ?? "ahora";
-        const t = TONO[estado];
+      {piezas.map((p) => {
+        const t = TONO[p.estado];
+        const urgente = p.estado === "arranca" || p.estado === "pronto";
         return (
           <Link
-            key={s.salon.id}
+            key={p.salonId}
             href="/experiencia/agenda"
-            className={`flex flex-col rounded-2xl border p-4 transition-colors ${
-              estado === "arranca"
+            className={`group flex flex-col rounded-2xl border p-4 transition-colors ${
+              p.estado === "arranca"
                 ? "border-violet bg-violet/[0.16] hover:border-violet"
-                : estado === "pronto"
+                : p.estado === "pronto"
                   ? "border-amber-300/45 bg-amber-400/[0.08] hover:border-amber-300/70"
-                  : "border-violet/30 bg-violet/[0.07] hover:border-violet/60"
+                  : "border-white/12 bg-white/[0.03] hover:border-violet/50"
             }`}
           >
-            <span className="flex items-center gap-2">
-              <Punto clase={t.punto} late={estado !== "ahora"} />
-              <span className={`text-[10px] font-bold uppercase tracking-[0.16em] ${t.rotulo}`}>
-                {p ? ETIQUETA(p) : "Ahora"} · Salón {s.salon.numero} · {s.salon.rotulo}
+            {/* Arriba, en una sola línea: en qué va y de qué sala es. El salón
+                a la derecha porque es lo que no cambia; lo que cambia —y lo que
+                la gente mira— va a la izquierda. */}
+            <span className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                <Punto clase={t.punto} late={urgente} />
+                <span className={`text-[10px] font-bold uppercase tracking-[0.18em] ${t.rotulo}`}>
+                  {ETIQUETA(p)}
+                </span>
+              </span>
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">
+                {p.numero} · {p.rotulo}
               </span>
             </span>
-            <span className="mt-2 text-base font-semibold leading-tight tracking-tight text-white">
-              {p?.titulo ?? s.ahora?.titulo ?? "Sala libre"}
+
+            <span className="mt-2.5 text-[1.05rem] font-semibold leading-[1.2] tracking-tight text-white">
+              {p.titulo}
             </span>
-            {(p?.ponente ?? s.ahora?.ponente) ? (
-              <span className="mt-0.5 text-sm font-light text-white/55">{p?.ponente ?? s.ahora?.ponente}</span>
+            {p.ponente ? (
+              <span className="mt-1 text-sm font-light text-white/55">{p.ponente}</span>
             ) : null}
-            {s.sigue ? (
-              <span className="mt-3 text-xs font-light text-white/40">
-                A las {hora12(s.sigue.desde!)} · {s.sigue.titulo}
+
+            {/* Lo que viene después, separado por una línea para que no se
+                confunda con lo de arriba. Nunca repite el mismo título. */}
+            {p.pie ? (
+              <span className="mt-3 flex items-baseline gap-2 border-t border-white/10 pt-2.5">
+                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] tabular-nums text-white/35">
+                  {p.pie.cuando}
+                </span>
+                <span className="truncate text-xs font-light text-white/50">{p.pie.que}</span>
               </span>
             ) : null}
           </Link>
