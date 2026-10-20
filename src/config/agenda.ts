@@ -378,7 +378,7 @@ export const SESIONES: Sesion[] = [
     id: "ventas-inversionistas",
     salon: "taller",
     desde: "14:45",
-    titulo: "Ventas a inversionistas",
+    titulo: "Cómo hablar el idioma del inversionista",
     ponente: "Juan Londoño",
     resumen: "Taller práctico: el guion y los números, en tu computador.",
     contenido: [
