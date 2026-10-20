@@ -18,15 +18,34 @@ import Formulario from "@/components/encuesta/Formulario";
  * mismo y funciona en todos.
  */
 
+/**
+ * Para quien no entró con su correo no hay a quién preguntarle si ya
+ * contestó, así que la marca queda en su propio navegador. Es más débil que el
+ * servidor —se pierde si cambia de aparato— pero alcanza para no volver a
+ * taparle la pantalla a alguien que acaba de contestar.
+ */
+const MARCA = "hn.encuesta.v1";
+const contestadaAca = (): boolean => {
+  try {
+    return localStorage.getItem(MARCA) === "1";
+  } catch {
+    return false;
+  }
+};
+
 export default function Encuesta({ hay }: { hay: boolean }) {
   const [abrir, setAbrir] = useState(false);
 
   useEffect(() => {
-    if (!hay) return;
     let vivo = true;
 
     const mirar = async () => {
-      if (!vivo || !abierta()) return;
+      if (!vivo || !abierta() || contestadaAca()) return;
+      // Sin sesión no hay a quién preguntarle: contesta sin identificarse.
+      if (!hay) {
+        setAbrir(true);
+        return;
+      }
       try {
         const r = await fetch("/api/encuesta", { cache: "no-store" });
         const d = (await r.json()) as { contestada?: boolean };
@@ -73,7 +92,17 @@ export default function Encuesta({ hay }: { hay: boolean }) {
             Noventa segundos. Es lo único que nos dice qué repetir y qué cambiar el año entrante.
           </p>
           <div className="mt-6">
-            <Formulario campana="app" onListo={() => setTimeout(() => setAbrir(false), 2600)} />
+            <Formulario
+              campana={hay ? "app" : "app-anonimo"}
+              onListo={() => {
+                try {
+                  localStorage.setItem(MARCA, "1");
+                } catch {
+                  // Navegador sin almacenamiento: la encuesta ya quedó guardada igual.
+                }
+                setTimeout(() => setAbrir(false), 2600);
+              }}
+            />
           </div>
         </div>
       </div>
