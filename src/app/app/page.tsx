@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 /**
  * El atajo a la app de Red Habi.
@@ -21,7 +22,12 @@ export const metadata: Metadata = {
 const GOOGLE = "https://play.google.com/store/apps/details?id=co.habi.redhabi&hl=es_CO";
 const APPLE = "https://apps.apple.com/co/app/red-habi/id6814695758";
 
-export default function DescargarApp() {
+export const dynamic = "force-dynamic";
+
+export default async function DescargarApp() {
+  // La política de seguridad del sitio prohíbe el script en línea sin nonce,
+  // y el proxy lo deja en una cabecera para esto.
+  const nonce = (await headers()).get("x-nonce") ?? "";
   return (
     <main className="s-night grid min-h-dvh place-items-center bg-night px-5 py-10">
       <div className="w-full max-w-md text-center">
@@ -56,6 +62,7 @@ export default function DescargarApp() {
       </div>
 
       <script
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `(function(){try{var u=navigator.userAgent||"";var ios=/iPad|iPhone|iPod/.test(u)||(u.indexOf("Mac")>-1&&"ontouchend" in document);setTimeout(function(){location.replace(ios?${JSON.stringify(APPLE)}:${JSON.stringify(GOOGLE)})},900)}catch(e){}})()`,
         }}
