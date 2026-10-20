@@ -24,7 +24,16 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default function Validacion() {
+export default async function Validacion({
+  searchParams,
+}: {
+  searchParams: Promise<{ k?: string }>;
+}) {
+  // La llave en el enlace enciende el botón de crear entradas. Quien abre
+  // /validacion a secas ve los tres lectores y nada más.
+  const { k } = await searchParams;
+  const esperado = process.env.ADMIN_TOKEN ?? "";
+  const llave = esperado && k === esperado ? esperado : undefined;
   const turnos = ALMUERZOS.map((t) => ({ id: t.id, rotulo: t.rotulo, desde: t.desde, hasta: t.hasta }));
   const talleres = SESIONES.filter((s) => s.salon === "taller" && !s.tipo).map((s) => ({
     id: s.id,
@@ -34,7 +43,7 @@ export default function Validacion() {
   return (
     <main className="s-night min-h-dvh bg-night">
       <Respaldo />
-      <Puerta turnos={turnos} talleres={talleres} />
+      <Puerta turnos={turnos} talleres={talleres} llave={llave} />
     </main>
   );
 }

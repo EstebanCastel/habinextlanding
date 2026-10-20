@@ -93,7 +93,16 @@ const PUESTOS: { modo: Modo; rotulo: string; nota: string; icono: React.ReactNod
   },
 ];
 
-export default function Puerta({ turnos, talleres }: { turnos: Turno[]; talleres: Taller[] }) {
+export default function Puerta({
+  turnos,
+  talleres,
+  llave,
+}: {
+  turnos: Turno[];
+  talleres: Taller[];
+  /** Si viene, aparece el botón de crear entradas. Solo lo trae quien abre con llave. */
+  llave?: string;
+}) {
   const [conteo, setConteo] = useState<Conteo | null>(null);
   const [ultimas, setUltimas] = useState<Marca[]>([]);
   const [modo, setModo] = useState<Modo | null>(null);
@@ -158,6 +167,28 @@ export default function Puerta({ turnos, talleres }: { turnos: Turno[]; talleres
             );
           })}
         </ul>
+
+        {/* Crear una entrada en el acto. Va aparte de los tres lectores y solo
+            para quien abre con la llave: leer un QR no crea nada, pero esto
+            emite una entrada de verdad. */}
+        {llave ? (
+          <a
+            href={`/validacion/alta?k=${encodeURIComponent(llave)}`}
+            className="mt-3 flex w-full items-center gap-4 rounded-3xl border border-dashed border-violet/45 bg-violet/[0.06] p-5 text-left transition-colors hover:border-violet hover:bg-violet/[0.12]"
+          >
+            <span className="grid size-10 shrink-0 place-items-center text-violet-soft">
+              <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xl font-semibold leading-tight text-white">Crear una entrada</span>
+              <span className="mt-0.5 block text-sm font-light text-white/50">
+                Para quien llega sin código. Queda aprobada en el acto.
+              </span>
+            </span>
+          </a>
+        ) : null}
 
         {c ? (
           <p className="mt-7 text-center text-sm font-light text-white/45">
