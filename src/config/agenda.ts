@@ -666,17 +666,23 @@ export function enCurso(ahora = new Date()): EnCurso[] {
 }
 
 /**
- * Las sesiones que arrancan dentro de `minutos`, para el aviso de «tu charla
- * empieza ya». Se usa desde el motor de avisos, no desde la pantalla.
+ * Las sesiones que arrancan dentro de la ventana de aviso.
+ *
+ * Es una ventana y no un minuto exacto a propósito. El cron no dispara al
+ * segundo: se corre unos segundos y, si pide «las que empiezan en exactamente
+ * cinco minutos», un disparo a las 09:11:02 en vez de las 09:10:58 se salta la
+ * charla de las 09:15 y el aviso no sale nunca. Con la ventana cualquiera de
+ * los dos disparos la encuentra, y como la marca se escribe de forma atómica,
+ * verla dos veces no manda el mensaje dos veces.
  */
-export function arrancanEn(minutos: number, ahora = new Date()): Sesion[] {
-  const hora = enBogota(ahora).hora;
-  const [h, m] = hora.split(":").map(Number);
-  const objetivo = h * 60 + m + minutos;
+export function arrancanEn(minutos: number, ahora = new Date(), holgura = 1): Sesion[] {
+  const [h, m] = enBogota(ahora).hora.split(":").map(Number);
+  const ahoraMin = h * 60 + m;
   return SESIONES.filter((s) => {
     if (!s.desde || s.tipo) return false;
     const [sh, sm] = s.desde.split(":").map(Number);
-    return sh * 60 + sm === objetivo;
+    const faltan = sh * 60 + sm - ahoraMin;
+    return faltan >= minutos - holgura && faltan <= minutos + holgura;
   });
 }
 
