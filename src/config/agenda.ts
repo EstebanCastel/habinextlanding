@@ -218,11 +218,11 @@ export const SESIONES: Sesion[] = [
     ],
   },
   { id: "almuerzo", salon: "inspira", desde: "13:40", titulo: "Almuerzo", tipo: "pausa", resumen: "El salón retoma a las 2:15. Los VIP van por turnos: 1:40, 2:10 y 2:40." },
-  { id: "regreso-almuerzo", salon: "inspira", desde: "14:00", titulo: "Regreso del almuerzo", tipo: "pausa", resumen: "Quince minutos para volver a la sala." },
+  { id: "regreso-almuerzo", salon: "inspira", desde: "14:00", titulo: "Regreso del almuerzo", tipo: "pausa", resumen: "Se alarga: la charla de las 2:30 arranca apenas vuelva la sala." },
   {
     id: "venderle-inversionistas",
     salon: "inspira",
-    desde: "14:15",
+    desde: "14:30",
     titulo: "Construcción patrimonial a través de bienes raíces",
     ponente: "Juan Pablo Zuluaga",
     detallePonente: "Mis Propias Finanzas",
