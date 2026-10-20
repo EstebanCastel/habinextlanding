@@ -86,14 +86,14 @@ export default function Accesos({
     ...(experiencias.redes ? [experiencias.redes] : []),
     // La tienda va después de lo que da puntos: primero se ve cómo se ganan
     // y enseguida para qué sirven. Antes los puntos no compraban nada visible.
+    // Una sola tarjeta: el podio y la tienda son la misma pregunta.
     {
       href: "/experiencia/tienda",
-      rotulo: "La tienda",
-      nota: alcanza ? `Ya alcanzas ${alcanza === 1 ? "1 artículo" : `${alcanza} artículos`}` : "Canjea tus puntos",
-      imagen: "/img/tienda/hoodie.jpg",
+      rotulo: "Podio y tienda",
+      nota: alcanza ? `Ya alcanzas ${alcanza === 1 ? "1 artículo" : `${alcanza} artículos`}` : "Quién gana y qué se canjea",
+      imagen: "/img/evento/podio.jpg",
       urgente: alcanza > 0,
     },
-    { href: "/experiencia/podio", rotulo: "El podio", nota: "Quién va ganando hoy", imagen: "/img/evento/podio.jpg" },
     { href: "/experiencia/preguntas", rotulo: "Preguntas", nota: "Cómo llegar y qué llevar", imagen: "/img/evento/totem-cubos.jpg" },
   ];
 
