@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { pasarAVip } from "@/lib/bot";
 import { nuevoId } from "@/lib/experiencia";
 import { agregarInvitadoConRespaldo, buscarInvitadoPorEmail, eventoDeTier, listarInvitadosConQr } from "@/lib/luma";
-import { crearCortesia, normalizarCedula, reservarCorreo, type Tier } from "@/lib/registros";
+import { crearCortesia, normalizarCedula, porToken, reservarCorreo, todos as todosLosRegistros, type Tier } from "@/lib/registros";
 import { armarPadron, pkDeQr, traerPadron } from "@/lib/validacion";
 import { escribir } from "@/lib/almacen";
 
@@ -44,7 +45,62 @@ function autorizado(request: Request): boolean {
 export async function POST(request: Request) {
   if (!autorizado(request)) return responder({ ok: false, error: "Falta la llave." }, 401);
 
-  const cuerpo = (await request.json().catch(() => null)) as {
+  const crudo = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+
+  // Pasar a VIP a alguien que ya tiene su General. No crea una entrada nueva:
+  // mueve la que ya tiene, le da de baja la General para que no ocupe dos
+  // sillas, y le deja el QR del evento VIP.
+  if (String(crudo?.accion ?? "") === "upgrade") {
+    const correo = String(crudo?.email ?? "").trim().toLowerCase();
+    const cedula = normalizarCedula(crudo?.cedula);
+    if (!correo && !cedula) return responder({ ok: false, error: "Dame el correo o la cédula." }, 400);
+
+    const todos = await todosLosRegistros().catch(() => []);
+    const suyos = todos
+      .filter((r) => {
+        const porCorreo = correo && (r.luma.email ?? "").toLowerCase() === correo;
+        const porCedula = cedula && r.luma.cedula === cedula;
+        return (porCorreo || porCedula) && r.etapa !== "rechazado";
+      })
+      .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+
+    // El que de verdad tiene entrada: aprobado y con invitado en Luma. Un
+    // registro de «pago abierto» que nunca se completó no es su entrada.
+    const suyo = suyos.find((r) => r.etapa === "aprobado" && r.luma.guestId) ?? suyos[0];
+    if (!suyo) return responder({ ok: false, error: "No encontramos a esa persona." }, 404);
+    if (suyo.tier === "vip") {
+      return responder({ ok: true, yaEraVip: true, nombre: suyo.luma.nombre, email: suyo.luma.email, nota: "Ya era VIP." });
+    }
+
+    const r = await pasarAVip(suyo, { pagado: true, decididoPor: `puerta · ${String(crudo?.por ?? "upgrade")}` });
+    if (!r.ok) return responder({ ok: false, error: r.nota }, 502);
+
+    const despues = await porToken(suyo.token).catch(() => null);
+    const qr = despues?.luma.guestId
+      ? (await listarInvitadosConQr(eventoDeTier("vip") ?? "").catch(() => [])).find((g) => g.id === despues.luma.guestId)?.qr ?? ""
+      : "";
+
+    // Que la puerta lo vea VIP de inmediato, sin esperar el refresco.
+    const padron = await traerPadron().catch(() => null);
+    const id = pkDeQr(qr);
+    if (padron && id) {
+      padron.gente = padron.gente.filter((g) => (g.correo ?? "").toLowerCase() !== (suyo.luma.email ?? "").toLowerCase());
+      padron.gente.push({ id, tipo: "vip", nombre: suyo.luma.nombre, correo: suyo.luma.email });
+      await escribir("validacion/padron.json", padron).catch(() => null);
+    }
+
+    return responder({
+      ok: true,
+      upgrade: true,
+      nombre: suyo.luma.nombre,
+      email: suyo.luma.email,
+      tier: "vip",
+      qr,
+      nota: `${r.nota}. Ya es VIP y le quitamos la General.`,
+    });
+  }
+
+  const cuerpo = crudo as {
     nombre?: unknown;
     email?: unknown;
     tier?: unknown;
