@@ -120,7 +120,7 @@ function Reparto({
 }
 
 function Cuerpo({ t }: { t: Tablero }) {
-  const { nps } = t;
+  const { nps, cortes: c } = t;
   const u = t.uso?.dentro;
   const flojo = t.partes.at(-1);
 
@@ -186,6 +186,48 @@ function Cuerpo({ t }: { t: Tablero }) {
             </li>
           ))}
         </ul>
+
+        {/* Quién contestó: el enlace salió a los 852 de Luma, no solo a quien vino. */}
+        <div className="tb-tarjeta mt-5 p-5 sm:p-6">
+          <Eyebrow>Y si solo cuentas a los que vinieron</Eyebrow>
+          <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
+            El enlace salió a las {(852).toLocaleString("es-CO")} personas de Luma, vinieran o no, y las anónimas no se
+            pueden cruzar con la puerta. Así se reparte:
+          </p>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              { t: "Con QR leído", s: "Estuvieron, sin duda", d: c.confirmados, destacar: true },
+              { t: "Sin QR leído", s: "La puerta no los registró", d: c.sinQr, destacar: false },
+              { t: "Anónimas", s: "No se sabe quién", d: c.anonimas, destacar: false },
+            ].map((x) => (
+              <li
+                key={x.t}
+                className={`rounded-[18px] border px-4 py-3.5 ${
+                  x.destacar ? "border-violet/50 bg-violet/10" : "border-white/10 bg-white/[0.03]"
+                }`}
+              >
+                <p className="flex items-baseline gap-2">
+                  <span className="text-[26px] font-black leading-none tabular-nums text-white">{x.d.n}</span>
+                  <span
+                    className="text-[15px] font-extrabold tabular-nums"
+                    style={{ color: x.d.n === 0 ? "rgba(255,255,255,.3)" : x.d.nps >= 50 ? VERDE : x.d.nps >= 0 ? AMBAR : ROJO }}
+                  >
+                    {x.d.n === 0 ? "—" : `NPS ${x.d.nps > 0 ? "+" : ""}${x.d.nps}`}
+                  </span>
+                </p>
+                <p className="mt-1.5 text-[13px] font-bold text-white">{x.t}</p>
+                <p className="text-[11px] font-light text-white/35">{x.s}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-[13px] font-light leading-relaxed text-white/45">
+            El número que vale para presumir es el de la izquierda:{" "}
+            <b className="font-extrabold text-white">
+              NPS {c.confirmados.nps > 0 ? "+" : ""}{c.confirmados.nps}
+            </b>{" "}
+            entre quienes de verdad estuvieron. Todo lo demás en esta página mezcla los tres grupos.
+          </p>
+        </div>
       </section>
 
       <div className="mt-10 grid gap-5 lg:grid-cols-2">
@@ -227,8 +269,8 @@ function Cuerpo({ t }: { t: Tablero }) {
           {u ? (
             <>
               <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
-                De <b className="font-extrabold text-white tabular-nums">{u.total}</b> personas con el QR leído en la
-                puerta que además abrieron la app.
+                Solo gente que vino: <b className="font-extrabold text-white tabular-nums">{u.total}</b> personas con el
+                QR leído en la puerta que además abrieron la app. Esta tarjeta no mezcla a nadie más.
               </p>
               <ul className="mt-5 space-y-4">
                 {usos.map((x) => (

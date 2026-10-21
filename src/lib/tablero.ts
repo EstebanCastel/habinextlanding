@@ -1,5 +1,5 @@
 import { CHARLAS, PARTES, nps as calcularNps, type ParteId } from "@/config/encuesta";
-import { leer } from "./almacen";
+import { leer, listarRutas } from "./almacen";
 import { todas, type Guardada } from "./encuesta";
 
 /**
@@ -44,6 +44,20 @@ export type Tablero = {
   duracion: Record<string, number>;
   via: Record<string, number>;
   uso: Uso | null;
+  /**
+   * El mismo NPS partido por quién contestó.
+   *
+   * El enlace salió a los 852 de Luma, así que puede contestar alguien que
+   * nunca vino, y las anónimas no se pueden cruzar con nada. Mezclarlo todo en
+   * un solo número esconde justo la diferencia que importa: el NPS de quien
+   * estuvo en la silla no es el mismo que el del total.
+   */
+  cortes: {
+    confirmados: ReturnType<typeof calcularNps>;
+    sinQr: ReturnType<typeof calcularNps>;
+    anonimas: ReturnType<typeof calcularNps>;
+    puerta: number;
+  };
   armadoEn: string;
   /**
    * Qué se rompió al leer, si algo se rompió.
@@ -63,9 +77,30 @@ const contar = (docs: Guardada[], campo: "vuelve" | "pagaria" | "duracion" | "vi
     return a;
   }, {});
 
+/**
+ * Los correos a los que sí les leímos el QR en la puerta. La marca guarda el
+ * id de Luma, no el correo, así que se traduce con el padrón: es lo único que
+ * las dos listas comparten.
+ */
+async function correosEnLaPuerta(): Promise<Set<string>> {
+  const [padron, rutas] = await Promise.all([
+    leer<{ gente?: { id: string; correo?: string }[] }>("validacion/padron.json"),
+    listarRutas("validacion/entrada/", 5000),
+  ]);
+  const correoDe = new Map((padron?.gente ?? []).map((g) => [g.id, (g.correo ?? "").toLowerCase()]));
+  const puerta = new Set<string>();
+  for (const r of rutas) {
+    if (r.includes("__prueba__")) continue;
+    const id = r.slice("validacion/entrada/".length).replace(/\.json$/, "").split("__").slice(1).join("__");
+    const correo = correoDe.get(id) || (id.includes("@") ? id.toLowerCase() : "");
+    if (correo) puerta.add(correo);
+  }
+  return puerta;
+}
+
 export async function armarTablero(): Promise<Tablero> {
   const fallos: string[] = [];
-  const [docs, uso] = await Promise.all([
+  const [docs, uso, puerta] = await Promise.all([
     todas().catch((e: unknown) => {
       fallos.push(`encuesta: ${e instanceof Error ? e.message : String(e)}`);
       return [] as Guardada[];
@@ -74,7 +109,17 @@ export async function armarTablero(): Promise<Tablero> {
       fallos.push(`uso: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     }),
+    correosEnLaPuerta().catch(() => new Set<string>()),
   ]);
+
+  const notasDe = (xs: Guardada[]) => xs.map((d) => d.respuesta.nps).filter((n) => typeof n === "number");
+  const conCorreo = docs.filter((d) => d.email);
+  const cortes = {
+    confirmados: calcularNps(notasDe(conCorreo.filter((d) => puerta.has(String(d.email).toLowerCase())))),
+    sinQr: calcularNps(notasDe(conCorreo.filter((d) => !puerta.has(String(d.email).toLowerCase())))),
+    anonimas: calcularNps(notasDe(docs.filter((d) => !d.email))),
+    puerta: puerta.size,
+  };
 
   const notas = docs.map((d) => d.respuesta.nps).filter((n) => typeof n === "number");
 
@@ -104,6 +149,7 @@ export async function armarTablero(): Promise<Tablero> {
     duracion: contar(docs, "duracion"),
     via: contar(docs, "via"),
     uso,
+    cortes,
     armadoEn: new Date().toISOString(),
     fallos,
   };
