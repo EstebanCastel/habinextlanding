@@ -1,4 +1,5 @@
 import { CHARLAS, PARTES, nps as calcularNps, type ParteId } from "@/config/encuesta";
+import { agrupar, type Agrupado } from "@/config/temas";
 import { leer, listarRutas } from "./almacen";
 import { todas, type Guardada } from "./encuesta";
 
@@ -57,6 +58,14 @@ export type Tablero = {
     sinQr: ReturnType<typeof calcularNps>;
     anonimas: ReturnType<typeof calcularNps>;
     puerta: number;
+  };
+  /**
+   * Lo que la gente escribió, agrupado por tema. Es lo único de la encuesta
+   * que dice *qué* hacer; el NPS solo dice si hay que hacer algo.
+   */
+  cualitativo: {
+    cambiar: { temas: Agrupado[]; sinQueja: number; total: number; sinClasificar: number };
+    aplicar: { temas: Agrupado[]; sinQueja: number; total: number; sinClasificar: number };
   };
   armadoEn: string;
   /**
@@ -150,6 +159,10 @@ export async function armarTablero(): Promise<Tablero> {
     via: contar(docs, "via"),
     uso,
     cortes,
+    cualitativo: {
+      cambiar: agrupar(docs.map((d) => ({ texto: d.respuesta.cambiar ?? "", nps: d.respuesta.nps })), "cambiar"),
+      aplicar: agrupar(docs.map((d) => ({ texto: d.respuesta.aplicar ?? "", nps: d.respuesta.nps })), "aplicar"),
+    },
     armadoEn: new Date().toISOString(),
     fallos,
   };

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Refresco from "@/components/tablero/Refresco";
 import { EVENT } from "@/config/event";
+import { haySesion } from "@/lib/sesion";
 import { armarTablero, hora, type Tablero } from "@/lib/tablero";
+import type { Agrupado } from "@/config/temas";
 
 /**
  * El tablero de cierre: cómo salió el día, en una pantalla.
@@ -119,7 +121,49 @@ function Reparto({
   );
 }
 
-function Cuerpo({ t }: { t: Tablero }) {
+/**
+ * Un tema de las respuestas abiertas.
+ *
+ * Las citas van dentro de un `<details>`: en el celular, diez temas con cuatro
+ * citas cada uno son una pared de texto que nadie lee. Cerrado se ve el mapa
+ * completo de un vistazo; abierto, lo que de verdad escribió la gente.
+ */
+function Fila0({ g, tope, color, conClave }: { g: Agrupado; tope: number; color: string; conClave: boolean }) {
+  return (
+    <li className="border-t border-white/8 pt-3.5 first:border-0 first:pt-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 text-[15px] font-bold leading-tight text-white">{g.tema.nombre}</span>
+        <span className="flex-none text-[15px] font-extrabold tabular-nums" style={{ color }}>{g.n}</span>
+      </div>
+      <div className="tb-barra mt-1.5">
+        <i style={{ "--p": g.n / tope, "--c": color } as React.CSSProperties} />
+      </div>
+      <p className="mt-1.5 text-[12px] font-light leading-snug text-white/40">{g.tema.pista}</p>
+      {conClave && g.citas.length ? (
+        <details className="group mt-2">
+          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[12px] font-bold text-violet-soft [&::-webkit-details-marker]:hidden">
+            Lo que escribieron
+            <svg viewBox="0 0 24 24" className="size-3.5 transition-transform group-open:rotate-45" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </summary>
+          <ul className="mt-2 space-y-2">
+            {g.citas.map((c, i) => (
+              <li key={i} className="rounded-xl bg-white/[0.04] px-3 py-2.5 text-[13px] font-light leading-relaxed text-white/70">
+                <span className="mr-1.5 font-extrabold tabular-nums" style={{ color: c.nps >= 9 ? VERDE : c.nps >= 7 ? AMBAR : ROJO }}>
+                  {c.nps}
+                </span>
+                {c.texto.trim()}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </li>
+  );
+}
+
+function Cuerpo({ t, conClave }: { t: Tablero; conClave: boolean }) {
   const { nps, cortes: c } = t;
   const u = t.uso?.dentro;
   const flojo = t.partes.at(-1);
@@ -138,7 +182,7 @@ function Cuerpo({ t }: { t: Tablero }) {
     : [];
 
   return (
-    <div className="relative z-[3] mx-auto w-full max-w-5xl px-5 pb-20 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
+    <div className="relative z-[3] mx-auto w-full max-w-5xl px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:pb-20 md:px-8">
       <header className="flex items-center justify-between gap-4">
         <Image src="/img/habi-next-logo.svg" alt={EVENT.fullName} width={780} height={260} priority className="h-8 w-auto" />
         <span className="text-[12px] font-bold text-white/40">
@@ -155,15 +199,15 @@ function Cuerpo({ t }: { t: Tablero }) {
       ) : null}
 
       {/* El NPS es el titular: es el número que todo el mundo va a repetir. */}
-      <section className="mt-12">
+      <section className="mt-8 sm:mt-12">
         <Eyebrow>Cómo salió el día · 20 de octubre</Eyebrow>
-        <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-2">
-          <p className="enc-numero select-none" aria-hidden="true">NPS</p>
-          <p className="pb-2 text-[72px] font-black leading-none tracking-[-0.06em] tabular-nums sm:text-[96px]" style={{ color: nps.nps >= 50 ? VERDE : nps.nps >= 0 ? AMBAR : ROJO }}>
+        <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-1 sm:mt-4 sm:gap-x-6">
+          <p className="enc-numero select-none text-[64px] leading-[0.8] sm:text-[clamp(82px,26vw,136px)]" aria-hidden="true">NPS</p>
+          <p className="pb-1 text-[60px] font-black leading-none tracking-[-0.06em] tabular-nums sm:pb-2 sm:text-[96px]" style={{ color: nps.nps >= 50 ? VERDE : nps.nps >= 0 ? AMBAR : ROJO }}>
             {nps.nps > 0 ? "+" : ""}{nps.nps}
           </p>
         </div>
-        <p className="mt-1 text-[17px] font-light leading-snug text-white/60">
+        <p className="mt-1 text-[16px] font-light leading-snug text-white/60 sm:text-[17px]">
           Sobre <b className="font-extrabold text-white">{t.n}</b> {t.n === 1 ? "respuesta" : "respuestas"}, con nota
           promedio de <b className="font-extrabold text-white tabular-nums">{t.notaPromedio.toFixed(2)}</b> sobre 10.
         </p>
@@ -173,14 +217,14 @@ function Cuerpo({ t }: { t: Tablero }) {
           <span style={{ flexBasis: `${pct(nps.pasivos, nps.n)}%`, background: AMBAR }} />
           <span style={{ flexBasis: `${pct(nps.detractores, nps.n)}%`, background: ROJO }} />
         </div>
-        <ul className="mt-3 grid grid-cols-3 gap-3">
+        <ul className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
           {[
             { n: nps.promotores, t: "Promotores", s: "9 y 10", c: VERDE },
             { n: nps.pasivos, t: "Pasivos", s: "7 y 8", c: AMBAR },
             { n: nps.detractores, t: "Detractores", s: "0 a 6", c: ROJO },
           ].map((x) => (
-            <li key={x.t} className="tb-tarjeta px-4 py-3">
-              <p className="text-[30px] font-black leading-none tabular-nums" style={{ color: x.c }}>{x.n}</p>
+            <li key={x.t} className="tb-tarjeta px-3 py-3 sm:px-4">
+              <p className="text-[26px] font-black leading-none tabular-nums sm:text-[30px]" style={{ color: x.c }}>{x.n}</p>
               <p className="mt-1.5 text-[13px] font-bold text-white">{x.t}</p>
               <p className="text-[11px] font-light text-white/35">{x.s}</p>
             </li>
@@ -188,7 +232,7 @@ function Cuerpo({ t }: { t: Tablero }) {
         </ul>
 
         {/* Quién contestó: el enlace salió a los 852 de Luma, no solo a quien vino. */}
-        <div className="tb-tarjeta mt-5 p-5 sm:p-6">
+        <div className="tb-tarjeta mt-4 p-5 sm:mt-5 sm:p-6">
           <Eyebrow>Y si solo cuentas a los que vinieron</Eyebrow>
           <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
             El enlace salió a las {(852).toLocaleString("es-CO")} personas de Luma, vinieran o no, y las anónimas no se
@@ -230,9 +274,9 @@ function Cuerpo({ t }: { t: Tablero }) {
         </div>
       </section>
 
-      <div className="mt-10 grid gap-5 lg:grid-cols-2">
+      <div className="mt-8 grid gap-4 sm:mt-10 sm:gap-5 lg:grid-cols-2">
         {/* Calificación por parte: acá se ve qué jaló el NPS para abajo. */}
-        <section className="tb-tarjeta p-6">
+        <section className="tb-tarjeta p-5 sm:p-6">
           <Eyebrow>Cada parte del día</Eyebrow>
           <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
             Promedio sobre 5.{" "}
@@ -264,7 +308,7 @@ function Cuerpo({ t }: { t: Tablero }) {
         </section>
 
         {/* Uso de la app, solo de quien entró de verdad por la puerta. */}
-        <section className="tb-tarjeta p-6">
+        <section className="tb-tarjeta p-5 sm:p-6">
           <Eyebrow>Qué hicieron en la app</Eyebrow>
           {u ? (
             <>
@@ -294,7 +338,7 @@ function Cuerpo({ t }: { t: Tablero }) {
         </section>
 
         {/* Las charlas: esto es lo que decide la agenda del año entrante. */}
-        <section className="tb-tarjeta p-6">
+        <section className="tb-tarjeta p-5 sm:p-6">
           <Eyebrow>Las charlas que sirvieron</Eyebrow>
           <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
             Cada quien escoge todas las que quiera. Esto arma la agenda del año entrante.
@@ -329,8 +373,62 @@ function Cuerpo({ t }: { t: Tablero }) {
           )}
         </section>
 
+        {/* Lo que escribieron, agrupado. Es lo único que dice QUÉ hacer. */}
+        <section className="tb-tarjeta p-5 sm:p-6">
+          <Eyebrow>Qué hay que arreglar</Eyebrow>
+          <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
+            De {t.cualitativo.cambiar.total} que escribieron en «¿qué cambiarías?», agrupadas por lo que repitieron.
+            Una respuesta puede contar en varios temas.
+          </p>
+          {t.cualitativo.cambiar.temas.length ? (
+            <ul className="mt-5 space-y-3.5">
+              {t.cualitativo.cambiar.temas.map((g, i) => (
+                <Fila0
+                  key={g.tema.id}
+                  g={g}
+                  tope={t.cualitativo.cambiar.temas[0].n}
+                  color={i === 0 ? ROJO : i < 3 ? AMBAR : VIOLETA}
+                  conClave={conClave}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-[15px] font-light text-white/40">Todavía sin respuestas.</p>
+          )}
+          <p className="mt-5 border-t border-white/8 pt-4 text-[12px] font-light leading-relaxed text-white/35">
+            <b className="font-extrabold text-white/70">{t.cualitativo.cambiar.sinQueja}</b> contestaron que no
+            cambiarían nada · {t.cualitativo.cambiar.sinClasificar} dijeron algo que no entra en ningún tema
+          </p>
+        </section>
+
+        <section className="tb-tarjeta p-5 sm:p-6">
+          <Eyebrow>Qué se llevan</Eyebrow>
+          <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
+            De {t.cualitativo.aplicar.total} que contestaron «¿qué vas a aplicar esta semana?». Esto mide si el día
+            sirvió, no si gustó.
+          </p>
+          {t.cualitativo.aplicar.temas.length ? (
+            <ul className="mt-5 space-y-3.5">
+              {t.cualitativo.aplicar.temas.map((g, i) => (
+                <Fila0
+                  key={g.tema.id}
+                  g={g}
+                  tope={t.cualitativo.aplicar.temas[0].n}
+                  color={i === 0 ? VERDE : VIOLETA}
+                  conClave={conClave}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-[15px] font-light text-white/40">Todavía sin respuestas.</p>
+          )}
+          <p className="mt-5 border-t border-white/8 pt-4 text-[12px] font-light leading-relaxed text-white/35">
+            {t.cualitativo.aplicar.sinClasificar} respondieron algo que no entra en ningún tema
+          </p>
+        </section>
+
         {/* La plata del año entrante: vuelve, paga y cuánto aguantó el día. */}
-        <section className="tb-tarjeta space-y-6 p-6">
+        <section className="tb-tarjeta space-y-6 p-5 sm:p-6">
           <div>
             <Eyebrow>El año entrante</Eyebrow>
             <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
@@ -382,7 +480,9 @@ function Cuerpo({ t }: { t: Tablero }) {
 }
 
 export default async function TableroPagina() {
-  const t = await armarTablero();
+  // Los números son públicos; lo que la gente escribió con su nombre al lado
+  // no. Las citas solo aparecen con la sesión del panel abierta.
+  const [t, conClave] = await Promise.all([armarTablero(), haySesion()]);
 
   return (
     <main className="relative min-h-[100svh] overflow-x-clip bg-night">
@@ -391,7 +491,7 @@ export default async function TableroPagina() {
         <div className="enc-grano" />
       </div>
       <Refresco />
-      <Cuerpo t={t} />
+      <Cuerpo t={t} conClave={conClave} />
     </main>
   );
 }
