@@ -166,6 +166,8 @@ function Fila0({ g, tope, color, conClave }: { g: Agrupado; tope: number; color:
 function Cuerpo({ t, conClave }: { t: Tablero; conClave: boolean }) {
   const { nps, cortes: c } = t;
   const u = t.uso?.dentro;
+  const l = t.uso?.luma;
+  const puerta = t.uso?.puerta ?? c.puerta;
   const flojo = t.partes.at(-1);
 
   const usos = u
@@ -274,6 +276,37 @@ function Cuerpo({ t, conClave }: { t: Tablero; conClave: boolean }) {
         </div>
       </section>
 
+      {/* El embudo del día. Sin el techo de Luma, «478 carnets» no dice si es
+          mucho o poco; con él se ve que es el 60% de todo el que se registró. */}
+      {u && l ? (
+        <section className="tb-tarjeta mt-8 p-5 sm:mt-10 sm:p-6">
+          <Eyebrow>Cuánta gente, de principio a fin</Eyebrow>
+          <ul className="mt-5 space-y-4">
+            {[
+              { n: l.aprobados, t: "Aprobados en Luma", s: `General ${l.general} · VIP ${l.vip}`, c: VIOLETA },
+              { n: puerta, t: "Entraron con QR leído", s: `${pct(puerta, l.aprobados)}% de los aprobados`, c: VERDE },
+              { n: u.total, t: "Además abrieron la app", s: `${pct(u.total, puerta)}% de los que entraron`, c: "#ba9dfa" },
+            ].map((x) => (
+              <li key={x.t}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 text-[15px] font-bold leading-tight text-white">{x.t}</span>
+                  <span className="flex-none text-[22px] font-black tabular-nums" style={{ color: x.c }}>{x.n}</span>
+                </div>
+                <div className="tb-barra mt-1.5">
+                  <i style={{ "--p": x.n / l.aprobados, "--c": x.c } as React.CSSProperties} />
+                </div>
+                <p className="mt-1.5 text-[12px] font-light text-white/40">{x.s}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-5 border-t border-white/8 pt-4 text-[12px] font-light leading-relaxed text-white/35">
+            Quedaron <b className="font-extrabold text-white/70">{l.pendientes}</b> sin aprobar y{" "}
+            <b className="font-extrabold text-white/70">{l.rechazados}</b> rechazados en Luma, que no cuentan en
+            ninguna cifra de esta página. La puerta subcontó: varias personas entraron sin que les leyeran el código.
+          </p>
+        </section>
+      ) : null}
+
       <div className="mt-8 grid gap-4 sm:mt-10 sm:gap-5 lg:grid-cols-2">
         {/* Calificación por parte: acá se ve qué jaló el NPS para abajo. */}
         <section className="tb-tarjeta p-5 sm:p-6">
@@ -314,14 +347,23 @@ function Cuerpo({ t, conClave }: { t: Tablero; conClave: boolean }) {
             <>
               <p className="mt-2 text-[15px] font-light leading-snug text-white/50">
                 Solo gente que vino: <b className="font-extrabold text-white tabular-nums">{u.total}</b> personas con el
-                QR leído en la puerta que además abrieron la app. Esta tarjeta no mezcla a nadie más.
+                QR leído en la puerta que además abrieron la app
+                {l ? (
+                  <>
+                    , de <b className="font-extrabold text-white tabular-nums">{l.aprobados}</b> aprobadas en Luma y{" "}
+                    <b className="font-extrabold text-white tabular-nums">{puerta}</b> que entraron
+                  </>
+                ) : null}
+                . Esta tarjeta no mezcla a nadie más.
               </p>
               <ul className="mt-5 space-y-4">
                 {usos.map((x) => (
                   <Fila
                     key={x.nombre}
                     nombre={x.nombre}
-                    pista={x.pista}
+                    pista={[x.pista, l ? `${pct(x.n, l.aprobados)}% de los ${l.aprobados} registrados` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
                     valor={`${x.n} · ${pct(x.n, u.total)}%`}
                     parte={x.n / u.total}
                     color={pct(x.n, u.total) >= 50 ? VERDE : pct(x.n, u.total) >= 25 ? VIOLETA : AMBAR}

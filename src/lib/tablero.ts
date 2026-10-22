@@ -17,6 +17,10 @@ import { todas, type Guardada } from "./encuesta";
 export type Uso = {
   armadoEn: string;
   creados: number;
+  /** Cuántos correos distintos pasaron por el lector de la puerta. */
+  puerta?: number;
+  /** El techo contra el que se mide todo: quién se registró de verdad. */
+  luma?: { general: number; vip: number; aprobados: number; pendientes: number; rechazados: number };
   dentro: {
     total: number;
     carnet: number;
