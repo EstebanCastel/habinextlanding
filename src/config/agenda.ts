@@ -259,6 +259,9 @@ export const SESIONES: Sesion[] = [
       "Cómo separar la plata del negocio de la plata de la casa cuando tus ingresos son por comisión.",
       "Un esquema simple para que un mes bueno aguante los dos siguientes y empiece a invertir.",
     ],
+    materiales: [
+      { nombre: "Cómo construir riqueza y patrimonio en el largo plazo", url: "/material/venderle-inversionistas.pdf", peso: "5,0 MB" },
+    ],
   },
   { id: "receso-tarde", salon: "inspira", desde: "15:15", titulo: "Receso corto", tipo: "pausa", resumen: "Café y una vuelta por los stands." },
   {
