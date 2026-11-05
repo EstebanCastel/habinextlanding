@@ -5,7 +5,7 @@ import { aPdf, type Linea } from "@/lib/pdf";
 /**
  * La ficha de una sesión para descargar: título, quién la dicta, qué se
  * lleva quien entra y qué traer. Si el equipo subió material propio
- * (`material` en la sesión), se manda allá en vez de generar la ficha.
+ * (`materiales` en la sesión), se manda allá en vez de generar la ficha.
  * Es información del evento: no pide sesión.
  */
 
@@ -16,7 +16,8 @@ export async function GET(_request: Request, contexto: { params: Promise<{ id: s
   const { id } = await contexto.params;
   const s = sesionDe(id.replace(/\.pdf$/i, ""));
   if (!s || s.tipo) return NextResponse.json({ error: "Esa sesión no existe." }, { status: 404 });
-  if (s.material) return NextResponse.redirect(s.material, { status: 302 });
+  // Con material propio se manda al primero; la agenda muestra la lista completa.
+  if (s.materiales?.length) return NextResponse.redirect(new URL(s.materiales[0].url, _request.url), { status: 302 });
 
   const salon = salonDe(s.salon);
   const gente = s.ponentes ?? (s.ponente ? [s.ponente] : []);

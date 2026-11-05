@@ -90,7 +90,23 @@ export const DURACION: { id: Duracion; texto: string }[] = [
  */
 export const DESDE = "2026-10-20T17:45:00-05:00";
 
-export const abierta = (ahora = new Date()): boolean => ahora.getTime() >= new Date(DESDE).getTime();
+/**
+ * Hasta cuándo se abre sola encima de la experiencia.
+ *
+ * Tapar la pantalla sin salida se justifica el día del evento y los días en
+ * que la respuesta todavía vale: pasada esa ventana, la encuesta deja de ser
+ * una pregunta oportuna y pasa a ser un peaje. Quien entra una semana después
+ * va a buscar el material de una charla, no a calificar el almuerzo.
+ *
+ * La encuesta no se cierra: `/encuesta` sigue recibiendo respuestas. Lo que
+ * se acaba es el derecho a interrumpir.
+ */
+export const HASTA = "2026-10-27T23:59:00-05:00";
+
+export const abierta = (ahora = new Date()): boolean => {
+  const t = ahora.getTime();
+  return t >= new Date(DESDE).getTime() && t <= new Date(HASTA).getTime();
+};
 
 /** Mínimo de caracteres en las preguntas abiertas: que nadie se trabe, pero que tampoco ponga un punto. */
 export const MINIMO_TEXTO = 3;

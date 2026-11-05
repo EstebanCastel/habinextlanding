@@ -95,8 +95,19 @@ export type Sesion = {
   contenido?: string[];
   /** Qué hay que traer o tener listo. */
   necesitas?: string;
-  /** Material de la sesión para descargar (PDF, carpeta). Sin esto se baja la ficha generada. */
-  material?: string;
+  /**
+   * Lo que dejó quien dictó la sesión, para quien quiera repasarlo.
+   *
+   * Es una lista y no un enlace suelto porque varias charlas dejaron más de
+   * una cosa: la maratón fueron cinco herramientas seguidas y el taller de
+   * CRM dejó la presentación, un kit de plantillas y las preguntas del
+   * ejercicio. Obligar a escoger una sola pieza sería botar las demás.
+   *
+   * Las presentaciones van en PDF y no en PPTX: el de TikTok pesaba 78 MB
+   * con los videos incrustados, que ningún lector de celular reproduce, y en
+   * PDF limpio pesa 3,6. Lo que llega es lo que se puede abrir.
+   */
+  materiales?: { nombre: string; url: string; peso?: string }[];
   /** Una frase de gancho sobre quien dicta, para el afiche del panel. */
   gancho?: string;
 };
@@ -164,6 +175,9 @@ export const SESIONES: Sesion[] = [
       "Qué se viene en producto y qué parte de eso queda en manos de los aliados.",
       "Cómo encaja un asesor independiente en lo que Habi está construyendo.",
     ],
+    materiales: [
+      { nombre: "Presentación de Sebastián Noguera", url: "/material/futuro-habi.pdf", peso: "2,2 MB" },
+    ],
   },
   {
     id: "futuro-mi-red",
@@ -176,6 +190,9 @@ export const SESIONES: Sesion[] = [
       "Cómo funciona la red de aliados: quién entra, qué recibe y qué se espera de cada uno.",
       "El inventario que puedes mostrar desde el primer día y cómo se reparte la comisión.",
       "Lo que viene para quienes ya están adentro.",
+    ],
+    materiales: [
+      { nombre: "Presentación de Agustín Iglesias", url: "/material/futuro-mi-red.pdf", peso: "4,1 MB" },
     ],
   },
   {
@@ -190,6 +207,9 @@ export const SESIONES: Sesion[] = [
       "Cómo se le presenta una oportunidad y qué la hace viable.",
       "Qué puede ofrecerle un asesor a un cliente inversionista con este respaldo.",
     ],
+    materiales: [
+      { nombre: "Presentación de Martín Oviedo", url: "/material/futuro-habi-capital.pdf", peso: "2,2 MB" },
+    ],
   },
   {
     id: "futuro-habi-credit",
@@ -203,6 +223,9 @@ export const SESIONES: Sesion[] = [
       "Qué frena un desembolso y cómo anticiparlo antes de firmar promesa.",
       "Lo que un asesor gana por acompañar el crédito, no solo la venta.",
     ],
+    materiales: [
+      { nombre: "Presentación de Gabriel Morris", url: "/material/futuro-habi-credit.pdf", peso: "1,2 MB" },
+    ],
   },
   {
     id: "futuro-franquicias",
@@ -215,6 +238,9 @@ export const SESIONES: Sesion[] = [
       "Qué incluye una franquicia Habi y qué no.",
       "La inversión, los tiempos y el punto de equilibrio con números.",
       "Para quién tiene sentido y para quién no vale la pena.",
+    ],
+    materiales: [
+      { nombre: "Presentación de Edwin Alejo", url: "/material/futuro-franquicias.pdf", peso: "1,7 MB" },
     ],
   },
   { id: "almuerzo", salon: "inspira", desde: "13:40", titulo: "Almuerzo", tipo: "pausa", resumen: "El salón retoma a las 2:15. Los VIP van por turnos: 1:40, 2:10 y 2:40." },
@@ -248,6 +274,10 @@ export const SESIONES: Sesion[] = [
       "Wekall: la llamada y el WhatsApp de tu operación en un solo lugar.",
       "Palomma y Funnel Chat: cobros y conversaciones que no se caen entre tantos chats.",
     ],
+    materiales: [
+      { nombre: "Las tres presentaciones: Auco, Dapta y Palomma", url: "/material/maraton-herramientas.pdf", peso: "7,9 MB" },
+      { nombre: "El tablero de Wekall en Canva", url: "https://canva.link/5okrsk5o4uin4wc" },
+    ],
   },
   { id: "transicion-maraton", salon: "inspira", desde: "16:00", titulo: "Transición", tipo: "pausa", resumen: "Cinco minutos." },
   {
@@ -264,7 +294,9 @@ export const SESIONES: Sesion[] = [
       "Los errores que hacen que el algoritmo te esconda, con ejemplos de cuentas reales del gremio.",
     ],
     necesitas: "Tu celular con tus redes abiertas.",
-    material: "https://claude.ai/artifact/NYmx1dpbqrdtcSjjpa7N1k?sk=ZjZo9bt7z--_TvVDqJDt_Q",
+    materiales: [
+      { nombre: "El material que armó Camilo Olarte", url: "https://claude.ai/artifact/NYmx1dpbqrdtcSjjpa7N1k?sk=ZjZo9bt7z--_TvVDqJDt_Q" },
+    ],
   },
   { id: "transicion-conferencias", salon: "inspira", desde: "16:55", titulo: "Transición", tipo: "pausa", resumen: "Cinco minutos." },
   {
@@ -298,6 +330,9 @@ export const SESIONES: Sesion[] = [
       "Grabas y publicas uno en la sesión.",
     ],
     necesitas: "Tu celular con TikTok instalado.",
+    materiales: [
+      { nombre: "Presentación de Carolina Pinilla", url: "/material/tiktok.pdf", peso: "9,0 MB" },
+    ],
   },
   { id: "taller-transicion-1", salon: "taller", desde: "10:00", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se despeja la sala." },
   {
@@ -311,6 +346,9 @@ export const SESIONES: Sesion[] = [
     contenido: [
       "Cómo se ve un embudo de ventas con IA atendiendo la primera respuesta.",
       "Qué se automatiza sin que el cliente sienta que habla con una máquina.",
+    ],
+    materiales: [
+      { nombre: "Taller de Dapta, con los ejercicios", url: "/material/ventas-ia.pdf", peso: "9,6 MB" },
     ],
   },
   { id: "taller-transicion-2", salon: "taller", desde: "11:00", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se despeja la sala." },
@@ -343,6 +381,9 @@ export const SESIONES: Sesion[] = [
       "Montamos el tuyo en la sesión y te vas con él andando.",
     ],
     necesitas: "Computador con batería y tu correo a mano.",
+    materiales: [
+      { nombre: "Presentación de Federico Sánchez", url: "/material/asistente-claude.pdf", peso: "7,5 MB" },
+    ],
   },
   { id: "taller-transicion-4", salon: "taller", desde: "12:15", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se despeja la sala." },
   {
@@ -356,6 +397,9 @@ export const SESIONES: Sesion[] = [
       "Qué mueve de verdad el precio de un inmueble y qué no, con datos del mercado.",
       "Cómo sustentarle un precio a un propietario que pide más de lo que vale.",
       "En qué se equivocan los avalúos de oído, y cómo no quedar colgado con un inmueble sobrevalorado.",
+    ],
+    materiales: [
+      { nombre: "Presentación de Juan Sokoloff", url: "/material/valor-inmuebles.pdf", peso: "1,4 MB" },
     ],
   },
   { id: "taller-receso", salon: "taller", desde: "13:15", titulo: "Receso", tipo: "pausa", resumen: "Media hora para almorzar." },
@@ -373,6 +417,9 @@ export const SESIONES: Sesion[] = [
       "Dejas una campaña montada y lista para publicar.",
     ],
     necesitas: "Acceso a tu Business Manager.",
+    materiales: [
+      { nombre: "Presentación de Olivia Robles", url: "/material/campanas-meta.pdf", peso: "12,1 MB" },
+    ],
   },
   { id: "taller-transicion-5", salon: "taller", desde: "14:30", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se despeja la sala." },
   {
@@ -404,6 +451,10 @@ export const SESIONES: Sesion[] = [
       "Sales con tu CRM creado y tus primeros contactos cargados.",
     ],
     necesitas: "Computador y tu lista de clientes actual.",
+    materiales: [
+      { nombre: "Las preguntas del taller", url: "/material/crm.pdf", peso: "0,1 MB" },
+      { nombre: "Kit de planeación comercial de Grapez", url: "/material/crm-kit.zip", peso: "0,2 MB" },
+    ],
   },
   { id: "taller-transicion-7", salon: "taller", desde: "16:30", titulo: "Transición entre talleres", tipo: "pausa", resumen: "Se despeja la sala para el último." },
   {
@@ -418,6 +469,9 @@ export const SESIONES: Sesion[] = [
       "Qué mira realmente un banco y qué pesa más en la decisión.",
       "Los arreglos que suben el puntaje en semanas y los que toman meses.",
       "Cómo acompañar a un cliente negado sin perder la venta.",
+    ],
+    materiales: [
+      { nombre: "Bienestar financiero, de DataCrédito", url: "/material/score-crediticio.pdf", peso: "0,7 MB" },
     ],
   },
   { id: "taller-cierre", salon: "taller", desde: "17:30", titulo: "Cierre", tipo: "pausa", resumen: "Se cierra la sala de talleres." },

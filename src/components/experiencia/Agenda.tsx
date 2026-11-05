@@ -614,12 +614,12 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
           {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
           {/* Se ve desde la lista: quien busca el material de una charla no
               tiene que abrir las veinte para encontrar cuáles lo tienen. */}
-          {s.material ? (
+          {s.materiales?.length ? (
             <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet/45 bg-violet/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-violet-soft">
               <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
               </svg>
-              Material
+              {s.materiales.length === 1 ? "Material" : `${s.materiales.length} materiales`}
             </span>
           ) : null}
         </span>
@@ -792,20 +792,37 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
           <div data-linea className="mt-5 flex flex-wrap items-center gap-3">
             <MeInteresa sesion={sesion} intereses={intereses} grande />
             <Reservar sesion={sesion} intereses={intereses} grande />
-            {sesion.material ? (
-              <a
-                href={sesion.material}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-violet px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-press"
-              >
-                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-                </svg>
-                Material de la charla
-              </a>
-            ) : null}
           </div>
+
+          {/* Lo que dejó quien dictó. Cada pieza dice cuánto pesa: quien está
+              con datos del celular decide antes de tocar, no después. */}
+          {sesion.materiales?.length ? (
+            <div data-linea className="mt-6">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-violet-soft">
+                {sesion.materiales.length === 1 ? "El material de esta charla" : "Lo que dejó esta charla"}
+              </p>
+              <ul className="mt-3 flex flex-col gap-2">
+                {sesion.materiales.map((m) => (
+                  <li key={m.url}>
+                    <a
+                      href={m.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-2xl border border-violet/35 bg-violet/[0.09] px-4 py-3.5 transition-colors hover:border-violet/60 hover:bg-violet/15"
+                    >
+                      <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-violet-soft" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                      </svg>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-semibold leading-tight text-white">{m.nombre}</span>
+                        {m.peso ? <span className="mt-0.5 block text-[11px] font-light text-white/45">{m.peso}</span> : null}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {/* El pase del taller, acá mismo. Quien reservó abre la sesión para
               mirar de qué se trata y en la puerta de la sala le piden el QR:
