@@ -264,6 +264,7 @@ export const SESIONES: Sesion[] = [
       "Los errores que hacen que el algoritmo te esconda, con ejemplos de cuentas reales del gremio.",
     ],
     necesitas: "Tu celular con tus redes abiertas.",
+    material: "https://claude.ai/artifact/NYmx1dpbqrdtcSjjpa7N1k?sk=ZjZo9bt7z--_TvVDqJDt_Q",
   },
   { id: "transicion-conferencias", salon: "inspira", desde: "16:55", titulo: "Transición", tipo: "pausa", resumen: "Cinco minutos." },
   {

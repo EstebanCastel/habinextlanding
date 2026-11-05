@@ -612,6 +612,16 @@ function TarjetaSesion({ sesion: s, intereses, onAbrir }: { sesion: Sesion; inte
           </span>
           <span className="mt-1.5 block text-xl font-semibold leading-[1.15] tracking-tight sm:text-[1.4rem]">{s.titulo}</span>
           {s.resumen ? <span className="mt-3 block text-sm font-light leading-snug text-white/55">{s.resumen}</span> : null}
+          {/* Se ve desde la lista: quien busca el material de una charla no
+              tiene que abrir las veinte para encontrar cuáles lo tienen. */}
+          {s.material ? (
+            <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet/45 bg-violet/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-violet-soft">
+              <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+              </svg>
+              Material
+            </span>
+          ) : null}
         </span>
       </button>
       {/* Los botones van fuera del botón de la tarjeta: un botón no puede contener otro. */}
@@ -774,11 +784,27 @@ function Panel({ sesion, intereses, onCerrar }: { sesion: Sesion; intereses: Int
           <h3 id={`sesion-${sesion.id}`} data-linea className="mt-1.5 text-2xl font-bold leading-tight tracking-tighter sm:text-3xl">{sesion.titulo}</h3>
           {sesion.resumen ? <p data-linea className="mt-2 text-base font-light text-white/65">{sesion.resumen}</p> : null}
 
-          {/* Sin botón de descarga: no hay material que bajar y una ficha
-              generada que nadie pidió no es contenido, es ruido. */}
+          {/* El botón solo sale cuando el ponente dejó algo de verdad. No hay
+              ficha generada de respaldo: un PDF que repite lo que ya está en
+              pantalla no es material, es ruido, y haberlo ofrecido en todas
+              las charlas fue lo que obligó a quitar el botón el día del
+              evento. */}
           <div data-linea className="mt-5 flex flex-wrap items-center gap-3">
             <MeInteresa sesion={sesion} intereses={intereses} grande />
             <Reservar sesion={sesion} intereses={intereses} grande />
+            {sesion.material ? (
+              <a
+                href={sesion.material}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-violet px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-press"
+              >
+                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                </svg>
+                Material de la charla
+              </a>
+            ) : null}
           </div>
 
           {/* El pase del taller, acá mismo. Quien reservó abre la sesión para
